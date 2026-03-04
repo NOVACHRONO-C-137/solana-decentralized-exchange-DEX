@@ -55,7 +55,7 @@ export default function StandardPoolPage() {
             // Example base/quote combined name
             const newPool = {
                 id: `custom_${Date.now()}`,
-                name: `${baseToken}-${quoteToken}`,
+                name: `${baseToken?.symbol}-${quoteToken?.symbol}`,
                 liquidity: `$${liquidityNum.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
                 volume: `$${volumeNum.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
                 apr: `${(Math.random() * 5 + 1).toFixed(2)}%`,
@@ -64,7 +64,15 @@ export default function StandardPoolPage() {
                 aprBreakdown: {
                     tradeFees: `${(Math.random() * 3).toFixed(2)}%`,
                     yield: `${(Math.random() * 2).toFixed(2)}%`
-                }
+                },
+                symbolA: baseToken?.symbol,
+                symbolB: quoteToken?.symbol,
+                mintA: baseToken?.mint,
+                mintB: quoteToken?.mint,
+                decimalsA: baseToken?.decimals,
+                decimalsB: quoteToken?.decimals,
+                logoA: baseToken?.logoURI,
+                logoB: quoteToken?.logoURI,
             };
 
             // Save back to localStorage

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, RefreshCw, ZoomIn, ZoomOut, Loader2, ArrowDownUp } from "lucide-react";
 import Image from "next/image";
@@ -13,35 +13,27 @@ import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import BN from "bn.js";
 import Decimal from "decimal.js";
 
+
+
+
 const QUICK_RANGES = ["±0.1%", "±0.3%", "±0.5%", "±0.8%", "±1%"];
 
-// Mock liquidity bar data
-const LIQUIDITY_BARS = [
-    { price: 1.017, height: 15 },
-    { price: 1.018, height: 45 },
-    { price: 1.019, height: 90 },
-    { price: 1.0195, height: 100 },
-    { price: 1.020, height: 85 },
-    { price: 1.0205, height: 70 },
-    { price: 1.021, height: 40 },
-    { price: 1.0215, height: 20 },
-    { price: 1.022, height: 10 },
-];
+
 
 // ── Token Logo Component ──────────────────────────────────
 function TokenLogo({ token, size = 28, className = "" }: { token?: { symbol: string; color?: string; icon?: string; logoURI?: string }; size?: number; className?: string }) {
     const [imgError, setImgError] = useState(false);
-    if (!token) return <div className={`rounded-full bg-gray-600 ${className}`} style={{ width: size, height: size }} />;
+    if (!token) return <div className={`rounded-full bg-gray-600 border-2 border-[#161722] shrink-0 ${className}`} style={{ width: size, height: size }} />;
 
     if (token.logoURI && !imgError) {
         return (
-            <div className={`rounded-full overflow-hidden border-2 border-[#161722] ${className}`} style={{ width: size, height: size }}>
+            <div className={`rounded-full overflow-hidden border-2 border-[#161722] shrink-0 shadow-lg ${className}`} style={{ width: size, height: size }}>
                 <Image
                     src={token.logoURI}
                     alt={token.symbol}
                     width={size}
                     height={size}
-                    className="rounded-full object-cover"
+                    className="rounded-full object-cover w-full h-full"
                     onError={() => setImgError(true)}
                     unoptimized
                 />
@@ -49,12 +41,27 @@ function TokenLogo({ token, size = 28, className = "" }: { token?: { symbol: str
         );
     }
 
+    const generateGradient = (str: string) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue1 = Math.abs(hash % 360);
+        const hue2 = (hue1 + 40) % 360;
+        return `linear-gradient(135deg, hsl(${hue1}, 80%, 65%), hsl(${hue2}, 80%, 45%))`;
+    };
+
     return (
         <div
-            className={`rounded-full ${token.color || 'bg-gray-500'} border-2 border-[#161722] flex items-center justify-center text-xs font-bold ${className}`}
-            style={{ width: size, height: size }}
+            className={`rounded-full border-2 border-[#161722] flex items-center justify-center font-bold text-white shrink-0 shadow-inner ${token.color ? token.color : ''} ${className}`}
+            style={{
+                width: size,
+                height: size,
+                fontSize: Math.max(10, size * 0.45),
+                background: token.color ? undefined : generateGradient(token.symbol)
+            }}
         >
-            {token.icon || token.symbol[0]}
+            {token.icon || token.symbol.charAt(0).toUpperCase()}
         </div>
     );
 }
@@ -86,9 +93,197 @@ function PositionPageInner() {
     const tokenA = tokens[0] || "TOKEN A";
     const tokenB = tokens[1] || "TOKEN B";
 
-    // Find token info from DEVNET_TOKENS
-    const tokenAInfo = DEVNET_TOKENS.find(t => t.symbol === tokenA);
-    const tokenBInfo = DEVNET_TOKENS.find(t => t.symbol === tokenB);
+    const urlLogoA = searchParams.get("logoA");
+    const urlLogoB = searchParams.get("logoB");
+    const urlMintA = searchParams.get("mintA");
+    const urlMintB = searchParams.get("mintB");
+    const urlDecimalsA = searchParams.get("decimalsA");
+    const urlDecimalsB = searchParams.get("decimalsB");
+
+    // Fallbacks for tokens not in DEVNET_TOKENS
+    const fallbackA: any = {
+        symbol: tokenA,
+        mint: urlMintA || "",
+        decimals: urlDecimalsA ? parseInt(urlDecimalsA) : 6,
+        logoURI: urlLogoA || undefined,
+        name: tokenA,
+    };
+
+    const fallbackB: any = {
+        symbol: tokenB,
+        mint: urlMintB || "",
+        decimals: urlDecimalsB ? parseInt(urlDecimalsB) : 6,
+        logoURI: urlLogoB || undefined,
+        name: tokenB,
+    };
+
+    // Find token info from DEVNET_TOKENS or fall back to URL info
+    const initialAInfo = DEVNET_TOKENS.find(t => t.symbol === tokenA) || fallbackA;
+    const initialBInfo = DEVNET_TOKENS.find(t => t.symbol === tokenB) || fallbackB;
+
+    const [tokenAInfo, setTokenAInfo] = useState<any>(initialAInfo);
+    const [tokenBInfo, setTokenBInfo] = useState<any>(initialBInfo);
+
+    const [poolPrice, setPoolPrice] = useState<number | null>(null);
+    const [poolLoading, setPoolLoading] = useState(false);
+    const [poolTicks, setPoolTicks] = useState<any[]>([]);
+
+    // Fetch pool metadata and price
+    useEffect(() => {
+        if (!poolId) return;
+        const fetchPoolData = async () => {
+            setPoolLoading(true);
+            try {
+                const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolId}`);
+                const data = await res.json();
+                const poolInfo = data.data?.[0];
+                if (poolInfo) {
+                    if (poolInfo.price) {
+                        setPoolPrice(poolInfo.price);
+                        // Set default range as ±20% of real price for volatile devnet tokens
+                        setMinPrice((poolInfo.price * 0.8).toFixed(6));
+                        setMaxPrice((poolInfo.price * 1.2).toFixed(6));
+                    }
+
+                    const needsFetchTokens = !initialAInfo.logoURI || !initialBInfo.logoURI || !initialAInfo.mint || !initialBInfo.mint;
+                    if (needsFetchTokens) {
+                        const isAMintA = initialAInfo.symbol === poolInfo.mintA?.symbol || (!initialAInfo.mint && !initialBInfo.mint);
+                        if (poolInfo.mintA) {
+                            const newA = isAMintA ? poolInfo.mintA : poolInfo.mintB;
+                            setTokenAInfo((prev: any) => ({
+                                ...prev,
+                                mint: prev.mint || newA.address,
+                                decimals: prev.decimals !== 6 ? prev.decimals : newA.decimals,
+                                logoURI: prev.logoURI || newA.logoURI
+                            }));
+                        }
+                        if (poolInfo.mintB) {
+                            const newB = isAMintA ? poolInfo.mintB : poolInfo.mintA;
+                            setTokenBInfo((prev: any) => ({
+                                ...prev,
+                                mint: prev.mint || newB.address,
+                                decimals: prev.decimals !== 6 ? prev.decimals : newB.decimals,
+                                logoURI: prev.logoURI || newB.logoURI
+                            }));
+                        }
+                    }
+
+                    try {
+                        // Fetch real CLMM ticks
+                        const raydium = await Raydium.load({
+                            owner: publicKey || new PublicKey("11111111111111111111111111111111"), // pubkey or dummy if unconnected
+                            connection,
+                            cluster: "devnet",
+                            disableFeatureCheck: true,
+                            disableLoadToken: true,
+                        });
+                        // @ts-ignore
+                        const ticks = await raydium.clmm.getPoolTicks(poolId);
+                        setPoolTicks(ticks);
+                    } catch (tickErr) {
+                        console.warn("Could not fetch pool ticks:", tickErr);
+                    }
+                }
+            } catch (err) {
+                console.warn("Could not fetch pool data:", err);
+            } finally {
+                setPoolLoading(false);
+            }
+        };
+        fetchPoolData();
+    }, [poolId]); // Only run once on mount or when poolId changes
+
+    function calculateCLMMRatio(currentPrice: number, minPrice: number, maxPrice: number) {
+        if (currentPrice <= minPrice) return { ratioA: 1, ratioB: 0 }
+        if (currentPrice >= maxPrice) return { ratioA: 0, ratioB: 1 }
+
+        const sqrtPc = Math.sqrt(currentPrice)
+        const sqrtPa = Math.sqrt(minPrice)
+        const sqrtPb = Math.sqrt(maxPrice)
+
+        const amountA = (sqrtPb - sqrtPc) / (sqrtPc * sqrtPb)
+        const amountB = sqrtPc - sqrtPa
+
+        // Normalize to USD value for fair comparison
+        const valueA = amountA * currentPrice
+        const valueB = amountB
+        const total = valueA + valueB
+
+        if (total === 0) return { ratioA: 0.5, ratioB: 0.5 }
+
+        return {
+            ratioA: valueA / total,
+            ratioB: valueB / total,
+        }
+    }
+
+    function buildLiquidityBars(ticks: any[]) {
+        let liquidity = 0;
+        const bars = [];
+
+        for (const t of ticks) {
+            liquidity += Number(t.liquidityNet);
+            const price = Math.pow(1.0001, t.tickIndex);
+            bars.push({ price, liquidity });
+        }
+
+        if (bars.length === 0) return [];
+        const maxLiquidity = Math.max(...bars.map(b => b.liquidity));
+
+        return bars.map(b => ({
+            price: b.price,
+            height: maxLiquidity > 0 ? b.liquidity / maxLiquidity : 0
+        }));
+    }
+
+    // Auto-calculate paired token when one side is typed
+    const handleDepositAChange = (val: string) => {
+        setDepositA(val);
+        if (poolPrice && val && parseFloat(val) > 0) {
+            const min = parseFloat(minPrice);
+            const max = parseFloat(maxPrice);
+            if (min >= max) return;
+
+            const { ratioA, ratioB } = calculateCLMMRatio(poolPrice, min, max);
+            if (ratioA === 0) { setDepositB(""); return; }
+            const amountBValue = (parseFloat(val) * poolPrice) * (ratioB / ratioA);
+            setDepositB(isFinite(amountBValue) ? amountBValue.toFixed(6) : "");
+        } else {
+            setDepositB("");
+        }
+    };
+
+    const handleDepositBChange = (val: string) => {
+        setDepositB(val);
+        if (poolPrice && val && parseFloat(val) > 0) {
+            const min = parseFloat(minPrice);
+            const max = parseFloat(maxPrice);
+            if (min >= max) return;
+
+            const { ratioA, ratioB } = calculateCLMMRatio(poolPrice, min, max);
+            if (ratioB === 0) { setDepositA(""); return; }
+            const amountAValue = (parseFloat(val) / poolPrice) * (ratioA / ratioB);
+            setDepositA(isFinite(amountAValue) ? amountAValue.toFixed(6) : "");
+        } else {
+            setDepositA("");
+        }
+    };
+
+    // Recalculate deposit ratio when price range changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (depositA) {
+            handleDepositAChange(depositA);
+        }
+    }, [minPrice, maxPrice]);
+
+    // Fix quick range buttons to actually update min/max
+    const applyQuickRange = (rangeStr: string) => {
+        if (!poolPrice) return;
+        const pct = parseFloat(rangeStr.replace("±", "").replace("%", "")) / 100;
+        setMinPrice((poolPrice * (1 - pct)).toFixed(6));
+        setMaxPrice((poolPrice * (1 + pct)).toFixed(6));
+    };
 
     // Dynamic UI Mappings based on inversion state
     const topToken = isInverted ? tokenB : tokenA;
@@ -101,9 +296,14 @@ function PositionPageInner() {
     const bottomDeposit = isInverted ? depositA : depositB;
     const setBottomDeposit = isInverted ? setDepositA : setDepositB;
 
-    const totalDeposit = (parseFloat(depositA) || 0) + (parseFloat(depositB) || 0);
-    const ratioA = totalDeposit > 0 ? (((parseFloat(depositA) || 0) / totalDeposit) * 100).toFixed(0) : "0";
-    const ratioB = totalDeposit > 0 ? (100 - parseFloat(ratioA)).toFixed(0) : "0";
+    let displayRatioA = "0";
+    let displayRatioB = "0";
+
+    if (poolPrice && parseFloat(minPrice) < parseFloat(maxPrice)) {
+        const { ratioA: rA, ratioB: rB } = calculateCLMMRatio(poolPrice, parseFloat(minPrice), parseFloat(maxPrice));
+        displayRatioA = (rA * 100).toFixed(2);
+        displayRatioB = (rB * 100).toFixed(2);
+    }
 
     const adjustPrice = (setter: (v: string) => void, current: string, dir: "up" | "down") => {
         const val = parseFloat(current) || 0;
@@ -111,6 +311,23 @@ function PositionPageInner() {
         const next = dir === "up" ? val + step : Math.max(0.0001, val - step);
         setter(next.toFixed(15).replace(/0+$/, "").replace(/\.$/, ""));
     };
+
+    const bars = buildLiquidityBars(poolTicks);
+
+    const getLeftPct = (price: number) => {
+        if (bars.length === 0) return "50%";
+        const minP = bars[0].price;
+        const maxP = bars[bars.length - 1].price;
+        if (maxP === minP) return "50%";
+        const pct = ((price - minP) / (maxP - minP)) * 100;
+        return `${Math.max(0, Math.min(100, pct))}%`;
+    };
+
+    const priceRange = parseFloat(maxPrice) - parseFloat(minPrice);
+    const pricePosition = priceRange > 0
+        ? ((poolPrice || 1) - parseFloat(minPrice)) / priceRange
+        : 0.5;
+    const priceLineLeft = `${Math.max(0, Math.min(100, pricePosition * 100))}%`;
 
     // ── Add Liquidity Handler ──────────────────────────────────
     const handleAddLiquidity = async () => {
@@ -201,10 +418,41 @@ function PositionPageInner() {
 
             // Tick range
             const tickSpacing = poolInfo.config?.tickSpacing || 10;
-            const MIN_TICK = -443636;
-            const MAX_TICK = 443636;
-            let tickLower = Math.ceil(MIN_TICK / tickSpacing) * tickSpacing;
-            let tickUpper = Math.floor(MAX_TICK / tickSpacing) * tickSpacing;
+
+            let tickLower: number;
+            let tickUpper: number;
+
+            const minPriceNum = parseFloat(minPrice);
+            const maxPriceNum = parseFloat(maxPrice);
+            const currentPriceNum = poolInfo.price || 1;
+
+            if (minPriceNum >= maxPriceNum) {
+                throw new Error("Min price must be less than max price");
+            }
+
+            if (minPriceNum <= 0) {
+                throw new Error("Price must be positive");
+            }
+
+            if (
+                minPriceNum > 0 && maxPriceNum > minPriceNum &&
+                minPriceNum < currentPriceNum && maxPriceNum > currentPriceNum
+            ) {
+                // Convert prices to ticks: tick = log(price) / log(1.0001)
+                const rawTickLower = Math.floor(Math.log(minPriceNum) / Math.log(1.0001));
+                const rawTickUpper = Math.ceil(Math.log(maxPriceNum) / Math.log(1.0001));
+
+                // Align to tick spacing
+                tickLower = Math.floor(rawTickLower / tickSpacing) * tickSpacing;
+                tickUpper = Math.ceil(rawTickUpper / tickSpacing) * tickSpacing;
+
+                console.log(`📏 Tick range: ${tickLower} → ${tickUpper} (price ${minPrice} → ${maxPrice})`);
+            } else {
+                // Fall back to full range if price range is invalid
+                console.warn("⚠️ Price range invalid or doesn't contain current price — using full range");
+                tickLower = Math.ceil(-443636 / tickSpacing) * tickSpacing;
+                tickUpper = Math.floor(443636 / tickSpacing) * tickSpacing;
+            }
 
             // ---- REAL LIFE CLMM ASYMMETRIC DEPOSIT LOGIC ----
 
@@ -214,8 +462,16 @@ function PositionPageInner() {
             const valMintA = isTokenAMintA ? valA : valB;
             const valMintB = isTokenAMintA ? valB : valA;
 
-            const amountMintA_BN = new BN(Math.floor(valMintA * Math.pow(10, mintAInfo.decimals)));
-            const amountMintB_BN = new BN(Math.floor(valMintB * Math.pow(10, mintBInfo.decimals)));
+            const amountMintA_BN = new BN(
+                new Decimal(valMintA)
+                    .mul(new Decimal(10).pow(mintAInfo.decimals))
+                    .toFixed(0)
+            );
+            const amountMintB_BN = new BN(
+                new Decimal(valMintB)
+                    .mul(new Decimal(10).pow(mintBInfo.decimals))
+                    .toFixed(0)
+            );
 
             // 2. Fetch current pool price (1 MintA = X MintB)
             const currentPrice = poolInfo.price || 1;
@@ -228,18 +484,20 @@ function PositionPageInner() {
             let baseAmountBN: BN;
             let otherMaxBN: BN;
 
+            const slippage = 0.01; // 1%
+
             if (valMintB >= requiredMintB) {
                 // We have plenty of MintB. MintA is the bottleneck. Anchor to MintA.
                 console.log("⚓ Bottleneck is MintA");
                 baseTokenStr = "MintA";
                 baseAmountBN = amountMintA_BN;
-                otherMaxBN = new BN(Math.floor(amountMintB_BN.toNumber() * 1.05)); // 5% slippage on max allowed
+                otherMaxBN = amountMintB_BN.mul(new BN(100 + slippage * 100)).div(new BN(100));
             } else {
                 // We don't have enough MintB. MintB is the bottleneck. Anchor to MintB.
                 console.log("⚓ Bottleneck is MintB");
                 baseTokenStr = "MintB";
                 baseAmountBN = amountMintB_BN;
-                otherMaxBN = new BN(Math.floor(amountMintA_BN.toNumber() * 1.05)); // 5% slippage on max allowed
+                otherMaxBN = amountMintA_BN.mul(new BN(100 + slippage * 100)).div(new BN(100));
             }
 
             // Open position using the dynamically calculated anchor
@@ -265,29 +523,45 @@ function PositionPageInner() {
                 setTxSig(manualTxId);
 
                 // Update localStorage so the liquidity table shows the deposit
+                // Update localStorage so the liquidity table shows the deposit
                 try {
                     const stored = localStorage.getItem("aeroCustomPools");
-                    if (stored) {
-                        const customPools = JSON.parse(stored);
-                        const updated = customPools.map((p: any) => {
-                            if (p.id === poolId) {
-                                const depA = parseFloat(depositA || "0");
-                                const depB = parseFloat(depositB || "0");
-                                const existingA = parseFloat(p.depositedA || "0");
-                                const existingB = parseFloat(p.depositedB || "0");
-                                const totalA = existingA + depA;
-                                const totalB = existingB + depB;
-                                return {
-                                    ...p,
-                                    liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`,
-                                    depositedA: totalA.toString(),
-                                    depositedB: totalB.toString(),
-                                };
-                            }
-                            return p;
+                    const customPools = stored ? JSON.parse(stored) : [];
+                    let found = false;
+                    const updated = customPools.map((p: any) => {
+                        if (p.id === poolId) {
+                            found = true;
+                            const depA = parseFloat(depositA || "0");
+                            const depB = parseFloat(depositB || "0");
+                            const existingA = parseFloat(p.depositedA || "0");
+                            const existingB = parseFloat(p.depositedB || "0");
+                            const totalA = existingA + depA;
+                            const totalB = existingB + depB;
+                            return {
+                                ...p,
+                                liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`,
+                                depositedA: totalA.toString(),
+                                depositedB: totalB.toString(),
+                            };
+                        }
+                        return p;
+                    });
+
+                    if (!found) {
+                        updated.push({
+                            id: poolId,
+                            name: `${tokenAInfo.symbol}-${tokenBInfo.symbol}`,
+                            symbolA: tokenAInfo.symbol,
+                            symbolB: tokenBInfo.symbol,
+                            logoA: tokenAInfo.logoURI,
+                            logoB: tokenBInfo.logoURI,
+                            fee: fee || "—",
+                            depositedA: (parseFloat(depositA || "0")).toString(),
+                            depositedB: (parseFloat(depositB || "0")).toString(),
+                            liquidity: `${parseFloat(depositA || "0")} ${tokenAInfo.symbol} + ${parseFloat(depositB || "0")} ${tokenBInfo.symbol}`,
                         });
-                        localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
                     }
+                    localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
                 } catch (e) { }
 
                 setDepositA("");
@@ -324,6 +598,16 @@ function PositionPageInner() {
                         <span className="text-xs bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/20 px-2 py-0.5 rounded-full">{fee}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
+                        {poolLoading && (
+                            <span className="text-xs text-white/40 flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Fetching price...
+                            </span>
+                        )}
+                        {poolPrice && !poolLoading && (
+                            <span className="text-xs text-white/60">
+                                1 {tokenA} = <span className="text-white font-mono">{poolPrice.toFixed(4)}</span> {tokenB}
+                            </span>
+                        )}
                         {poolId && (
                             <div>
                                 <span className="text-white/40">Pool ID </span>
@@ -364,13 +648,13 @@ function PositionPageInner() {
 
                             {/* Bar chart */}
                             <div className="absolute bottom-8 left-4 right-4 flex items-end justify-center gap-0.5 h-36">
-                                {LIQUIDITY_BARS.map((bar, i) => (
+                                {bars.map((bar, i) => (
                                     <div
                                         key={i}
                                         className="flex-1 rounded-t-sm transition-all"
                                         style={{
-                                            height: `${bar.height}%`,
-                                            background: bar.price >= 1.018 && bar.price <= 1.021
+                                            height: `${bar.height * 100}%`,
+                                            background: bar.price >= parseFloat(minPrice) && bar.price <= parseFloat(maxPrice)
                                                 ? "rgba(20, 241, 149, 0.5)"
                                                 : "rgba(255,255,255,0.1)"
                                         }}
@@ -378,26 +662,35 @@ function PositionPageInner() {
                                 ))}
 
                                 {/* Current price line */}
-                                <div className="absolute bottom-0 top-0 w-px bg-white/60 left-[48%]">
+                                <div className="absolute bottom-0 top-0 w-px bg-white/60 transition-all z-10" style={{ left: priceLineLeft }}>
                                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-white/60 whitespace-nowrap">▼</div>
                                 </div>
 
                                 {/* Min handle */}
-                                <div className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] left-[25%]">
+                                <div className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] transition-all z-10 cursor-ew-resize hover:w-1 hover:bg-white" style={{ left: getLeftPct(parseFloat(minPrice)) }}>
                                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--neon-teal)]">▼</div>
                                 </div>
 
                                 {/* Max handle */}
-                                <div className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] left-[70%]">
+                                <div className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] transition-all z-10 cursor-ew-resize hover:w-1 hover:bg-white" style={{ left: getLeftPct(parseFloat(maxPrice)) }}>
                                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--neon-teal)]">▼</div>
                                 </div>
                             </div>
 
                             {/* Price axis */}
                             <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-white/30">
-                                {[1.017, 1.018, 1.019, 1.020, 1.021, 1.022].map((p) => (
-                                    <span key={p}>{p.toFixed(3)}</span>
-                                ))}
+                                {bars.length > 0 ? (
+                                    [0, 0.2, 0.4, 0.6, 0.8, 1].map((pct, idx) => {
+                                        const minP = bars[0].price;
+                                        const maxP = bars[bars.length - 1].price;
+                                        const p = minP + pct * (maxP - minP);
+                                        return <span key={idx}>{p < 0.01 ? p.toExponential(2) : p.toFixed(4)}</span>;
+                                    })
+                                ) : (
+                                    [1.017, 1.018, 1.019, 1.020, 1.021, 1.022].map((p) => (
+                                        <span key={p}>{p.toFixed(3)}</span>
+                                    ))
+                                )}
                             </div>
 
                             {/* Legend */}
@@ -471,12 +764,21 @@ function PositionPageInner() {
                                 {QUICK_RANGES.map((r) => (
                                     <button
                                         key={r}
-                                        className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/50 hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] transition-all"
+                                        onClick={() => applyQuickRange(r)}
+                                        disabled={!poolPrice}
+                                        className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/50 hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] transition-all disabled:opacity-30"
                                     >
                                         {r}
                                     </button>
                                 ))}
-                                <button className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/40 hover:border-white/20 transition-all">
+                                <button
+                                    onClick={() => {
+                                        if (poolPrice) {
+                                            setMinPrice((poolPrice * 0.8).toFixed(6));
+                                            setMaxPrice((poolPrice * 1.2).toFixed(6));
+                                        }
+                                    }}
+                                    className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/40 hover:border-white/20 transition-all">
                                     Reset
                                 </button>
                             </div>
@@ -547,7 +849,7 @@ function PositionPageInner() {
                                 type="number"
                                 placeholder="0"
                                 value={topDeposit}
-                                onChange={(e) => setTopDeposit(e.target.value)}
+                                onChange={(e) => isInverted ? handleDepositBChange(e.target.value) : handleDepositAChange(e.target.value)}
                                 className="bg-transparent text-2xl font-bold text-white outline-none w-full text-right"
                             />
                             <p className="text-xs text-white/30 text-right mt-1">
@@ -582,7 +884,7 @@ function PositionPageInner() {
                                 type="number"
                                 placeholder="0"
                                 value={bottomDeposit}
-                                onChange={(e) => setBottomDeposit(e.target.value)}
+                                onChange={(e) => isInverted ? handleDepositAChange(e.target.value) : handleDepositBChange(e.target.value)}
                                 className="bg-transparent text-2xl font-bold text-white outline-none w-full text-right"
                             />
                             <p className="text-xs text-white/30 text-right mt-1">
@@ -594,14 +896,14 @@ function PositionPageInner() {
                         <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
                             <div className="flex justify-between">
                                 <span className="text-sm text-white/60">Total Deposit</span>
-                                <span className="text-sm font-bold">${totalDeposit.toFixed(2)}</span>
+                                <span className="text-sm font-bold">${((parseFloat(depositA) || 0) + (parseFloat(depositB) || 0)).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-white/60">Deposit Ratio</span>
                                 <div className="flex items-center gap-1 text-xs">
-                                    <span>{ratioA}%</span>
+                                    <span>≈{displayRatioA}%</span>
                                     <span className="text-white/30">/</span>
-                                    <span>{ratioB}%</span>
+                                    <span>≈{displayRatioB}%</span>
                                     <div className="flex -space-x-1 ml-1">
                                         <TokenLogo token={tokenAInfo} size={14} className="!border" />
                                         <TokenLogo token={tokenBInfo} size={14} className="!border" />

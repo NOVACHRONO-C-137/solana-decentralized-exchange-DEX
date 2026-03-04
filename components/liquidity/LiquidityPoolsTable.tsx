@@ -14,6 +14,10 @@ import {
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import { DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 
 // ── Pool type ─────────────────────────────────────────────
 interface PoolData {
@@ -26,6 +30,10 @@ interface PoolData {
     fee: string;
     poolId: string;
     aprBreakdown: { tradeFees: string; yield: string };
+    mintA?: string;
+    mintB?: string;
+    decimalsA?: number;
+    decimalsB?: number;
     logoA?: string;
     logoB?: string;
     symbolA?: string;
@@ -78,6 +86,14 @@ function TokenIcon({ logo, symbol, size = 28, className = "" }: { logo?: string;
     );
 }
 
+
+// ── Devnet stablecoin mint addresses → USD price ─────────
+// Add your mock USDC mint here so it's treated as $1.00
+const DEVNET_STABLECOIN_MINTS: Record<string, number> = {
+    "2C6gE8sR3c7DTga5XKhg4uvjC8PdQxhPXe76wiyNoKCm": 1.0,  // ← replace with your actual mock USDC mint
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": 1.0, // real USDC (mainnet ref)
+};
+
 // ── Hardcoded devnet pool IDs ─────────────────────────────
 // These are your real pools created on Solana devnet.
 // They will ALWAYS show up, regardless of browser/device/deployment.
@@ -93,45 +109,56 @@ const USD_FMT = new Intl.NumberFormat("en-US", { style: "currency", currency: "U
 
 async function fetchBasePrice(symbol: string): Promise<number | null> {
     const sym = symbol.toUpperCase();
-    // Stablecoins
-    if (sym === "USDC" || sym === "MUSDC" || sym === "USDT") return 1.0;
-    // SOL variants — fetch live price from CoinGecko
+
+    // Real stablecoins
+    if (sym === "USDC" || sym === "USDT" || sym === "MUSDC") return 1.0;
+
+    // SOL variants
     if (sym === "SOL" || sym === "MSOL" || sym === "JITOSOL") {
         try {
             const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
             const data = await res.json();
             return data?.solana?.usd ?? 150.0;
         } catch {
-            return 150.0; // fallback
+            return 150.0;
         }
     }
-    // Unknown custom devnet tokens
+
     return null;
 }
 
-// Derive token prices using pool ratio and known base prices
+function getMintPrice(mintAddress: string): number | null {
+    return DEVNET_STABLECOIN_MINTS[mintAddress] ?? null;
+}
+
 function deriveTokenPrices(
     symA: string, symB: string,
-    poolPrice: number, // 1 MintA = poolPrice MintB
+    mintA: string, mintB: string,  // ← add mint addresses
+    poolPrice: number,
     basePrices: Map<string, number | null>
 ): { priceA: number; priceB: number } {
+
+    // Check by mint address first (most reliable)
+    const mintPriceA = getMintPrice(mintA);
+    const mintPriceB = getMintPrice(mintB);
+
+    if (mintPriceA != null && mintPriceB != null) {
+        return { priceA: mintPriceA, priceB: mintPriceB };
+    }
+    if (mintPriceA != null) {
+        return { priceA: mintPriceA, priceB: poolPrice > 0 ? mintPriceA / poolPrice : 0 };
+    }
+    if (mintPriceB != null) {
+        return { priceA: mintPriceB * poolPrice, priceB: mintPriceB };
+    }
+
+    // Fall back to symbol-based lookup
     const knownA = basePrices.get(symA.toUpperCase());
     const knownB = basePrices.get(symB.toUpperCase());
+    if (knownA != null) return { priceA: knownA, priceB: poolPrice > 0 ? knownA / poolPrice : 0 };
+    if (knownB != null) return { priceA: knownB * poolPrice, priceB: knownB };
 
-    if (knownA != null && knownB != null) {
-        return { priceA: knownA, priceB: knownB };
-    }
-    if (knownA != null) {
-        // Derive B from A:  priceB = priceA / poolPrice
-        return { priceA: knownA, priceB: poolPrice > 0 ? knownA / poolPrice : 0 };
-    }
-    if (knownB != null) {
-        // Derive A from B:  priceA = priceB * poolPrice
-        return { priceA: knownB * poolPrice, priceB: knownB };
-    }
-    // Both unknown — anchor token A at $1.00 and derive B
-    const anchorA = 1.0;
-    return { priceA: anchorA, priceB: poolPrice > 0 ? anchorA / poolPrice : anchorA };
+    return { priceA: 1.0, priceB: poolPrice > 0 ? 1.0 / poolPrice : 1.0 };
 }
 
 // Builds a PoolData from Raydium API response + computed USD prices
@@ -175,11 +202,90 @@ function apiPoolToPoolData(live: any, priceA: number, priceB: number): PoolData 
             tradeFees: live.day?.feeApr ? `${live.day.feeApr.toFixed(2)}%` : "0%",
             yield: "0%",
         },
+        mintA: live.mintA?.address,
+        mintB: live.mintB?.address,
+        decimalsA: live.mintA?.decimals,
+        decimalsB: live.mintB?.decimals,
         logoA: live.mintA?.logoURI,
         logoB: live.mintB?.logoURI,
         symbolA: symA,
         symbolB: symB,
     };
+}
+
+// ── Discover pool IDs from on-chain CLMM positions ───────
+async function discoverOnChainPoolIds(
+    connection: any,
+    walletPubkey: PublicKey
+): Promise<string[]> {
+    try {
+        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+
+        // Fetch all PersonalPosition accounts (size = 188 bytes) owned by the wallet
+        // PersonalPosition layout: discriminator(8) + nftMint(32) + poolId(32) + ...
+        // The poolId is at offset 40 (bytes 40-72)
+        const accounts = await connection.getProgramAccounts(
+            new PublicKey(CLMM_PROGRAM),
+            {
+                filters: [
+                    { dataSize: 188 },  // PersonalPosition account size
+                ]
+            }
+        );
+
+        // Extract unique pool IDs from position accounts
+        // PersonalPosition layout: discriminator(8) + nftMint(32) + poolId(32) + ...
+        const poolIds = new Set<string>();
+        for (const { account } of accounts) {
+            try {
+                const poolIdBytes = account.data.subarray(40, 72);
+                const poolId = new PublicKey(poolIdBytes).toBase58();
+                poolIds.add(poolId);
+            } catch { /* skip malformed accounts */ }
+        }
+
+        console.log(`🔍 Discovered ${poolIds.size} pool IDs from on-chain positions`);
+        return Array.from(poolIds);
+    } catch (err) {
+        console.warn("⚠️ Failed to discover on-chain pools:", err);
+        return [];
+    }
+}
+
+// ── Discover pool IDs by scanning PoolState accounts ──────
+// PoolState accounts have a creator field we can match
+async function discoverCreatedPools(
+    connection: any,
+    walletPubkey: PublicKey
+): Promise<string[]> {
+    try {
+        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+
+        // PoolState accounts are 1544 bytes. The owner/creator is at offset 73.
+        // Layout: discriminator(8) + bump(1) + ammConfig(32) + creator(32) + ...
+        // So creator starts at offset 41
+        const accounts = await connection.getProgramAccounts(
+            new PublicKey(CLMM_PROGRAM),
+            {
+                filters: [
+                    { dataSize: 1544 },  // PoolState account size
+                    {
+                        memcmp: {
+                            offset: 41,  // creator field offset
+                            bytes: walletPubkey.toBase58(),
+                        }
+                    }
+                ]
+            }
+        );
+
+        const poolIds = accounts.map(({ pubkey }: any) => pubkey.toBase58());
+        console.log(`🔍 Discovered ${poolIds.length} pools created by wallet`);
+        return poolIds;
+    } catch (err) {
+        console.warn("⚠️ Failed to discover created pools:", err);
+        return [];
+    }
 }
 
 export default function LiquidityPoolsTable() {
@@ -189,12 +295,14 @@ export default function LiquidityPoolsTable() {
     const router = useRouter();
     const [pools, setPools] = useState<PoolData[]>([]);
     const [loading, setLoading] = useState(true);
+    const { publicKey, connected } = useWallet();
+    const { connection } = useConnection();
 
     useEffect(() => {
         const loadPools = async () => {
             setLoading(true);
 
-            // Collect ALL pool IDs: hardcoded + any from localStorage
+            // Collect ALL pool IDs: hardcoded + any from localStorage + on-chain
             const allIds = new Set(HARDCODED_DEVNET_POOL_IDS);
 
             // Build a lookup map of localStorage pools for fallback metadata
@@ -213,6 +321,20 @@ export default function LiquidityPoolsTable() {
                     }
                 }
             } catch (e) { /* ignore */ }
+
+            // Discover pools from on-chain data if wallet is connected
+            if (publicKey && connected && connection) {
+                try {
+                    const [createdPoolIds, positionPoolIds] = await Promise.all([
+                        discoverCreatedPools(connection, publicKey),
+                        discoverOnChainPoolIds(connection, publicKey),
+                    ]);
+                    for (const id of createdPoolIds) allIds.add(id);
+                    for (const id of positionPoolIds) allIds.add(id);
+                } catch (err) {
+                    console.warn("⚠️ On-chain pool discovery failed:", err);
+                }
+            }
 
             // Fetch ALL pool data from Raydium devnet API in one call
             const idsArray = Array.from(allIds);
@@ -248,8 +370,20 @@ export default function LiquidityPoolsTable() {
                         const symB = live.mintB?.symbol || "?";
                         const poolPrice = live.price || 1;
 
-                        const { priceA, priceB } = deriveTokenPrices(symA, symB, poolPrice, basePrices);
-                        return apiPoolToPoolData(live, priceA, priceB);
+                        const { priceA, priceB } = deriveTokenPrices(
+                            symA, symB,
+                            live.mintA.address,  // ← pass mint addresses
+                            live.mintB.address,
+                            poolPrice,
+                            basePrices
+                        );
+
+                        const poolData = apiPoolToPoolData(live, priceA, priceB);
+                        const local = localPoolMap.get(live.id);
+                        if (local && local.liquidity && poolData.liquidity === "$0.00") {
+                            poolData.liquidity = local.liquidity;
+                        }
+                        return poolData;
                     });
 
                     // Step 4: Add fallback entries for localStorage pools the API didn't return
@@ -258,7 +392,7 @@ export default function LiquidityPoolsTable() {
                             livePools.push({
                                 id,
                                 name: local.name || `${local.symbolA || "?"}-${local.symbolB || "?"}`,
-                                liquidity: "$0.00",
+                                liquidity: local.liquidity || "$0.00",
                                 volume: "$0.00",
                                 fees: "$0.00",
                                 apr: "0%",
@@ -279,7 +413,7 @@ export default function LiquidityPoolsTable() {
                         return {
                             id,
                             name: local?.name || "Unknown Pool",
-                            liquidity: "$0.00",
+                            liquidity: local?.liquidity || "$0.00",
                             volume: "—",
                             fees: "—",
                             apr: "—",
@@ -299,7 +433,7 @@ export default function LiquidityPoolsTable() {
                     return {
                         id,
                         name: local?.name || "Unknown Pool",
-                        liquidity: "Error loading",
+                        liquidity: local?.liquidity || "$0.00",
                         volume: "—",
                         fees: "—",
                         apr: "—",
@@ -317,7 +451,7 @@ export default function LiquidityPoolsTable() {
         };
 
         loadPools();
-    }, []);
+    }, [publicKey, connected, connection]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -517,7 +651,20 @@ export default function LiquidityPoolsTable() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => router.push(`/liquidity/position?pool=${encodeURIComponent(pool.name)}&fee=${pool.fee}&poolId=${pool.id}`)}
+                                                        onClick={() => {
+                                                            const q = new URLSearchParams({
+                                                                pool: pool.name,
+                                                                fee: pool.fee,
+                                                                poolId: pool.id,
+                                                                ...(pool.mintA && { mintA: pool.mintA }),
+                                                                ...(pool.mintB && { mintB: pool.mintB }),
+                                                                ...(pool.decimalsA != null && { decimalsA: pool.decimalsA.toString() }),
+                                                                ...(pool.decimalsB != null && { decimalsB: pool.decimalsB.toString() }),
+                                                                ...(pool.logoA && { logoA: pool.logoA }),
+                                                                ...(pool.logoB && { logoB: pool.logoB }),
+                                                            });
+                                                            router.push(`/liquidity/position?${q.toString()}`);
+                                                        }}
                                                         className="border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10"
                                                     >
                                                         Deposit

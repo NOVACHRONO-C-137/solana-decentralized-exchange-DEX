@@ -70,45 +70,82 @@ function parseMetaplexMetadata(data: Buffer): { name: string; symbol: string; ur
  * Fetch the image URL from a Metaplex JSON metadata URI.
  * The URI points to a JSON file with an "image" field.
  */
+/**
+ * Fetch the image URL from a Metaplex JSON metadata URI.
+ * Safely handles rate limits by extracting CIDs and using multiple gateways.
+ */
 async function fetchImageFromMetadataUri(uri: string): Promise<string | undefined> {
     if (!uri || uri.length < 5) return undefined;
 
-    let resolvedUri = uri;
+    const urisToTry: string[] = [];
+
+    // Extract the CID whether it's "ipfs://" or an HTTP gateway link
+    let cid = "";
     if (uri.startsWith("ipfs://")) {
-        resolvedUri = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+        cid = uri.replace("ipfs://", "");
+    } else if (uri.includes("/ipfs/")) {
+        // Splits "https://gateway.pinata.cloud/ipfs/Qm..." to get the "Qm..." part
+        cid = uri.split("/ipfs/")[1];
     }
 
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const res = await fetch(resolvedUri, { signal: controller.signal });
-        clearTimeout(timeout);
-
-        if (!res.ok) return undefined;
-
-        const contentType = res.headers.get("content-type") || "";
-
-        // If the URI itself is already an image, use it directly as the logo
-        if (contentType.startsWith("image/")) {
-            console.log("🖼️ URI is directly an image:", resolvedUri);
-            return resolvedUri;
-        }
-
-        // Otherwise parse as JSON metadata and extract image field
-        const json = await res.json();
-        let imageUrl = json?.image;
-        if (imageUrl?.startsWith("ipfs://")) {
-            imageUrl = imageUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
-        }
-        console.log("🖼️ Final image URL:", imageUrl);
-        return imageUrl || undefined;
-
-    } catch (err) {
-        console.warn("⚠️ fetchImageFromMetadataUri failed:", resolvedUri, err);
-        return undefined;
+    if (cid) {
+        // If we found a CID, always use fallbacks to avoid 429 Rate Limits
+        urisToTry.push(
+            `https://gateway.pinata.cloud/ipfs/${cid}`,
+            `https://ipfs.io/ipfs/${cid}`,
+            `https://cloudflare-ipfs.com/ipfs/${cid}`,
+            `https://dweb.link/ipfs/${cid}` // Added an extra reliable gateway
+        );
+    } else {
+        // It's a standard HTTPS link (like an AWS S3 bucket), just try it directly
+        urisToTry.push(uri);
     }
+
+    for (const resolvedUri of urisToTry) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(resolvedUri, { signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!res.ok) {
+                console.warn(`⚠️ Gateway failed (${res.status}): ${resolvedUri}`);
+                continue;
+            }
+
+            const contentType = res.headers.get("content-type") || "";
+
+            if (contentType.startsWith("image/")) {
+                console.log("🖼️ URI is directly an image:", resolvedUri);
+                return resolvedUri;
+            }
+
+            const json = await res.json();
+            let imageUrl = json?.image;
+            if (!imageUrl) continue;
+
+            // Resolve IPFS image URLs inside the JSON too!
+            if (imageUrl.startsWith("ipfs://")) {
+                const imgCid = imageUrl.replace("ipfs://", "");
+                // Use a reliable gateway for the final image render
+                imageUrl = `https://ipfs.io/ipfs/${imgCid}`;
+            } else if (imageUrl.includes("/ipfs/")) {
+                const imgCid = imageUrl.split("/ipfs/")[1];
+                imageUrl = `https://ipfs.io/ipfs/${imgCid}`;
+            }
+
+            console.log("🖼️ Final image URL:", imageUrl);
+            return imageUrl;
+
+        } catch (error) {
+            console.warn(`⚠️ Fetch failed for: ${resolvedUri}, trying next...`);
+            continue;
+        }
+    }
+
+    console.warn("❌ All gateways failed for:", uri);
+    return undefined;
 }
-
 // Random gradient colors for discovered tokens
 const DISCOVERED_COLORS = [
     "bg-gradient-to-br from-rose-500 to-orange-500",

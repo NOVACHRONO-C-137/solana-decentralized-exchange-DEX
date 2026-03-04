@@ -113,9 +113,35 @@ export default function CreatePoolPage() {
     const step1Ready = !!(baseToken && quoteToken);
     const step1ButtonLabel = !baseToken ? "Select Base token" : !quoteToken ? "Select Quote token" : "Continue";
 
-    const totalDeposit = (parseFloat(depositA) || 0) + (parseFloat(depositB) || 0) * parseFloat(initialPrice || "1");
-    const ratioA = totalDeposit > 0 ? (((parseFloat(depositA) || 0) / totalDeposit) * 100).toFixed(1) : "50.0";
-    const ratioB = totalDeposit > 0 ? (100 - parseFloat(ratioA)).toFixed(1) : "50.0";
+    // CLMM correct ratio calculation
+    function calculateCLMMRatio(currentPrice: number, minPrice: number, maxPrice: number) {
+        if (currentPrice <= minPrice) return { ratioA: 1, ratioB: 0 }
+        if (currentPrice >= maxPrice) return { ratioA: 0, ratioB: 1 }
+        const sqrtPc = Math.sqrt(currentPrice)
+        const sqrtPa = Math.sqrt(minPrice)
+        const sqrtPb = Math.sqrt(maxPrice)
+        const amountA = (sqrtPb - sqrtPc) / (sqrtPc * sqrtPb)
+        const amountB = sqrtPc - sqrtPa
+        const valueA = amountA * currentPrice
+        const valueB = amountB
+        const total = valueA + valueB
+        if (total === 0) return { ratioA: 0.5, ratioB: 0.5 }
+        return { ratioA: valueA / total, ratioB: valueB / total }
+    }
+
+    const currentPrice = parseFloat(initialPrice || "1")
+    const rangeMin = priceRangeMode === "full" ? currentPrice * 0.000001 : parseFloat(minPrice || "0")
+    const rangeMax = priceRangeMode === "full" ? currentPrice * 1000000 : parseFloat(maxPrice || "999999")
+
+    const { ratioA: rA, ratioB: rB } = calculateCLMMRatio(currentPrice, rangeMin, rangeMax)
+
+    // USD values — each token's USD value
+    const usdA = (parseFloat(depositA) || 0) * currentPrice  // base token in USD (priced in quote)
+    const usdB = (parseFloat(depositB) || 0)                  // quote token is worth face value
+    const totalDeposit = usdA + usdB
+
+    const ratioA = (rA * 100).toFixed(1)
+    const ratioB = (rB * 100).toFixed(1)
 
     // ── Create Pool ──────────────────────────────────────────
     const handleCreatePool = async () => {
@@ -251,6 +277,12 @@ export default function CreatePoolPage() {
                 aprBreakdown: { tradeFees: "0%", yield: "0%" },
                 symbolA: baseToken.symbol,
                 symbolB: quoteToken.symbol,
+                mintA: baseToken.mint,
+                mintB: quoteToken.mint,
+                decimalsA: baseToken.decimals,
+                decimalsB: quoteToken.decimals,
+                logoA: baseToken.logoURI,
+                logoB: quoteToken.logoURI,
                 creator: publicKey.toBase58(),
                 createdAt: new Date().toISOString(),
             };
@@ -494,11 +526,23 @@ export default function CreatePoolPage() {
                     <div className="flex items-center justify-between mb-3">
                         <p className="text-sm font-bold">Price Setting</p>
                         <div className="flex bg-black/30 border border-white/10 rounded-lg overflow-hidden">
-                            <button onClick={() => setPriceBase("base")}
+                            <button onClick={() => {
+                                if (priceBase !== "base") {
+                                    const current = parseFloat(initialPrice || "1")
+                                    if (current > 0) setInitialPrice((1 / current).toFixed(6))
+                                    setPriceBase("base")
+                                }
+                            }}
                                 className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "base" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-white/40 hover:text-white"}`}>
                                 {baseToken?.symbol} price
                             </button>
-                            <button onClick={() => setPriceBase("quote")}
+                            <button onClick={() => {
+                                if (priceBase !== "quote") {
+                                    const current = parseFloat(initialPrice || "1")
+                                    if (current > 0) setInitialPrice((1 / current).toFixed(6))
+                                    setPriceBase("quote")
+                                }
+                            }}
                                 className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "quote" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-white/40 hover:text-white"}`}>
                                 {quoteToken?.symbol} price
                             </button>
@@ -554,6 +598,31 @@ export default function CreatePoolPage() {
         </div>
     );
 
+    // ── Auto-calculate paired token ─────────────────────────
+    const handleDepositAChange = (val: string) => {
+        setDepositA(val)
+        const amount = parseFloat(val)
+        if (!isNaN(amount) && amount > 0 && rA > 0 && rB > 0) {
+            const valueA = amount * currentPrice
+            const valueB = valueA * (rB / rA)
+            setDepositB(valueB.toFixed(6))
+        } else {
+            setDepositB("")
+        }
+    }
+
+    const handleDepositBChange = (val: string) => {
+        setDepositB(val)
+        const amount = parseFloat(val)
+        if (!isNaN(amount) && amount > 0 && rA > 0 && rB > 0) {
+            const valueB = amount
+            const valueA = (valueB * (rA / rB)) / currentPrice
+            setDepositA(valueA.toFixed(6))
+        } else {
+            setDepositA("")
+        }
+    }
+
     // ── STEP 3 ────────────────────────────────────────────────
     const renderStep3 = () => (
         <div className="w-full md:w-2/3 pt-10">
@@ -597,14 +666,32 @@ export default function CreatePoolPage() {
                                     <span className="font-bold">{token?.symbol}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-white/40">0</span>
-                                    <button onClick={() => setter("0")} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
-                                    <button onClick={() => setter("0")} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                    <span className="text-xs text-white/40">
+                                        {idx === 0
+                                            ? (tokenBalances.get(baseToken?.mint || "")?.balance || 0).toFixed(2)
+                                            : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0).toFixed(2)
+                                        }
+                                    </span>
+                                    <button onClick={() => {
+                                        const bal = idx === 0
+                                            ? (tokenBalances.get(baseToken?.mint || "")?.balance || 0)
+                                            : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0);
+                                        const valStr = String(bal);
+                                        if (idx === 0) handleDepositAChange(valStr); else handleDepositBChange(valStr);
+                                    }} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                                    <button onClick={() => {
+                                        const bal = idx === 0
+                                            ? (tokenBalances.get(baseToken?.mint || "")?.balance || 0)
+                                            : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0);
+                                        const valStr = String(bal * 0.5);
+                                        if (idx === 0) handleDepositAChange(valStr); else handleDepositBChange(valStr);
+                                    }} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
                                 </div>
                             </div>
-                            <input type="number" placeholder="0" value={val} onChange={(e) => setter(e.target.value)}
+                            <input type="number" placeholder="0" value={val}
+                                onChange={(e) => idx === 0 ? handleDepositAChange(e.target.value) : handleDepositBChange(e.target.value)}
                                 className="bg-transparent text-2xl font-bold text-white outline-none w-full" />
-                            <p className="text-xs text-white/30 mt-1">~${(parseFloat(val) || 0).toFixed(2)}</p>
+                            <p className="text-xs text-white/30 mt-1">~${idx === 0 ? ((parseFloat(val) || 0) * currentPrice).toFixed(2) : (parseFloat(val) || 0).toFixed(2)}</p>
                         </div>
                     </div>
                 ))}
