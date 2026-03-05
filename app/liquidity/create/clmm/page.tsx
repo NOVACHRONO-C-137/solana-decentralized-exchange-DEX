@@ -1,4 +1,8 @@
+// app/liquidity/create/clmm/page.tsx
+
+
 "use client";
+
 
 import { useState } from "react";
 import { ChevronLeft, Check, ChevronDown, Minus, Plus, Pencil, Loader2, CheckCircle2, AlertCircle } from "lucide-react";

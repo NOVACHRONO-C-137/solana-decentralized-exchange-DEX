@@ -1,3 +1,6 @@
+//components/liquidity/LiquidityPoolsTable.tsx
+
+
 "use client";
 
 import { useState, useEffect } from "react";
