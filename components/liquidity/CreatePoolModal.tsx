@@ -137,35 +137,11 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
 
                         {mainOption === "farm" && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                <p className="text-xs text-white/70 mb-4 leading-relaxed">
+                                <p className="text-xs text-white/70 mt-2 leading-relaxed">
                                     Create a farm for any live pool. Read the instructions for{" "}
                                     <span className="text-[var(--neon-teal)] hover:underline cursor-pointer">CLMM</span> or{" "}
                                     <span className="text-[var(--neon-teal)] hover:underline cursor-pointer">Standard</span> farms.
                                 </p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setFarmType("clmm"); }}
-                                        className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${farmType === "clmm"
-                                            ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                            : "border-white/10 text-white/40"}`}
-                                    >
-                                        <div className={`w-2.5 h-2.5 rounded-full border-2 flex items-center justify-center shrink-0 ${farmType === "clmm" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
-                                            {farmType === "clmm" && <div className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />}
-                                        </div>
-                                        Concentrated Liquidity
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setFarmType("standard"); }}
-                                        className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${farmType === "standard"
-                                            ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                            : "border-white/10 text-white/40"}`}
-                                    >
-                                        <div className={`w-2.5 h-2.5 rounded-full border-2 flex items-center justify-center shrink-0 ${farmType === "standard" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
-                                            {farmType === "standard" && <div className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />}
-                                        </div>
-                                        Standard AMM
-                                    </button>
-                                </div>
                             </div>
                         )}
                     </div>
@@ -223,7 +199,7 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                                 if (mainOption === "pool") {
                                     router.push(`/liquidity/create/${poolType === "concentrated" ? "clmm" : poolType}`);
                                 } else if (mainOption === "farm") {
-                                    router.push(`/liquidity/create-farm?type=${farmType}`);
+                                    router.push(`/liquidity/create-farm`);
                                 } else if (mainOption === "burn") {
                                     router.push(`/liquidity/burn-earn?type=${burnType}`);
                                 }

@@ -2,12 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal";
+import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
+import BN from "bn.js";
+import Decimal from "decimal.js";
+import { formatLargeNumber } from "@/lib/utils";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 
 export default function LegacyPoolPage() {
     const router = useRouter();
+    const { publicKey, sendTransaction, connected } = useWallet();
+    const { connection } = useConnection();
+
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
     const balancesMap = new Map<string, number>();
     tokenBalances.forEach((tb, mint) => balancesMap.set(mint, tb.balance));
@@ -20,18 +30,243 @@ export default function LegacyPoolPage() {
     const [quoteAmount, setQuoteAmount] = useState<string>("");
     const [initialPrice, setInitialPrice] = useState<string>("");
     const [startTime, setStartTime] = useState<"now" | "custom">("now");
+    const [customStartTime, setCustomStartTime] = useState<Date>(() => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() + 10);
+        return d;
+    });
 
-    const handleTokenSelect = (token: TokenInfo) => {
-        if (activeSlot === "base") setBaseToken(token);
-        if (activeSlot === "quote") setQuoteToken(token);
-        setIsTokenModalOpen(false);
+    const [isCreating, setIsCreating] = useState<"idle" | "market" | "pool">("idle");
+    const [txError, setTxError] = useState<string | null>(null);
+    const [txSig, setTxSig] = useState<string | null>(null);
+
+    const checkExistingLegacyPool = async (tokenA: TokenInfo, tokenB: TokenInfo) => {
+        try {
+            const res = await fetch(
+                `https://api-v3-devnet.raydium.io/pools/info/mint?mint1=${tokenA.mint}&mint2=${tokenB.mint}&poolType=standard&poolSortField=liquidity&sortType=desc&pageSize=1&page=1`
+            );
+            const data = await res.json();
+            const pool = data?.data?.data?.[0];
+            if (pool?.price) {
+                setInitialPrice(pool.price.toString());
+                console.log(`✅ Found existing pool price: ${pool.price}`);
+            }
+        } catch (err) {
+            console.warn("Could not check existing pool:", err);
+        }
     };
 
-    const canInitialize = baseToken && quoteToken && initialPrice;
+    const handleTokenSelect = (token: TokenInfo) => {
+        let newBase = baseToken;
+        let newQuote = quoteToken;
+        if (activeSlot === "base") { setBaseToken(token); newBase = token; }
+        if (activeSlot === "quote") { setQuoteToken(token); newQuote = token; }
+        setIsTokenModalOpen(false);
+        if (newBase && newQuote) checkExistingLegacyPool(newBase, newQuote);
+    };
 
-    // Get current date/time for custom picker default
-    const now = new Date();
-    const defaultDateTime = now.toISOString().slice(0, 16);
+    const baseBalance = baseToken ? (tokenBalances.get(baseToken.mint)?.balance || 0) : 0;
+    const quoteBalance = quoteToken ? (tokenBalances.get(quoteToken.mint)?.balance || 0) : 0;
+
+    const handleBaseChange = (val: string) => {
+        setBaseAmount(val);
+        if (!val) return setQuoteAmount("");
+        try {
+            const b = new Decimal(val);
+            const p = new Decimal(initialPrice);
+            if (b.gt(0) && p.gt(0)) {
+                setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
+            }
+        } catch (e) { }
+    };
+
+    const handleQuoteChange = (val: string) => {
+        setQuoteAmount(val);
+        if (!val) return;
+        try {
+            const q = new Decimal(val);
+            const b = new Decimal(baseAmount);
+            if (q.gt(0) && b.gt(0)) {
+                setInitialPrice(q.div(b).toDecimalPlaces(12).toString());
+            }
+        } catch (e) { }
+    };
+
+    const handlePriceChange = (val: string) => {
+        setInitialPrice(val);
+        if (!val) return;
+        try {
+            const p = new Decimal(val);
+            const b = new Decimal(baseAmount);
+            if (p.gt(0) && b.gt(0)) {
+                setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
+            }
+        } catch (e) { }
+    };
+
+    const handleSetPercentage = (pct: number, isBase: boolean) => {
+        let bal = isBase ? baseBalance : quoteBalance;
+        const mint = isBase ? (baseToken?.mint) : (quoteToken?.mint);
+
+        if (mint === "11111111111111111111111111111111" || mint === "So11111111111111111111111111111111111111112") {
+            if (pct === 1) bal = Math.max(0, bal - 0.02);
+        }
+
+        const val = (bal * pct).toFixed(isBase ? (baseToken?.decimals || 6) : (quoteToken?.decimals || 6));
+        let cleanVal = val;
+        if (cleanVal.includes('.')) {
+            cleanVal = cleanVal.replace(/\.?0+$/, "");
+        }
+
+        if (isBase) {
+            handleBaseChange(cleanVal);
+        } else {
+            handleQuoteChange(cleanVal);
+        }
+    };
+
+    const handleCreatePool = async () => {
+        if (!connected || !publicKey) {
+            setTxError("Please connect your wallet first.");
+            return;
+        }
+        if (!canInitialize) return;
+        setIsCreating("market");
+        setTxError(null);
+        setTxSig(null);
+
+        try {
+            let marketTxId = "";
+            let poolTxId = "";
+            let manualTxId = "";
+            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(
+                txs: T[]
+            ): Promise<T[]> => {
+                console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
+                for (const tx of txs) {
+                    if ('serialize' in tx && 'feePayer' in tx) {
+                        const sig = await sendTransaction(tx as Transaction, connection);
+                        console.log("✅ TX sent! Sig:", sig);
+                        await connection.confirmTransaction(sig, "confirmed");
+                        manualTxId = sig;
+                    }
+                }
+                // Return empty array instead of throwing — tells SDK "already handled"
+                // This keeps extInfo alive for pool ID extraction after both steps
+                return [] as unknown as T[];
+            };
+
+            const raydium = await Raydium.load({
+                owner: publicKey,
+                connection,
+                cluster: "devnet",
+                disableFeatureCheck: true,
+                disableLoadToken: true,
+                signAllTransactions: wrappedSignAllTransactions,
+            });
+
+            const mintAInfo = {
+                mint: new PublicKey(baseToken.mint),
+                decimals: baseToken.decimals,
+            };
+            const mintBInfo = {
+                mint: new PublicKey(quoteToken.mint),
+                decimals: quoteToken.decimals,
+            };
+
+            // 1. Create Market
+            const { execute: createMarket, extInfo: marketExtInfo } = await raydium.marketV2.create({
+                baseInfo: mintAInfo,
+                quoteInfo: mintBInfo,
+                lotSize: 1,
+                tickSize: 0.01,
+                dexProgramId: DEVNET_PROGRAM_ID.OPEN_BOOK_PROGRAM,
+                txVersion: TxVersion.LEGACY,
+            });
+
+            await createMarket({ sendAndConfirm: true, sequentially: true });
+            marketTxId = manualTxId;
+            console.log("✅ Market created:", marketTxId);
+
+            // 2. Create Pool
+            setIsCreating("pool");
+            const marketId = marketExtInfo.address.marketId;
+            const amountA = new BN(new Decimal(baseAmount).mul(10 ** baseToken.decimals).toFixed(0));
+            const amountB = new BN(new Decimal(quoteAmount).mul(10 ** quoteToken.decimals).toFixed(0));
+
+            const startTimeSecs = new BN(
+                startTime === "now"
+                    ? 0
+                    : Math.floor(customStartTime.getTime() / 1000)
+            );
+
+            const { execute: createPool, extInfo } = await raydium.liquidity.createPoolV4({
+                programId: DEVNET_PROGRAM_ID.AMM_V4,
+                marketInfo: {
+                    marketId,
+                    programId: DEVNET_PROGRAM_ID.OPEN_BOOK_PROGRAM,
+                },
+                baseMintInfo: mintAInfo,
+                quoteMintInfo: mintBInfo,
+                baseAmount: amountA,
+                quoteAmount: amountB,
+                startTime: startTimeSecs,
+                ownerInfo: {
+                    useSOLBalance: true,
+                },
+                associatedOnly: false,
+                txVersion: TxVersion.LEGACY,
+                feeDestinationId: DEVNET_PROGRAM_ID.FEE_DESTINATION_ID,
+            });
+
+            await createPool({ sendAndConfirm: true });
+            poolTxId = manualTxId;
+            setTxSig(poolTxId); // show pool tx in success message
+
+            const poolIdStr = extInfo.address.ammId.toString();
+            console.log("✅ Pool created:", poolTxId, "Pool ID:", poolIdStr);
+
+            const stored = localStorage.getItem("aeroCustomPools");
+            let customPools = [];
+            try {
+                if (stored) customPools = JSON.parse(stored);
+            } catch (e) { }
+
+            const usdValue = (parseFloat(baseAmount) * parseFloat(initialPrice)) + parseFloat(quoteAmount);
+            const newPool = {
+                id: poolIdStr,
+                name: `${baseToken.symbol}-${quoteToken.symbol}`,
+                liquidity: `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                volume: `$0`,
+                apr: `0%`,
+                fee: `0.25%`,
+                poolId: `${poolIdStr.slice(0, 6)}...${poolIdStr.slice(-4)}`,
+                aprBreakdown: { tradeFees: "0%", yield: "0%" },
+                symbolA: baseToken.symbol,
+                symbolB: quoteToken.symbol,
+                mintA: baseToken.mint,
+                mintB: quoteToken.mint,
+                decimalsA: baseToken.decimals,
+                decimalsB: quoteToken.decimals,
+                logoA: baseToken.logoURI,
+                logoB: quoteToken.logoURI,
+                type: "Legacy",
+            };
+
+            customPools.push(newPool);
+            localStorage.setItem("aeroCustomPools", JSON.stringify(customPools));
+
+            setIsCreating("idle");
+            setTimeout(() => router.push("/liquidity"), 1000);
+
+        } catch (err: any) {
+            console.error(err);
+            setTxError(err?.message || "Failed to create legacy pool.");
+            setIsCreating("idle");
+        }
+    };
+
+    const canInitialize = baseToken && quoteToken && initialPrice && baseAmount && quoteAmount && isCreating === "idle";
 
     return (
         <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-white">
@@ -74,9 +309,9 @@ export default function LegacyPoolPage() {
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="text-xs text-white/40">Base token</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-white/40">0</span>
-                                        <button className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
-                                        <button className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                        <span className="text-xs text-white/40">{formatLargeNumber(baseBalance)}</span>
+                                        <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                                        <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
@@ -85,8 +320,9 @@ export default function LegacyPoolPage() {
                                         className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
                                     >
                                         {baseToken && (
-                                            <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[9px] font-bold text-black">
-                                                {baseToken.icon || baseToken.symbol[0]}
+                                            <div className="w-6 h-6 rounded-full overflow-hidden border">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={baseToken.logoURI} alt={baseToken.symbol} className="w-full h-full object-cover bg-[#0d0e14]" />
                                             </div>
                                         )}
                                         <span className="font-bold text-sm">{baseToken?.symbol || "Select"}</span>
@@ -97,10 +333,9 @@ export default function LegacyPoolPage() {
                                             type="number"
                                             placeholder="0"
                                             value={baseAmount}
-                                            onChange={(e) => setBaseAmount(e.target.value)}
+                                            onChange={(e) => handleBaseChange(e.target.value)}
                                             className="bg-transparent text-2xl font-bold text-white outline-none text-right w-36"
                                         />
-                                        <p className="text-xs text-white/30">~${(parseFloat(baseAmount) || 0).toFixed(2)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -117,9 +352,9 @@ export default function LegacyPoolPage() {
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="text-xs text-white/40">Quote token</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-white/40">0</span>
-                                        <button className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
-                                        <button className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                        <span className="text-xs text-white/40">{formatLargeNumber(quoteBalance)}</span>
+                                        <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                                        <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
@@ -128,8 +363,9 @@ export default function LegacyPoolPage() {
                                         className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
                                     >
                                         {quoteToken && (
-                                            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[9px] font-bold text-white">
-                                                {quoteToken.icon || quoteToken.symbol[0]}
+                                            <div className="w-6 h-6 rounded-full overflow-hidden border">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={quoteToken.logoURI} alt={quoteToken.symbol} className="w-full h-full object-cover bg-[#0d0e14]" />
                                             </div>
                                         )}
                                         <span className="font-bold text-sm">{quoteToken?.symbol || "Select"}</span>
@@ -140,10 +376,9 @@ export default function LegacyPoolPage() {
                                             type="number"
                                             placeholder="0"
                                             value={quoteAmount}
-                                            onChange={(e) => setQuoteAmount(e.target.value)}
+                                            onChange={(e) => handleQuoteChange(e.target.value)}
                                             className="bg-transparent text-2xl font-bold text-white outline-none text-right w-36"
                                         />
-                                        <p className="text-xs text-white/30">~${(parseFloat(quoteAmount) || 0).toFixed(2)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -160,16 +395,16 @@ export default function LegacyPoolPage() {
                                     type="number"
                                     placeholder="Enter price"
                                     value={initialPrice}
-                                    onChange={(e) => setInitialPrice(e.target.value)}
+                                    onChange={(e) => handlePriceChange(e.target.value)}
                                     className="bg-transparent text-lg font-bold text-white outline-none flex-1"
                                 />
                                 <span className="text-xs text-white/40 shrink-0">
                                     {quoteToken && baseToken ? `${quoteToken.symbol}/${baseToken.symbol}` : "—"}
                                 </span>
                             </div>
-                            {baseToken && quoteToken && (
-                                <p className="text-xs text-white/40 mt-2">
-                                    Current price: <span className="text-white/60">1 {baseToken.symbol} ≈ — {quoteToken.symbol}</span>
+                            {baseToken && quoteToken && initialPrice && (
+                                <p className="text-xs text-white/40 mt-2 text-right">
+                                    Current price: <span className="text-white/60">1 {baseToken.symbol} ≈ {initialPrice} {quoteToken.symbol}</span>
                                 </p>
                             )}
                         </div>
@@ -193,39 +428,60 @@ export default function LegacyPoolPage() {
                             </div>
 
                             {startTime === "custom" && (
-                                <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex justify-between items-center">
-                                    <input
-                                        type="date"
-                                        defaultValue={defaultDateTime.slice(0, 10)}
-                                        className="bg-transparent text-white outline-none text-sm font-medium"
-                                    />
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="time"
-                                            defaultValue={defaultDateTime.slice(11, 16)}
-                                            className="bg-transparent text-[var(--neon-teal)] outline-none text-sm font-medium"
-                                        />
-                                        <span className="text-xs text-[var(--neon-teal)]">(UTC)</span>
-                                    </div>
-                                </div>
+                                <DateTimePicker
+                                    value={customStartTime}
+                                    onChange={(d) => setCustomStartTime(d)}
+                                />
                             )}
                         </div>
 
-                        {/* Warning note — 0.45 SOL for legacy (more expensive) */}
-                        <p className="text-xs text-yellow-400/80">
-                            Note: A creation fee of ~0.45 SOL is required for new pools.{" "}
+                        {/* Warning note */}
+                        <p className="text-xs text-yellow-400/80 flex items-center gap-1">
+                            Note: A creation fee of ~0.45 SOL is required for new pools.
                             <span className="text-white/40 cursor-pointer hover:text-white">ⓘ</span>
                         </p>
 
-                        {/* Submit */}
-                        <button
-                            disabled={!canInitialize}
-                            className={`w-full font-bold py-4 rounded-xl transition-all ${canInitialize
-                                ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
-                                : "bg-[var(--neon-teal)]/30 text-[var(--neon-teal)]/50 cursor-not-allowed"}`}
-                        >
-                            Initialize Liquidity Pool
-                        </button>
+                        <div className="flex flex-col gap-2">
+                            {/* Error */}
+                            {txError && (
+                                <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+                                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    {txError}
+                                </div>
+                            )}
+
+                            {/* Success */}
+                            {txSig && (
+                                <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">
+                                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                    <span>
+                                        Pool created!{" "}
+                                        <a href={`https://solscan.io/tx/${txSig}?cluster=devnet`} target="_blank" rel="noopener noreferrer"
+                                            className="underline underline-offset-2 hover:opacity-80">
+                                            View on Solscan
+                                        </a>
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Submit */}
+                            <button
+                                onClick={handleCreatePool}
+                                disabled={!canInitialize}
+                                className={`w-full font-bold flex justify-center items-center py-4 rounded-xl transition-all ${canInitialize
+                                    ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
+                                    : "bg-[var(--neon-teal)]/30 text-[var(--neon-teal)]/50 cursor-not-allowed"}`}
+                            >
+                                {isCreating !== "idle" ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                        {isCreating === "market" ? "Creating OpenBook Market..." : "Initializing Pool..."}
+                                    </>
+                                ) : (
+                                    "Initialize Liquidity Pool"
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
