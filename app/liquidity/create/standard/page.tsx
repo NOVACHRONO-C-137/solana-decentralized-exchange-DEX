@@ -265,6 +265,7 @@ export default function StandardPoolPage() {
                 decimalsB: quoteToken.decimals,
                 logoA: baseToken.logoURI,
                 logoB: quoteToken.logoURI,
+                type: "Standard",
             };
 
             customPools.push(newPool);

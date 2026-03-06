@@ -1,0 +1,461 @@
+"use client";
+
+import React, { useState, useEffect, Suspense, useRef } from "react";
+import { formatLargeNumber } from "@/lib/utils";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, RefreshCw, Loader2, ArrowDownUp } from "lucide-react";
+import Image from "next/image";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { Raydium, TxVersion, Percent } from "@raydium-io/raydium-sdk-v2";
+import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
+import BN from "bn.js";
+import Decimal from "decimal.js";
+
+// ── Token Logo Component ──────────────────────────────────
+function TokenLogo({
+  token,
+  size = 28,
+  className = "",
+}: {
+  token?: { symbol: string; color?: string; icon?: string; logoURI?: string };
+  size?: number;
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  if (!token)
+    return (
+      <div
+        className={`rounded-full bg-gray-600 border-2 border-[#161722] shrink-0 ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+
+  if (token.logoURI && !imgError) {
+    return (
+      <div
+        className={`rounded-full overflow-hidden border-2 border-[#161722] shrink-0 shadow-lg ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <Image
+          src={token.logoURI}
+          alt={token.symbol}
+          width={size}
+          height={size}
+          className="rounded-full object-cover w-full h-full"
+          onError={() => setImgError(true)}
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  const generateGradient = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue1 = Math.abs(hash % 360);
+    const hue2 = (hue1 + 40) % 360;
+    return `linear-gradient(135deg, hsl(${hue1}, 80%, 65%), hsl(${hue2}, 80%, 45%))`;
+  };
+
+  return (
+    <div
+      className={`rounded-full border-2 border-[#161722] flex items-center justify-center font-bold text-white shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.max(10, size * 0.45),
+        background: token.color ? undefined : generateGradient(token.symbol),
+      }}
+    >
+      {token.icon || token.symbol.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function PositionPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const poolName = searchParams.get("pool") || "SOL / USDC";
+  const fee = searchParams.get("fee") || "0.25%";
+  const poolId = searchParams.get("poolId") || "";
+
+  const { publicKey, sendTransaction, connected } = useWallet();
+  const { connection } = useConnection();
+
+  const [depositA, setDepositA] = useState<string>("");
+  const [depositB, setDepositB] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [txError, setTxError] = useState<string | null>(null);
+  const [txSig, setTxSig] = useState<string | null>(null);
+
+  // Slippage Settings
+  const [showSlippageSettings, setShowSlippageSettings] = useState(false);
+  const [slippageTab, setSlippageTab] = useState<"Auto" | "Custom">("Auto");
+  const [customSlippage, setCustomSlippage] = useState<string>("2.5");
+  const slippageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (slippageRef.current && !slippageRef.current.contains(event.target as Node)) {
+        setShowSlippageSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [isInverted, setIsInverted] = useState(false);
+
+  const tokens = poolName.split("-");
+  const tokenA = tokens[0] || "TOKEN A";
+  const tokenB = tokens[1] || "TOKEN B";
+
+  const aInfo = DEVNET_TOKENS.find((t) => t.symbol === tokenA) || {
+    symbol: tokenA, mint: searchParams.get("mintA") || "", decimals: parseInt(searchParams.get("decimalsA") || "6"), logoURI: searchParams.get("logoA") || undefined, name: tokenA
+  };
+  const bInfo = DEVNET_TOKENS.find((t) => t.symbol === tokenB) || {
+    symbol: tokenB, mint: searchParams.get("mintB") || "", decimals: parseInt(searchParams.get("decimalsB") || "6"), logoURI: searchParams.get("logoB") || undefined, name: tokenB
+  };
+
+  const [tokenAInfo, setTokenAInfo] = useState<any>(aInfo);
+  const [tokenBInfo, setTokenBInfo] = useState<any>(bInfo);
+
+  const [balanceA, setBalanceA] = useState<number>(0);
+  const [balanceB, setBalanceB] = useState<number>(0);
+  const [isFetchingBalances, setIsFetchingBalances] = useState(false);
+
+  const fetchBalances = async () => {
+    if (!publicKey || !connection || !tokenAInfo?.mint || !tokenBInfo?.mint) return;
+    setIsFetchingBalances(true);
+    try {
+      const getBal = async (mint: string) => {
+        if (mint === "11111111111111111111111111111111" || mint === "So11111111111111111111111111111111111111112") {
+          const bal = await connection.getBalance(publicKey);
+          return bal / 10 ** 9;
+        }
+        const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(mint) });
+        if (accounts.value.length > 0) return accounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+        return 0;
+      };
+      setBalanceA(await getBal(tokenAInfo.mint));
+      setBalanceB(await getBal(tokenBInfo.mint));
+    } catch (error) {
+      console.error("Error fetching balances:", error);
+    } finally {
+      setIsFetchingBalances(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalances();
+  }, [publicKey, connection, tokenAInfo.mint, tokenBInfo.mint]);
+
+  const [poolPrice, setPoolPrice] = useState<number | null>(null);
+  const [poolLoading, setPoolLoading] = useState(false);
+
+  useEffect(() => {
+    if (!poolId) return;
+    const fetchPoolData = async () => {
+      setPoolLoading(true);
+      try {
+        const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolId}`);
+        const data = await res.json();
+        const poolInfo = data.data?.[0];
+        if (poolInfo) {
+          if (poolInfo.price) setPoolPrice(poolInfo.price);
+        }
+      } catch (err) {
+        console.warn("Could not fetch pool data:", err);
+      } finally {
+        setPoolLoading(false);
+      }
+    };
+    fetchPoolData();
+  }, [poolId]);
+
+  const handleDepositAChange = (val: string) => {
+    setDepositA(val);
+    if (poolPrice && val && parseFloat(val) > 0) {
+      const parsedA = parseFloat(val);
+      const amountBValue = parsedA * poolPrice;
+      setDepositB(isFinite(amountBValue) ? amountBValue.toFixed(6) : "");
+    } else {
+      setDepositB("");
+    }
+  };
+
+  const handleDepositBChange = (val: string) => {
+    setDepositB(val);
+    if (poolPrice && val && parseFloat(val) > 0) {
+      const parsedB = parseFloat(val);
+      const amountAValue = parsedB / poolPrice;
+      setDepositA(isFinite(amountAValue) ? amountAValue.toFixed(6) : "");
+    } else {
+      setDepositA("");
+    }
+  };
+
+  const handleSetPercentage = (percent: number, isTopInput: boolean) => {
+    const isTokenA = isInverted ? !isTopInput : isTopInput;
+    const maxBalance = isTokenA ? balanceA : balanceB;
+    const tokenSymbol = isTokenA ? tokenAInfo.symbol : tokenBInfo.symbol;
+    let usableBalance = maxBalance;
+
+    if (tokenSymbol === "SOL" && percent === 1) {
+      usableBalance = Math.max(0, usableBalance - 0.02);
+    }
+
+    const calculatedAmount = (usableBalance * percent).toFixed(6);
+    if (isTopInput) {
+      isInverted ? handleDepositBChange(calculatedAmount) : handleDepositAChange(calculatedAmount);
+    } else {
+      isInverted ? handleDepositAChange(calculatedAmount) : handleDepositBChange(calculatedAmount);
+    }
+  };
+
+  const topToken = isInverted ? tokenB : tokenA;
+  const topTokenInfo = isInverted ? tokenBInfo : tokenAInfo;
+  const topDeposit = isInverted ? depositB : depositA;
+  const setTopDeposit = isInverted ? setDepositB : setDepositA;
+
+  const bottomToken = isInverted ? tokenA : tokenB;
+  const bottomTokenInfo = isInverted ? tokenAInfo : tokenBInfo;
+  const bottomDeposit = isInverted ? depositA : depositB;
+  const setBottomDeposit = isInverted ? setDepositA : setDepositB;
+
+
+  const handleAddLiquidity = async () => {
+    if (!publicKey || !connected) {
+      setTxError("Please connect your wallet first.");
+      return;
+    }
+    if (!poolId || !tokenAInfo || !tokenBInfo) {
+      setTxError("Missing pool or token info.");
+      return;
+    }
+    if (!depositA || !depositB || parseFloat(depositA) <= 0 || parseFloat(depositB) <= 0) {
+      setTxError("Please enter valid deposit amounts.");
+      return;
+    }
+
+    setLoading(true);
+    setTxError(null);
+    setTxSig(null);
+
+    try {
+      let manualTxId = "";
+      const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+        for (let i = 0; i < txs.length; i++) {
+          const tx = txs[i];
+          if (tx instanceof Transaction) {
+            const sig = await sendTransaction(tx, connection);
+            await connection.confirmTransaction(sig, "confirmed");
+            manualTxId = sig;
+          }
+        }
+        throw new Error("__TX_SENT_MANUALLY__");
+      };
+
+      const raydium = await Raydium.load({
+        owner: publicKey,
+        connection,
+        cluster: "devnet",
+        disableFeatureCheck: true,
+        disableLoadToken: true,
+        signAllTransactions: wrappedSignAllTransactions,
+      });
+
+      // Standard AMM pools in v2 use raydium.cpmm
+      let poolInfo: any;
+      try {
+        const res = await raydium.api.fetchPoolById({ ids: poolId });
+        if (res && res.length > 0) poolInfo = res[0];
+      } catch (apiErr: any) {
+        throw new Error("Could not fetch CPMM pool info from API.");
+      }
+
+      if (!poolInfo) throw new Error("Pool not found on Raydium API. It may take a few minutes for new pools to be indexed.");
+
+      // Real CPMM Add Liquidity Data
+      const poolKeys = await raydium.cpmm.getCpmmPoolKeys(poolId);
+      const rpcData = await raydium.cpmm.getRpcPoolInfo(poolInfo.id, true);
+
+      const inputAmount = new BN(new Decimal(depositA).mul(10 ** tokenAInfo.decimals).toFixed(0));
+
+      // Slippage processing
+      const maxSlippage = slippageTab === "Auto" ? 0.025 : parseFloat(customSlippage) / 100;
+
+      const baseIn = poolInfo.mintA.address === tokenAInfo.mint;
+
+      const { execute } = await raydium.cpmm.addLiquidity({
+        poolInfo: poolInfo as any,
+        poolKeys,
+        inputAmount,
+        baseIn,
+        slippage: new Percent(maxSlippage * 100, 100) as any,
+        txVersion: TxVersion.LEGACY,
+      });
+
+      try {
+        await execute({ sendAndConfirm: true });
+      } catch (err: any) {
+        if (err?.message !== "__TX_SENT_MANUALLY__") throw err;
+      }
+
+      if (manualTxId) {
+        setTxSig(manualTxId);
+
+        // Quick Local Storage updates
+        try {
+          const stored = localStorage.getItem("aeroCustomPools");
+          const customPools = stored ? JSON.parse(stored) : [];
+          const updated = customPools.map((p: any) => {
+            if (p.id === poolId) {
+              const totalA = parseFloat(p.depositedA || "0") + parseFloat(depositA);
+              const totalB = parseFloat(p.depositedB || "0") + parseFloat(depositB);
+              return { ...p, liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`, depositedA: totalA.toString(), depositedB: totalB.toString() };
+            }
+            return p;
+          });
+          localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
+        } catch (e) { }
+
+        setDepositA("");
+        setDepositB("");
+      }
+    } catch (err: any) {
+      console.error("❌ Add standard liquidity failed:", err);
+      setTxError(err?.message || "Failed to add liquidity.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
+
+  return (
+    <main className="min-h-screen text-white bg-[#0d0e14] px-4 py-8">
+      <div className="max-w-2xl mx-auto">
+        <button onClick={() => router.back()} className="flex items-center text-white/60 hover:text-white transition-colors mb-6">
+          <ChevronLeft className="h-5 w-5 mr-1" /> Back
+        </button>
+
+        <div className="bg-[#161722] border border-white/10 rounded-2xl px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2">
+              <TokenLogo token={tokenAInfo} size={32} className="z-10" />
+              <TokenLogo token={tokenBInfo} size={32} />
+            </div>
+            <span className="text-lg font-bold">{tokenA} / {tokenB}</span>
+            <span className="text-xs bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/20 px-2 py-0.5 rounded-full">Standard AMM</span>
+          </div>
+        </div>
+
+        <div className="w-full bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold">Add Deposit Amount</h3>
+            <div className="flex items-center gap-2 relative" ref={slippageRef}>
+              <button
+                onClick={() => setShowSlippageSettings(!showSlippageSettings)}
+                className="text-xs text-white flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
+                <span>{slippageTab === "Auto" ? "2.5" : customSlippage}%</span>
+              </button>
+              {showSlippageSettings && (
+                <div className="absolute top-full right-0 mt-2 w-72 bg-[#1b1d2a] border border-white/10 rounded-2xl p-4 shadow-2xl z-50">
+                  <div className="mb-4 flex items-center gap-2">
+                    <p className="text-sm font-bold">Max Slippage</p>
+                  </div>
+                  <div className="flex bg-black/30 border border-white/10 rounded-xl p-1 mb-4">
+                    {(["Auto", "Custom"] as const).map((tab) => (
+                      <button key={tab} onClick={() => setSlippageTab(tab)} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}>
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                  {slippageTab === "Custom" && (
+                    <div className="relative">
+                      <input type="number" value={customSlippage} onChange={(e) => setCustomSlippage(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none" placeholder="0.0" />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-sm">%</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
+                <span className="font-bold text-sm">{topToken}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/40 flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceB : balanceA)}</span>
+                <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+              </div>
+            </div>
+            <input type="number" placeholder="0" value={topDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositBChange(val) : handleDepositAChange(val); }} className={`bg-transparent font-bold text-white outline-none w-full text-right text-2xl`} />
+          </div>
+
+          <div className="flex justify-center -my-3 z-10 relative">
+            <button onClick={() => setIsInverted(!isInverted)} className="w-8 h-8 rounded-full bg-[#161722] border border-white/10 flex items-center justify-center text-white/40 hover:text-[var(--neon-teal)] hover:border-[var(--neon-teal)]/30 transition-all shadow-lg">
+              <ArrowDownUp className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
+                <span className="font-bold text-sm">{bottomToken}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/40 flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceA : balanceB)}</span>
+                <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+              </div>
+            </div>
+            <input type="number" placeholder="0" value={bottomDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositAChange(val) : handleDepositBChange(val); }} className={`bg-transparent font-bold text-white outline-none w-full text-right text-2xl`} />
+          </div>
+
+          <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2 mt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-white/60">Estimated Total Deposit</span>
+              <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
+            </div>
+            <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
+              <span className="text-xs text-white/50">Pool Deposit Ratio</span>
+              <span className="text-xs font-bold text-white/70">50% / 50%</span>
+            </div>
+          </div>
+
+          {txError && <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-xs text-red-400">⚠ {txError}</div>}
+          {txSig && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-xs text-green-400">
+              ✅ Liquidity added! <a href={`https://solscan.io/tx/${txSig}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300">View on Solscan</a>
+            </div>
+          )}
+
+          <button disabled={loading || (!depositA && !depositB) || !poolId} onClick={handleAddLiquidity} className={`w-full font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 ${loading ? "bg-[var(--neon-teal)]/50 text-black/70 cursor-wait" : (depositA || depositB) && poolId ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer" : "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]/50 cursor-not-allowed"}`}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading ? "Adding Liquidity..." : !poolId ? "Mock Pool — Cannot Deposit" : depositA || depositB ? "Deposit standard liquidity" : "Enter Token Amount"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function StandardPositionPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0d0e14] flex items-center justify-center text-white/40">Loading...</div>}>
+      <PositionPageInner />
+    </Suspense>
+  );
+}

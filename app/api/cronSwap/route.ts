@@ -58,7 +58,7 @@ export async function GET() {
       cluster: "devnet",
       disableFeatureCheck: true,
       disableLoadToken: true,
-      signAllTransactions: async (txs: any[]) => {
+      signAllTransactions: async (txs: unknown[]) => {
         return txs.map((tx) => {
           if (tx instanceof Transaction) {
             tx.sign(wallet);
@@ -71,7 +71,7 @@ export async function GET() {
     const TARGET_POOLS = getTargetPools();
     console.log(`🎯 Targeting ${TARGET_POOLS.length} pool(s)`);
 
-    const results: any[] = [];
+    const results: unknown[] = [];
 
     for (const poolId of TARGET_POOLS) {
       try {
@@ -140,7 +140,7 @@ export async function GET() {
           observationId: null,
           ownerInfo: { useSOLBalance: true },
           txVersion: TxVersion.LEGACY,
-        } as any);
+        } as unknown);
 
         await execute({ sendAndConfirm: true });
 
@@ -151,14 +151,14 @@ export async function GET() {
           direction: `${symIn}→${symOut}`,
           amount: amountFloat.toFixed(3),
         });
-      } catch (poolErr: any) {
+      } catch (poolErr: unknown) {
         console.error(`❌ Pool ${poolId.slice(0, 8)} failed:`, poolErr.message);
         results.push({ poolId, status: "failed", error: poolErr.message });
       }
     }
 
     return NextResponse.json({ success: true, solBalance, results });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Bot error:", error);
     return NextResponse.json(
       { success: false, error: error.message },

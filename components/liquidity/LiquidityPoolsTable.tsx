@@ -39,6 +39,7 @@ interface PoolData {
     decimalsB?: number;
     logoA?: string;
     logoB?: string;
+    type?: string;
     symbolA?: string;
     symbolB?: string;
     colorA?: string;
@@ -213,6 +214,7 @@ function apiPoolToPoolData(live: any, priceA: number, priceB: number): PoolData 
         logoB: live.mintB?.logoURI,
         symbolA: symA,
         symbolB: symB,
+        type: live.type, // Inject type
     };
 }
 
@@ -263,11 +265,12 @@ async function discoverCreatedPools(
 ): Promise<string[]> {
     try {
         const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+        const CPMM_PROGRAM = DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM;
 
         // PoolState accounts are 1544 bytes. The owner/creator is at offset 73.
         // Layout: discriminator(8) + bump(1) + ammConfig(32) + creator(32) + ...
         // So creator starts at offset 41
-        const accounts = await connection.getProgramAccounts(
+        const clmmPromise = connection.getProgramAccounts(
             new PublicKey(CLMM_PROGRAM),
             {
                 filters: [
@@ -282,7 +285,32 @@ async function discoverCreatedPools(
             }
         );
 
-        const poolIds = accounts.map(({ pubkey }: any) => pubkey.toBase58());
+        // CPMM pool size is 637 bytes. poolCreator is at offset 40.
+        const cpmmPromise = connection.getProgramAccounts(
+            new PublicKey(CPMM_PROGRAM),
+            {
+                filters: [
+                    { dataSize: 637 },  // Cpmm Pool info size
+                    {
+                        memcmp: {
+                            offset: 40,  // poolCreator field offset
+                            bytes: walletPubkey.toBase58(),
+                        }
+                    }
+                ]
+            }
+        );
+
+        const [clmmAccounts, cpmmAccounts] = await Promise.all([
+            clmmPromise.catch(() => []),
+            cpmmPromise.catch(() => [])
+        ]);
+
+        const poolIds = [
+            ...clmmAccounts.map(({ pubkey }: any) => pubkey.toBase58()),
+            ...cpmmAccounts.map(({ pubkey }: any) => pubkey.toBase58())
+        ];
+
         console.log(`🔍 Discovered ${poolIds.length} pools created by wallet`);
         return poolIds;
     } catch (err) {
@@ -383,8 +411,13 @@ export default function LiquidityPoolsTable() {
 
                         const poolData = apiPoolToPoolData(live, priceA, priceB);
                         const local = localPoolMap.get(live.id);
-                        if (local && local.liquidity && poolData.liquidity === "$0.00") {
-                            poolData.liquidity = local.liquidity;
+                        if (local) {
+                            if (local.liquidity && poolData.liquidity === "$0.00") {
+                                poolData.liquidity = local.liquidity;
+                            }
+                            if (local.type) {
+                                poolData.type = local.type;
+                            }
                         }
                         return poolData;
                     });
@@ -404,6 +437,7 @@ export default function LiquidityPoolsTable() {
                                 aprBreakdown: { tradeFees: "0%", yield: "0%" },
                                 symbolA: local.symbolA,
                                 symbolB: local.symbolB,
+                                type: local.type,
                             });
                         }
                     }
@@ -425,6 +459,7 @@ export default function LiquidityPoolsTable() {
                             aprBreakdown: { tradeFees: "—", yield: "—" },
                             symbolA: local?.symbolA,
                             symbolB: local?.symbolB,
+                            type: local?.type,
                         };
                     });
                     setPools(fallbackPools);
@@ -445,6 +480,7 @@ export default function LiquidityPoolsTable() {
                         aprBreakdown: { tradeFees: "—", yield: "—" },
                         symbolA: local?.symbolA,
                         symbolB: local?.symbolB,
+                        type: local?.type,
                     };
                 });
                 setPools(fallbackPools);
@@ -535,8 +571,13 @@ export default function LiquidityPoolsTable() {
                                                                 <span className="text-foreground group-hover/name:text-[var(--neon-teal)] transition-colors font-semibold text-sm">
                                                                     {pool.name}
                                                                 </span>
-                                                                <span className="text-[10px] text-muted-foreground">
-                                                                    Concentrated · {pool.fee}
+                                                                <span className="text-[10px] text-muted-foreground flex gap-1">
+                                                                    {pool.type === "Standard" ? (
+                                                                        <span className="text-[var(--neon-teal)] font-bold">Standard AMM</span>
+                                                                    ) : (
+                                                                        <span>Concentrated</span>
+                                                                    )}
+                                                                    <span>· {pool.fee}</span>
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -655,6 +696,9 @@ export default function LiquidityPoolsTable() {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => {
+                                                            const isStandard = pool.type === "Standard";
+                                                            const basePath = isStandard ? "/liquidity/position/standard" : "/liquidity/position/clmm";
+
                                                             const q = new URLSearchParams({
                                                                 pool: pool.name,
                                                                 fee: pool.fee,
@@ -666,7 +710,7 @@ export default function LiquidityPoolsTable() {
                                                                 ...(pool.logoA && { logoA: pool.logoA }),
                                                                 ...(pool.logoB && { logoB: pool.logoB }),
                                                             });
-                                                            router.push(`/liquidity/position?${q.toString()}`);
+                                                            router.push(`${basePath}?${q.toString()}`);
                                                         }}
                                                         className="border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10"
                                                     >
