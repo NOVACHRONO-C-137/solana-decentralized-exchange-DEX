@@ -11,6 +11,7 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID, TickUtils, SqrtPriceMath, ApiV3Token } from "@raydium-io/raydium-sdk-v2"
 import Decimal from "decimal.js";
 import BN from "bn.js";
+import { formatLargeNumber } from "@/lib/utils";
 import { TokenSelectorModal, TokenInfo, DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import { PublicKey } from "@solana/web3.js"
@@ -672,8 +673,8 @@ export default function CreatePoolPage() {
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-white/40">
                                         {idx === 0
-                                            ? (tokenBalances.get(baseToken?.mint || "")?.balance || 0).toFixed(2)
-                                            : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0).toFixed(2)
+                                            ? formatLargeNumber(tokenBalances.get(baseToken?.mint || "")?.balance || 0)
+                                            : formatLargeNumber(tokenBalances.get(quoteToken?.mint || "")?.balance || 0)
                                         }
                                     </span>
                                     <button onClick={() => {
@@ -694,8 +695,8 @@ export default function CreatePoolPage() {
                             </div>
                             <input type="number" placeholder="0" value={val}
                                 onChange={(e) => idx === 0 ? handleDepositAChange(e.target.value) : handleDepositBChange(e.target.value)}
-                                className="bg-transparent text-2xl font-bold text-white outline-none w-full" />
-                            <p className="text-xs text-white/30 mt-1">~${idx === 0 ? ((parseFloat(val) || 0) * currentPrice).toFixed(2) : (parseFloat(val) || 0).toFixed(2)}</p>
+                                className={`bg-transparent font-bold text-white outline-none w-full ${String(val).length > 10 ? 'text-lg md:text-xl text-right' : 'text-2xl text-right'}`} />
+                            <p className="text-xs text-white/30 mt-1 text-right">~${formatLargeNumber(idx === 0 ? ((parseFloat(val) || 0) * currentPrice) : (parseFloat(val) || 0))}</p>
                         </div>
                     </div>
                 ))}
@@ -704,16 +705,19 @@ export default function CreatePoolPage() {
                 <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-bold text-white/70">Total Deposit</span>
-                        <span className="text-sm font-bold">${totalDeposit.toFixed(2)}</span>
+                        <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-bold text-white/70">Deposit Ratio</span>
-                        <div className="flex items-center gap-1 text-sm">
-                            <div className={`w-3 h-3 rounded-full ${baseToken?.color}`} />
+                        <div className="flex items-center gap-1.5 text-sm font-medium">
+                            <div className={`w-2 h-2 rounded-full ${baseToken?.color || "bg-blue-400"}`} />
                             <span>{ratioA}%</span>
-                            <span className="text-white/30 mx-1">/</span>
-                            <div className={`w-3 h-3 rounded-full ${quoteToken?.color}`} />
+                            <span className="text-white/30">/</span>
                             <span>{ratioB}%</span>
+                            <div className="flex -space-x-1 ml-1">
+                                <CLMMTokenLogo token={baseToken} size={16} />
+                                <CLMMTokenLogo token={quoteToken} size={16} />
+                            </div>
                         </div>
                     </div>
                 </div>

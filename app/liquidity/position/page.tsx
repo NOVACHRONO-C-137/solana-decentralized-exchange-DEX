@@ -2,7 +2,8 @@
 
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
+import { formatLargeNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
@@ -111,6 +112,23 @@ function PositionPageInner() {
   const [loading, setLoading] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
+  const [activeRange, setActiveRange] = useState<string | null>(null);
+
+  // --- NEW: Slippage Settings State ---
+  const [showSlippageSettings, setShowSlippageSettings] = useState(false);
+  const [slippageTab, setSlippageTab] = useState<"Auto" | "Custom">("Auto");
+  const [customSlippage, setCustomSlippage] = useState<string>("2.5");
+  const slippageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (slippageRef.current && !slippageRef.current.contains(event.target as Node)) {
+        setShowSlippageSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // State to handle visual swapping of the tokens in the UI
   const [isInverted, setIsInverted] = useState(false);
@@ -151,6 +169,48 @@ function PositionPageInner() {
 
   const [tokenAInfo, setTokenAInfo] = useState<any>(initialAInfo);
   const [tokenBInfo, setTokenBInfo] = useState<any>(initialBInfo);
+
+  // --- NEW: Chart Interaction & Balance State ---
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [draggingHandle, setDraggingHandle] = useState<"min" | "max" | null>(null);
+
+  // --- NEW: Balance State ---
+  const [balanceA, setBalanceA] = useState<number>(0);
+  const [balanceB, setBalanceB] = useState<number>(0);
+  const [isFetchingBalances, setIsFetchingBalances] = useState(false);
+
+  // --- NEW: Fetch Balances function ---
+  const fetchBalances = async () => {
+    if (!publicKey || !connection || !tokenAInfo?.mint || !tokenBInfo?.mint) return;
+    setIsFetchingBalances(true);
+    try {
+      const getBal = async (mint: string) => {
+        // Handle native SOL
+        if (mint === "11111111111111111111111111111111" || mint === "So11111111111111111111111111111111111111112") {
+          const bal = await connection.getBalance(publicKey);
+          return bal / 10 ** 9; // Convert lamports to SOL
+        }
+        // Handle SPL Tokens
+        const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(mint) });
+        if (accounts.value.length > 0) {
+          return accounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+        }
+        return 0;
+      };
+
+      setBalanceA(await getBal(tokenAInfo.mint));
+      setBalanceB(await getBal(tokenBInfo.mint));
+    } catch (error) {
+      console.error("Error fetching balances:", error);
+    } finally {
+      setIsFetchingBalances(false);
+    }
+  };
+
+  // Fetch when wallet or tokens change
+  useEffect(() => {
+    fetchBalances();
+  }, [publicKey, connection, tokenAInfo.mint, tokenBInfo.mint]);
 
   const [poolPrice, setPoolPrice] = useState<number | null>(null);
   const [poolLoading, setPoolLoading] = useState(false);
@@ -316,20 +376,99 @@ function PositionPageInner() {
     }
   };
 
+  // --- NEW: Handle Max/50% Clicks ---
+  const handleSetPercentage = (percent: number, isTopInput: boolean) => {
+    // Figure out which token we are interacting with based on inversion
+    const isTokenA = isInverted ? !isTopInput : isTopInput;
+    const maxBalance = isTokenA ? balanceA : balanceB;
+    const tokenSymbol = isTokenA ? tokenAInfo.symbol : tokenBInfo.symbol;
+
+    let usableBalance = maxBalance;
+
+    // Safety check: If it's SOL, leave 0.02 SOL for transaction fees!
+    if (tokenSymbol === "SOL" && percent === 1) {
+      usableBalance = Math.max(0, usableBalance - 0.02);
+    }
+
+    const calculatedAmount = (usableBalance * percent).toFixed(6);
+
+    // Use your existing handlers so the *other* input auto-calculates!
+    if (isTopInput) {
+      isInverted ? handleDepositBChange(calculatedAmount) : handleDepositAChange(calculatedAmount);
+    } else {
+      isInverted ? handleDepositAChange(calculatedAmount) : handleDepositBChange(calculatedAmount);
+    }
+  };
+
   // Recalculate deposit ratio when price range changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (depositA) {
+    if (depositA && parseFloat(depositA) > 0) {
       handleDepositAChange(depositA);
+    } else if (depositB && parseFloat(depositB) > 0) {
+      handleDepositBChange(depositB);
     }
   }, [minPrice, maxPrice]);
 
   // Fix quick range buttons to actually update min/max
   const applyQuickRange = (rangeStr: string) => {
+    setActiveRange(rangeStr);
     if (!poolPrice) return;
     const pct = parseFloat(rangeStr.replace("±", "").replace("%", "")) / 100;
-    setMinPrice((poolPrice * (1 - pct)).toFixed(6));
-    setMaxPrice((poolPrice * (1 + pct)).toFixed(6));
+
+    // Calculate new min and max in TokenA-centric terms (the underlying value)
+    let newMin = poolPrice * (1 - pct);
+    let newMax = poolPrice * (1 + pct);
+
+    // If we're displaying inverted prices, we still anchor around the base pool price
+    // But the visually "minus" percentage is on the inverted scale.
+    // So 1/poolPrice * (1 - pct) = invertedMin
+    // In terms of base scale: max = 1 / invertedMin = poolPrice / (1 - pct)
+    if (priceToggle === "A") {
+      const invertedPrice = 1 / poolPrice;
+      const displayMin = invertedPrice * (1 - pct);
+      const displayMax = invertedPrice * (1 + pct);
+      // Map back to base scale
+      newMin = 1 / displayMax;
+      newMax = 1 / displayMin;
+    }
+
+    setMinPrice(newMin.toFixed(6));
+    setMaxPrice(newMax.toFixed(6));
+  };
+
+  // Dynamic values depending on Price Toggle
+  const displayMin = priceToggle === "B" ? minPrice : (parseFloat(maxPrice) > 0 ? (1 / parseFloat(maxPrice)).toFixed(6) : "0");
+  const displayMax = priceToggle === "B" ? maxPrice : (parseFloat(minPrice) > 0 ? (1 / parseFloat(minPrice)).toFixed(6) : "0");
+
+  const handleDisplayMinChange = (val: string) => {
+    setActiveRange(null);
+    if (priceToggle === "B") {
+      setMinPrice(val);
+    } else {
+      setMaxPrice(parseFloat(val) > 0 ? (1 / parseFloat(val)).toFixed(6) : "0");
+    }
+  };
+
+  const handleDisplayMaxChange = (val: string) => {
+    setActiveRange(null);
+    if (priceToggle === "B") {
+      setMaxPrice(val);
+    } else {
+      setMinPrice(parseFloat(val) > 0 ? (1 / parseFloat(val)).toFixed(6) : "0");
+    }
+  };
+
+  const adjustDisplayPrice = (isMin: boolean, dir: "up" | "down") => {
+    setActiveRange(null);
+    const current = isMin ? displayMin : displayMax;
+    const val = parseFloat(current) || 0;
+    const step = val * 0.001;
+    const next = dir === "up" ? val + step : Math.max(0.0001, val - step);
+    const nextStr = next.toFixed(15).replace(/0+$/, "").replace(/\.$/, "");
+
+    if (isMin) handleDisplayMinChange(nextStr);
+    else handleDisplayMaxChange(nextStr);
   };
 
   // Dynamic UI Mappings based on inversion state
@@ -356,16 +495,6 @@ function PositionPageInner() {
     displayRatioB = (rB * 100).toFixed(2);
   }
 
-  const adjustPrice = (
-    setter: (v: string) => void,
-    current: string,
-    dir: "up" | "down",
-  ) => {
-    const val = parseFloat(current) || 0;
-    const step = val * 0.001;
-    const next = dir === "up" ? val + step : Math.max(0.0001, val - step);
-    setter(next.toFixed(15).replace(/0+$/, "").replace(/\.$/, ""));
-  };
 
   const bars = buildLiquidityBars(poolTicks);
 
@@ -669,7 +798,7 @@ function PositionPageInner() {
             });
           }
           localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
-        } catch (e) {}
+        } catch (e) { }
 
         setDepositA("");
         setDepositB("");
@@ -683,6 +812,46 @@ function PositionPageInner() {
       setLoading(false);
     }
   };
+
+  // --- NEW: Drag Interaction Engine ---
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!draggingHandle || !chartRef.current || bars.length === 0) return;
+
+      const rect = chartRef.current.getBoundingClientRect();
+      let currentX = e.clientX - rect.left;
+      currentX = Math.max(0, Math.min(currentX, rect.width));
+
+      const pct = currentX / rect.width;
+      const minChartPrice = bars[0].price;
+      const maxChartPrice = bars[bars.length - 1].price;
+      let newPrice = minChartPrice + pct * (maxChartPrice - minChartPrice);
+
+      if (draggingHandle === "min") {
+        if (newPrice > parseFloat(maxPrice)) newPrice = parseFloat(maxPrice) * 0.99;
+        setMinPrice(newPrice.toFixed(6));
+      } else if (draggingHandle === "max") {
+        if (newPrice < parseFloat(minPrice)) newPrice = parseFloat(minPrice) * 1.01;
+        setMaxPrice(newPrice.toFixed(6));
+      }
+    };
+
+    const handlePointerUp = () => {
+      setDraggingHandle(null);
+    };
+
+    if (draggingHandle) {
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    }
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [draggingHandle, bars, minPrice, maxPrice]);
+
+  const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
 
   return (
     <main className="min-h-screen text-white bg-[#0d0e14] px-4 py-8">
@@ -716,12 +885,14 @@ function PositionPageInner() {
               </span>
             )}
             {poolPrice && !poolLoading && (
-              <span className="text-xs text-white/60">
-                1 {tokenA} ={" "}
-                <span className="text-white font-mono">
-                  {poolPrice.toFixed(4)}
-                </span>{" "}
-                {tokenB}
+              <span className="text-xs text-white/60 flex gap-2">
+                <span>
+                  1 {tokenA} = <span className="text-white font-mono">{poolPrice.toFixed(4)}</span> {tokenB}
+                </span>
+                <span className="text-white/20">|</span>
+                <span>
+                  1 {tokenB} = <span className="text-white font-mono">{(1 / poolPrice).toFixed(4)}</span> {tokenA}
+                </span>
               </span>
             )}
             {poolId && (
@@ -747,103 +918,82 @@ function PositionPageInner() {
             <h3 className="text-base font-bold mb-5">Set Price Range</h3>
 
             {/* Chart area */}
-            <div className="relative bg-black/20 border border-white/5 rounded-xl p-4 mb-5 h-64">
-              {/* Toolbar */}
-              <div className="absolute top-3 right-3 flex gap-2 z-10">
-                <button className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                  <RefreshCw className="h-3.5 w-3.5 text-white/50" />
-                </button>
-                <button className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                  <ZoomIn className="h-3.5 w-3.5 text-white/50" />
-                </button>
-                <button className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                  <ZoomOut className="h-3.5 w-3.5 text-white/50" />
+            <div
+              ref={chartRef}
+              className="relative bg-[#1b1d2a] border border-white/5 rounded-xl p-4 mb-5 h-64 overflow-hidden select-none"
+            >
+              <div className="absolute top-3 right-3 flex gap-2 z-20">
+                <button onClick={fetchBalances} className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+                  <RefreshCw className={`h-3.5 w-3.5 text-white/50 ${isFetchingBalances ? "animate-spin" : ""}`} />
                 </button>
               </div>
 
-              {/* Range labels */}
-              <div className="absolute top-3 left-4 flex gap-4 text-xs text-white/50">
-                <span className="bg-black/40 px-2 py-0.5 rounded">-0.1%</span>
-                <span className="bg-black/40 px-2 py-0.5 rounded ml-16">
-                  +0.1%
-                </span>
-              </div>
+              <div className="absolute bottom-8 left-0 right-0 flex items-end justify-center gap-[1px] h-40 px-4">
+                {bars.map((bar, i) => {
+                  const isInsideRange = bar.price >= parseFloat(minPrice) && bar.price <= parseFloat(maxPrice);
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t-sm transition-all"
+                      style={{
+                        height: `${Math.max(2, bar.height * 100)}%`,
+                        background: isInsideRange ? "#3b82f6" : "rgba(59, 130, 246, 0.2)",
+                      }}
+                    />
+                  );
+                })}
 
-              {/* Bar chart */}
-              <div className="absolute bottom-8 left-4 right-4 flex items-end justify-center gap-0.5 h-36">
-                {bars.map((bar, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-t-sm transition-all"
-                    style={{
-                      height: `${bar.height * 100}%`,
-                      background:
-                        bar.price >= parseFloat(minPrice) &&
-                        bar.price <= parseFloat(maxPrice)
-                          ? "rgba(20, 241, 149, 0.5)"
-                          : "rgba(255,255,255,0.1)",
-                    }}
-                  />
-                ))}
-
-                {/* Current price line */}
                 <div
-                  className="absolute bottom-0 top-0 w-px bg-white/60 transition-all z-10"
+                  className="absolute bottom-0 top-0 w-px bg-white/80 border-r border-dashed border-white/40 transition-all z-10"
                   style={{ left: priceLineLeft }}
                 >
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-white/60 whitespace-nowrap">
-                    ▼
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">
+                    Current
                   </div>
                 </div>
 
-                {/* Min handle */}
                 <div
-                  className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] transition-all z-10 cursor-ew-resize hover:w-1 hover:bg-white"
+                  className="absolute bottom-0 top-0 w-0.5 bg-cyan-400 z-20 hover:w-1 transition-all"
                   style={{ left: getLeftPct(parseFloat(minPrice)) }}
                 >
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--neon-teal)]">
-                    ▼
+                  <div
+                    onPointerDown={(e) => { e.preventDefault(); setDraggingHandle("min"); }}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 bg-cyan-400 text-black text-[10px] px-3 py-1 rounded cursor-ew-resize shadow-lg flex items-center justify-center font-bold"
+                  >
+                    Min
                   </div>
+                  <div
+                    onPointerDown={(e) => { e.preventDefault(); setDraggingHandle("min"); }}
+                    className="absolute inset-y-0 -left-4 w-8 cursor-ew-resize"
+                  />
                 </div>
 
-                {/* Max handle */}
                 <div
-                  className="absolute bottom-0 top-0 w-px bg-[var(--neon-teal)] transition-all z-10 cursor-ew-resize hover:w-1 hover:bg-white"
+                  className="absolute bottom-0 top-0 w-0.5 bg-cyan-400 z-20 hover:w-1 transition-all"
                   style={{ left: getLeftPct(parseFloat(maxPrice)) }}
                 >
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--neon-teal)]">
-                    ▼
+                  <div
+                    onPointerDown={(e) => { e.preventDefault(); setDraggingHandle("max"); }}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 bg-cyan-400 text-black text-[10px] px-3 py-1 rounded cursor-ew-resize shadow-lg flex items-center justify-center font-bold"
+                  >
+                    Max
                   </div>
+                  <div
+                    onPointerDown={(e) => { e.preventDefault(); setDraggingHandle("max"); }}
+                    className="absolute inset-y-0 -left-4 w-8 cursor-ew-resize"
+                  />
                 </div>
               </div>
 
-              {/* Price axis */}
-              <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-white/30">
+              <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-white/40">
                 {bars.length > 0
-                  ? [0, 0.2, 0.4, 0.6, 0.8, 1].map((pct, idx) => {
-                      const minP = bars[0].price;
-                      const maxP = bars[bars.length - 1].price;
-                      const p = minP + pct * (maxP - minP);
-                      return (
-                        <span key={idx}>
-                          {p < 0.01 ? p.toExponential(2) : p.toFixed(4)}
-                        </span>
-                      );
-                    })
-                  : [1.017, 1.018, 1.019, 1.02, 1.021, 1.022].map((p) => (
-                      <span key={p}>{p.toFixed(3)}</span>
-                    ))}
-              </div>
-
-              {/* Legend */}
-              <div className="absolute right-4 top-10 text-[10px] text-white/50 flex flex-col gap-1">
-                <div className="flex items-center gap-1">
-                  <div className="w-4 h-px bg-white/60" />
-                  <span>Current Price</span>
-                </div>
-                <span className="text-white/40 ml-5">
-                  1.0 {tokenB} per {tokenA}
-                </span>
+                  ? [0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                    const minP = bars[0].price;
+                    const maxP = bars[bars.length - 1].price;
+                    const p = minP + pct * (maxP - minP);
+                    return <span key={idx}>{p < 0.01 ? p.toExponential(2) : p.toFixed(4)}</span>;
+                  })
+                  : null}
               </div>
             </div>
 
@@ -851,57 +1001,57 @@ function PositionPageInner() {
             <div className="flex gap-4 mb-4">
               {/* Min */}
               <div className="flex-1 bg-black/20 border border-white/10 rounded-xl p-3">
-                <p className="text-[10px] text-white/40 mb-2">Min</p>
+                <p className="text-[10px] text-white/40 mb-2">Min Price</p>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => adjustPrice(setMinPrice, minPrice, "down")}
+                    onClick={() => adjustDisplayPrice(true, "down")}
                     className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
                   >
                     -
                   </button>
                   <input
                     type="number"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
+                    value={displayMin}
+                    onChange={(e) => handleDisplayMinChange(e.target.value)}
                     className="bg-transparent text-xs font-medium text-white outline-none w-full text-center"
                   />
                   <button
-                    onClick={() => adjustPrice(setMinPrice, minPrice, "up")}
+                    onClick={() => adjustDisplayPrice(true, "up")}
                     className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
                 <p className="text-[9px] text-white/30 mt-1 text-center">
-                  {tokenB} per {tokenA}
+                  {priceToggle === "B" ? `${tokenB} per ${tokenA}` : `${tokenA} per ${tokenB}`}
                 </p>
               </div>
 
               {/* Max */}
               <div className="flex-1 bg-black/20 border border-white/10 rounded-xl p-3">
-                <p className="text-[10px] text-white/40 mb-2">Max</p>
+                <p className="text-[10px] text-white/40 mb-2">Max Price</p>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => adjustPrice(setMaxPrice, maxPrice, "down")}
+                    onClick={() => adjustDisplayPrice(false, "down")}
                     className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
                   >
                     -
                   </button>
                   <input
                     type="number"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
+                    value={displayMax}
+                    onChange={(e) => handleDisplayMaxChange(e.target.value)}
                     className="bg-transparent text-xs font-medium text-white outline-none w-full text-center"
                   />
                   <button
-                    onClick={() => adjustPrice(setMaxPrice, maxPrice, "up")}
+                    onClick={() => adjustDisplayPrice(false, "up")}
                     className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
                 <p className="text-[9px] text-white/30 mt-1 text-center">
-                  {tokenB} per {tokenA}
+                  {priceToggle === "B" ? `${tokenB} per ${tokenA}` : `${tokenA} per ${tokenB}`}
                 </p>
               </div>
             </div>
@@ -914,13 +1064,17 @@ function PositionPageInner() {
                     key={r}
                     onClick={() => applyQuickRange(r)}
                     disabled={!poolPrice}
-                    className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/50 hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] transition-all disabled:opacity-30"
+                    className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${activeRange === r
+                      ? "bg-[var(--neon-teal)]/20 border-[var(--neon-teal)] text-white font-bold"
+                      : "border-white/10 text-white/50 hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] disabled:opacity-30"
+                      }`}
                   >
                     {r}
                   </button>
                 ))}
                 <button
                   onClick={() => {
+                    setActiveRange(null);
                     if (poolPrice) {
                       setMinPrice((poolPrice * 0.8).toFixed(6));
                       setMaxPrice((poolPrice * 1.2).toFixed(6));
@@ -933,9 +1087,9 @@ function PositionPageInner() {
               </div>
               <button
                 onClick={() => setPriceToggle(priceToggle === "A" ? "B" : "A")}
-                className="text-xs px-3 py-1.5 rounded-xl border border-[var(--neon-teal)]/30 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/5 transition-all"
+                className="text-xs px-3 py-1.5 rounded-xl border border-[var(--neon-teal)]/30 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10 active:bg-[var(--neon-teal)]/20 transition-all font-bold flex items-center gap-1"
               >
-                {priceToggle === "B" ? tokenB : tokenA} Price ⇄
+                {priceToggle === "B" ? tokenB : tokenA} Price <ArrowDownUp className="w-3 h-3" />
               </button>
             </div>
 
@@ -975,12 +1129,70 @@ function PositionPageInner() {
           <div className="w-full lg:w-80 bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">Add Deposit Amount</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/40 border border-white/10 px-2 py-1 rounded-lg">
-                  ⇄ 2.5%
-                </span>
-                <button className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                  <RefreshCw className="h-3.5 w-3.5 text-white/50" />
+              <div className="flex items-center gap-2 relative" ref={slippageRef}>
+                <button
+                  onClick={() => setShowSlippageSettings(!showSlippageSettings)}
+                  className="text-xs text-white flex items-center gap-1.5 focus:outline-none transition-all active:scale-95 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
+                  <span>{slippageTab === "Auto" ? "2.5" : customSlippage}%</span>
+                </button>
+                {/* Slippage Dropdown */}
+                {showSlippageSettings && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-[#1b1d2a] border border-white/10 rounded-2xl p-4 shadow-2xl z-50">
+                    <div className="mb-4 flex items-center gap-2">
+                      <p className="text-sm font-bold">Max Slippage</p>
+                      <div className="group relative">
+                        <span className="text-white/30 text-xs cursor-pointer hover:text-white">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-xs text-white/70 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center pointer-events-none z-50">
+                          The maximum price difference you are willing to accept.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex bg-black/30 border border-white/10 rounded-xl p-1 mb-4">
+                      {(["Auto", "Custom"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setSlippageTab(tab)}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab
+                              ? "bg-white/10 text-white"
+                              : "text-white/40 hover:text-white"
+                            }`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+
+                    {slippageTab === "Custom" && (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={customSlippage}
+                          onChange={(e) => setCustomSlippage(e.target.value)}
+                          className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-[var(--neon-teal)]/50 transition-all placeholder:text-white/20"
+                          placeholder="0.0"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-sm">%</span>
+                      </div>
+                    )}
+
+                    {(parseFloat(customSlippage) > 5 || slippageTab === "Auto") && (
+                      <p className="text-[10px] text-yellow-500/80 mt-3 text-center">
+                        {slippageTab === "Auto"
+                          ? "Auto is set to 2.5% for Devnet pairs."
+                          : "High slippage tolerance. Your transaction might be front-run."}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={fetchBalances}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 text-white/50 ${isFetchingBalances ? "animate-spin" : ""}`} />
                 </button>
               </div>
             </div>
@@ -989,26 +1201,28 @@ function PositionPageInner() {
             <div className="bg-black/20 border border-white/10 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <TokenLogo
-                    token={topTokenInfo}
-                    size={28}
-                    className="!border-0"
-                  />
+                  <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
                   <span className="font-bold text-sm">{topToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/40">0</span>
+                  {/* Show Real Balance */}
+                  <span className="text-xs text-white/40 flex items-center gap-1">
+                    {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {formatLargeNumber(isInverted ? balanceB : balanceA)}
+                  </span>
+                  {/* Fixed 50% Button */}
                   <button
-                    onClick={() => setTopDeposit("0")}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
-                  >
-                    Max
-                  </button>
-                  <button
-                    onClick={() => setTopDeposit("0")}
+                    onClick={() => handleSetPercentage(0.5, true)}
                     className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
                   >
                     50%
+                  </button>
+                  {/* Fixed Max Button */}
+                  <button
+                    onClick={() => handleSetPercentage(1, true)}
+                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                  >
+                    Max
                   </button>
                 </div>
               </div>
@@ -1016,15 +1230,17 @@ function PositionPageInner() {
                 type="number"
                 placeholder="0"
                 value={topDeposit}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (Number(val) < 0) return;
                   isInverted
-                    ? handleDepositBChange(e.target.value)
-                    : handleDepositAChange(e.target.value)
-                }
-                className="bg-transparent text-2xl font-bold text-white outline-none w-full text-right"
+                    ? handleDepositBChange(val)
+                    : handleDepositAChange(val);
+                }}
+                className={`bg-transparent font-bold text-white outline-none w-full text-right ${String(topDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
               />
               <p className="text-xs text-white/30 text-right mt-1">
-                ~${(parseFloat(topDeposit) || 0).toFixed(2)}
+                ~${formatLargeNumber(isInverted ? (parseFloat(topDeposit) || 0) : (parseFloat(topDeposit) || 0) * (poolPrice || 1))}
               </p>
             </div>
 
@@ -1042,26 +1258,28 @@ function PositionPageInner() {
             <div className="bg-black/20 border border-white/10 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <TokenLogo
-                    token={bottomTokenInfo}
-                    size={28}
-                    className="!border-0"
-                  />
+                  <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
                   <span className="font-bold text-sm">{bottomToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/40">0</span>
+                  {/* Show Real Balance */}
+                  <span className="text-xs text-white/40 flex items-center gap-1">
+                    {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {formatLargeNumber(isInverted ? balanceA : balanceB)}
+                  </span>
+                  {/* Fixed 50% Button */}
                   <button
-                    onClick={() => setBottomDeposit("0")}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
-                  >
-                    Max
-                  </button>
-                  <button
-                    onClick={() => setBottomDeposit("0")}
+                    onClick={() => handleSetPercentage(0.5, false)}
                     className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
                   >
                     50%
+                  </button>
+                  {/* Fixed Max Button */}
+                  <button
+                    onClick={() => handleSetPercentage(1, false)}
+                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                  >
+                    Max
                   </button>
                 </div>
               </div>
@@ -1069,28 +1287,36 @@ function PositionPageInner() {
                 type="number"
                 placeholder="0"
                 value={bottomDeposit}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (Number(val) < 0) return;
                   isInverted
-                    ? handleDepositAChange(e.target.value)
-                    : handleDepositBChange(e.target.value)
-                }
-                className="bg-transparent text-2xl font-bold text-white outline-none w-full text-right"
+                    ? handleDepositAChange(val)
+                    : handleDepositBChange(val);
+                }}
+                className={`bg-transparent font-bold text-white outline-none w-full text-right ${String(bottomDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
               />
               <p className="text-xs text-white/30 text-right mt-1">
-                ~${(parseFloat(bottomDeposit) || 0).toFixed(2)}
+                ~${formatLargeNumber(isInverted ? (parseFloat(bottomDeposit) || 0) * (poolPrice || 1) : (parseFloat(bottomDeposit) || 0))}
               </p>
+            </div>
+
+            {/* Legend */}
+            <div className="absolute right-4 top-10 text-[10px] text-white/50 flex flex-col gap-1">
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-px bg-white/60" />
+                <span>Current Price</span>
+              </div>
+              <span className="text-white/40 ml-5">
+                {priceToggle === "B" ? `1.0 ${tokenA} = ${poolPrice?.toFixed(4) || "—"} ${tokenB}` : `1.0 ${tokenB} = ${(1 / (poolPrice || 1)).toFixed(4)} ${tokenA}`}
+              </span>
             </div>
 
             {/* Total + Ratio */}
             <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex justify-between">
                 <span className="text-sm text-white/60">Total Deposit</span>
-                <span className="text-sm font-bold">
-                  $
-                  {(
-                    (parseFloat(depositA) || 0) + (parseFloat(depositB) || 0)
-                  ).toFixed(2)}
-                </span>
+                <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-white/60">Deposit Ratio</span>
@@ -1138,13 +1364,12 @@ function PositionPageInner() {
             <button
               disabled={loading || (!depositA && !depositB) || !poolId}
               onClick={handleAddLiquidity}
-              className={`w-full font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 ${
-                loading
-                  ? "bg-[var(--neon-teal)]/50 text-black/70 cursor-wait"
-                  : (depositA || depositB) && poolId
-                    ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
-                    : "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]/50 cursor-not-allowed"
-              }`}
+              className={`w-full font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 ${loading
+                ? "bg-[var(--neon-teal)]/50 text-black/70 cursor-wait"
+                : (depositA || depositB) && poolId
+                  ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
+                  : "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]/50 cursor-not-allowed"
+                }`}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               {loading
