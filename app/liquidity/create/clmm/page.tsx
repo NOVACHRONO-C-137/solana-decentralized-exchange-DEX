@@ -8,11 +8,11 @@ import { useState } from "react";
 import { ChevronLeft, Check, ChevronDown, Minus, Plus, Pencil, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { Raydium, TxVersion, DEVNET_PROGRAM_ID, TickUtils, SqrtPriceMath, ApiV3Token } from "@raydium-io/raydium-sdk-v2"
+import { Raydium, TxVersion, DEVNET_PROGRAM_ID, TickUtils, ApiV3Token } from "@raydium-io/raydium-sdk-v2"
 import Decimal from "decimal.js";
 import BN from "bn.js";
 import { formatLargeNumber } from "@/lib/utils";
-import { TokenSelectorModal, TokenInfo, DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal"
+import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import { PublicKey } from "@solana/web3.js"
 
@@ -65,7 +65,7 @@ const FEE_TIERS = [
 // ─────────────────────────────────────────────────────────
 export default function CreatePoolPage() {
     const router = useRouter();
-    const { publicKey, signAllTransactions, signTransaction, sendTransaction, connected } = useWallet();
+    const { publicKey, sendTransaction, connected } = useWallet();
     const { connection } = useConnection();
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
     const balancesMap = new Map<string, number>();
@@ -179,6 +179,7 @@ export default function CreatePoolPage() {
                     if ('serialize' in tx && 'feePayer' in tx) {
                         // Legacy Transaction — send via wallet adapter
                         console.log("📋 TX", i, "signatures BEFORE wallet sign:",
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             (tx as any).signatures?.map((s: any) => ({
                                 pubkey: s.publicKey.toString(),
                                 hasSig: s.signature !== null,
@@ -208,6 +209,7 @@ export default function CreatePoolPage() {
             const json = await configRes.json()
             console.log("devnet configs:", JSON.stringify(json, null, 2))
             const configs = json.data
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const matchedConfig = configs.find((c: any) => c.tradeFeeRate === selectedFee.bps)
             if (!matchedConfig) throw new Error(`No devnet CLMM config found for fee tier ${selectedFee.label}. Try 0.04%.`)
 
@@ -257,6 +259,7 @@ export default function CreatePoolPage() {
             let createTxId = "";
             try {
                 await createPoolExecute({ sendAndConfirm: true });
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
                 if (e?.message === "__TX_SENT_MANUALLY__") {
                     createTxId = lastManualTxId;
@@ -292,10 +295,11 @@ export default function CreatePoolPage() {
                 createdAt: new Date().toISOString(),
             };
             const stored = localStorage.getItem("aeroCustomPools");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let customPools: any[] = [];
             try {
                 if (stored) customPools = JSON.parse(stored);
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
             customPools.push(newPool);
             localStorage.setItem("aeroCustomPools", JSON.stringify(customPools));
 
@@ -334,11 +338,13 @@ export default function CreatePoolPage() {
                         tickUpper = Math.floor(MAX_TICK / tickSpacing) * tickSpacing;
                     } else {
                         const { tick: tl } = TickUtils.getPriceAndTick({
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             poolInfo: clmmPoolInfo as any,
                             price: new Decimal(minPrice),
                             baseIn: true,
                         });
                         const { tick: tu } = TickUtils.getPriceAndTick({
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             poolInfo: clmmPoolInfo as any,
                             price: new Decimal(maxPrice),
                             baseIn: true,
@@ -358,7 +364,9 @@ export default function CreatePoolPage() {
                     const poolKeys = await raydium.clmm.getClmmPoolKeys(poolIdStr);
 
                     const { execute: openPositionExecute } = await raydium.clmm.openPositionFromBase({
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         poolInfo: clmmPoolInfo as any,   // ← real on-chain state
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         poolKeys: poolKeys as any,        // ← real pool keys
                         ownerInfo: { useSOLBalance: true },
                         tickLower,
@@ -371,6 +379,7 @@ export default function CreatePoolPage() {
 
                     try {
                         await openPositionExecute({ sendAndConfirm: true });
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
                         if (e?.message === "__TX_SENT_MANUALLY__") {
                             console.log("✅ Position opened (manual send):", lastManualTxId);
@@ -380,6 +389,7 @@ export default function CreatePoolPage() {
                         }
                     }
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } catch (posErr: any) {
                     console.warn("⚠️ Pool created but adding liquidity failed:", posErr?.message);
                     setTxSig(createTxId);
@@ -389,6 +399,7 @@ export default function CreatePoolPage() {
 
             setDepositA("");
             setDepositB("");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error(err);
             setTxError(err?.message || "Pool creation failed. Check console for details.");
@@ -655,7 +666,7 @@ export default function CreatePoolPage() {
                 {[
                     { token: baseToken, val: depositA, setter: setDepositA },
                     { token: quoteToken, val: depositB, setter: setDepositB },
-                ].map(({ token, val, setter }, idx) => (
+                ].map(({ token, val }, idx) => (
                     <div key={idx}>
                         {idx === 1 && (
                             <div className="flex justify-center my-1">

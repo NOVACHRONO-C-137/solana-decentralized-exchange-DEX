@@ -77,7 +77,7 @@ export default function LegacyPoolPage() {
             if (b.gt(0) && p.gt(0)) {
                 setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
             }
-        } catch (e) { }
+        } catch { }
     };
 
     const handleQuoteChange = (val: string) => {
@@ -89,7 +89,7 @@ export default function LegacyPoolPage() {
             if (q.gt(0) && b.gt(0)) {
                 setInitialPrice(q.div(b).toDecimalPlaces(12).toString());
             }
-        } catch (e) { }
+        } catch { }
     };
 
     const handlePriceChange = (val: string) => {
@@ -101,7 +101,7 @@ export default function LegacyPoolPage() {
             if (p.gt(0) && b.gt(0)) {
                 setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
             }
-        } catch (e) { }
+        } catch { }
     };
 
     const handleSetPercentage = (pct: number, isBase: boolean) => {

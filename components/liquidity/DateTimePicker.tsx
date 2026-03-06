@@ -4,9 +4,11 @@ import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 interface DateTimePickerProps {
     value: Date;
     onChange: (date: Date) => void;
+    inline?: boolean;
+    hideTime?: boolean;
 }
 
-export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [viewDate, setViewDate] = useState(value);
 
@@ -48,17 +50,21 @@ export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
     };
 
     const validateAndSetDate = (dateToValidate: Date) => {
-        const now = new Date();
-        // If the selected time is in the past, automatically snap it to "now + 1 minute"
-        if (dateToValidate < now) {
-            const snappedDate = new Date(now.getTime() + 60000); // add 1 minute
-            onChange(snappedDate);
-            setHours(snappedDate.getUTCHours());
-            setMinutes(snappedDate.getUTCMinutes());
-        } else {
+        if (inline) {
             onChange(dateToValidate);
+        } else {
+            const now = new Date();
+            // If the selected time is in the past, automatically snap it to "now + 1 minute"
+            if (dateToValidate < now) {
+                const snappedDate = new Date(now.getTime() + 60000); // add 1 minute
+                onChange(snappedDate);
+                setHours(snappedDate.getUTCHours());
+                setMinutes(snappedDate.getUTCMinutes());
+            } else {
+                onChange(dateToValidate);
+            }
+            setIsOpen(false);
         }
-        setIsOpen(false);
     };
 
     const handleSelectDay = (day: number) => {
@@ -125,6 +131,115 @@ export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
     const currentUTCMonth = now.getUTCMonth();
     const isPrevDisabled = viewDate.getUTCFullYear() < currentUTCYear || (viewDate.getUTCFullYear() === currentUTCYear && viewDate.getUTCMonth() <= currentUTCMonth);
 
+    const renderCalendarContent = () => (
+        <div className={`p-5 bg-[#0f1421] rounded-2xl ${!inline ? 'shadow-2xl border border-white/5 absolute bottom-full left-0 mb-2 z-50 w-80' : 'w-full'}`}>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-5 px-1">
+                <button
+                    onClick={handlePrevMonth}
+                    disabled={isPrevDisabled}
+                    className={`p-1 transition-colors outline-none ${isPrevDisabled
+                        ? "opacity-30 cursor-not-allowed text-white/60"
+                        : "text-white/60 hover:text-white cursor-pointer"
+                        }`}
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="text-white font-bold text-sm tracking-wide">
+                    {monthNames[viewDate.getUTCMonth()]} {viewDate.getUTCFullYear()}
+                </div>
+                <button onClick={handleNextMonth} className="p-1 text-white/60 hover:text-white transition-colors cursor-pointer outline-none">
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Weekdays */}
+            <div className="grid grid-cols-7 gap-1 mb-3">
+                {weekDays.map(day => (
+                    <div key={day} className="w-8 flex justify-center text-[10px] font-bold text-white/60">
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Days */}
+            <div className="grid grid-cols-7 gap-1 gap-y-2 mb-4">
+                {renderCalendar()}
+            </div>
+
+            {/* Time & Confirm */}
+            {!hideTime && (
+                <div className="flex items-center justify-between mt-2 pt-2">
+                    <div className="flex items-center gap-4 text-white font-medium pl-1" ref={timeSelectorRef}>
+                        <div className="relative">
+                            <div
+                                className="flex items-center gap-2 cursor-pointer group"
+                                onClick={() => setOpenTimeSelector(openTimeSelector === "hours" ? null : "hours")}
+                            >
+                                <span className="text-sm min-w-[1.2rem] text-center">{hours}</span>
+                                <ChevronDown className={`w-3.5 h-3.5 text-white/40 group-hover:text-white/60 transition-transform ${openTimeSelector === "hours" ? "rotate-180" : ""}`} />
+                            </div>
+                            {openTimeSelector === "hours" && (
+                                <div className="absolute bottom-full left-[-8px] mb-4 w-14 max-h-[160px] bg-[#0a0d14] rounded-lg border border-white/10 shadow-xl z-50 py-1 flex flex-col">
+                                    <style>{`
+                                        .time-scroll::-webkit-scrollbar { width: 2px; }
+                                        .time-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+                                    `}</style>
+                                    <div className="time-scroll h-full w-full overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                                        {Array.from({ length: 24 }, (_, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => { setHours(i); setOpenTimeSelector(null); }}
+                                                className={`px-2 py-1.5 text-[13px] text-center cursor-pointer transition-colors ${hours === i ? "text-[var(--neon-teal)] bg-white/10" : "text-white/60 hover:text-white hover:bg-white/5"}`}
+                                            >
+                                                {String(i).padStart(2, '0')}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <div
+                                className="flex items-center gap-2 cursor-pointer group"
+                                onClick={() => setOpenTimeSelector(openTimeSelector === "minutes" ? null : "minutes")}
+                            >
+                                <span className="text-sm min-w-[1.2rem] text-center">{String(minutes).padStart(2, '0')}</span>
+                                <ChevronDown className={`w-3.5 h-3.5 text-white/40 group-hover:text-white/60 transition-transform ${openTimeSelector === "minutes" ? "rotate-180" : ""}`} />
+                            </div>
+                            {openTimeSelector === "minutes" && (
+                                <div className="absolute bottom-full left-[-8px] mb-4 w-14 max-h-[160px] bg-[#0a0d14] rounded-lg border border-white/10 shadow-xl z-50 py-1 flex flex-col">
+                                    <div className="time-scroll h-full w-full overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                                        {Array.from({ length: 60 }, (_, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => { setMinutes(i); setOpenTimeSelector(null); }}
+                                                className={`px-2 py-1.5 text-[13px] text-center cursor-pointer transition-colors ${minutes === i ? "text-[var(--neon-teal)] bg-white/10" : "text-white/60 hover:text-white hover:bg-white/5"}`}
+                                            >
+                                                {String(i).padStart(2, '0')}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleConfirm}
+                        className="px-5 py-1.5 rounded-xl border border-[var(--neon-teal)] text-[var(--neon-teal)] text-sm font-bold hover:bg-[var(--neon-teal)]/10 transition-colors cursor-pointer"
+                    >
+                        Confirm
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    if (inline) {
+        return <div className="w-full relative">{renderCalendarContent()}</div>;
+    }
+
     return (
         <div className="relative w-full" ref={popoverRef}>
             <div
@@ -135,108 +250,7 @@ export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
                 <span className="text-[var(--neon-teal)] font-medium text-base">{formatTime(value)} (UTC)</span>
             </div>
 
-            {isOpen && (
-                <div className="absolute bottom-full left-0 mb-2 p-5 bg-[#0f1421] rounded-2xl shadow-2xl border border-white/5 z-50 w-80">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-5 px-1">
-                        <button
-                            onClick={handlePrevMonth}
-                            disabled={isPrevDisabled}
-                            className={`p-1 transition-colors outline-none ${isPrevDisabled
-                                ? "opacity-30 cursor-not-allowed text-white/60"
-                                : "text-white/60 hover:text-white cursor-pointer"
-                                }`}
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div className="text-white font-bold text-sm tracking-wide">
-                            {monthNames[viewDate.getUTCMonth()]} {viewDate.getUTCFullYear()}
-                        </div>
-                        <button onClick={handleNextMonth} className="p-1 text-white/60 hover:text-white transition-colors cursor-pointer outline-none">
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    {/* Weekdays */}
-                    <div className="grid grid-cols-7 gap-1 mb-3">
-                        {weekDays.map(day => (
-                            <div key={day} className="w-8 flex justify-center text-[10px] font-bold text-white/60">
-                                {day}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Days */}
-                    <div className="grid grid-cols-7 gap-1 gap-y-2 mb-4">
-                        {renderCalendar()}
-                    </div>
-
-                    {/* Time & Confirm */}
-                    <div className="flex items-center justify-between mt-2 pt-2">
-                        <div className="flex items-center gap-4 text-white font-medium pl-1" ref={timeSelectorRef}>
-                            <div className="relative">
-                                <div
-                                    className="flex items-center gap-2 cursor-pointer group"
-                                    onClick={() => setOpenTimeSelector(openTimeSelector === "hours" ? null : "hours")}
-                                >
-                                    <span className="text-sm min-w-[1.2rem] text-center">{hours}</span>
-                                    <ChevronDown className={`w-3.5 h-3.5 text-white/40 group-hover:text-white/60 transition-transform ${openTimeSelector === "hours" ? "rotate-180" : ""}`} />
-                                </div>
-                                {openTimeSelector === "hours" && (
-                                    <div className="absolute bottom-full left-[-8px] mb-4 w-14 max-h-[160px] bg-[#0a0d14] rounded-lg border border-white/10 shadow-xl z-50 py-1 flex flex-col">
-                                        <style>{`
-                                            .time-scroll::-webkit-scrollbar { width: 2px; }
-                                            .time-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-                                        `}</style>
-                                        <div className="time-scroll h-full w-full overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-                                            {Array.from({ length: 24 }, (_, i) => (
-                                                <div
-                                                    key={i}
-                                                    onClick={() => { setHours(i); setOpenTimeSelector(null); }}
-                                                    className={`px-2 py-1.5 text-[13px] text-center cursor-pointer transition-colors ${hours === i ? "text-[var(--neon-teal)] bg-white/10" : "text-white/60 hover:text-white hover:bg-white/5"}`}
-                                                >
-                                                    {String(i).padStart(2, '0')}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="relative">
-                                <div
-                                    className="flex items-center gap-2 cursor-pointer group"
-                                    onClick={() => setOpenTimeSelector(openTimeSelector === "minutes" ? null : "minutes")}
-                                >
-                                    <span className="text-sm min-w-[1.2rem] text-center">{String(minutes).padStart(2, '0')}</span>
-                                    <ChevronDown className={`w-3.5 h-3.5 text-white/40 group-hover:text-white/60 transition-transform ${openTimeSelector === "minutes" ? "rotate-180" : ""}`} />
-                                </div>
-                                {openTimeSelector === "minutes" && (
-                                    <div className="absolute bottom-full left-[-8px] mb-4 w-14 max-h-[160px] bg-[#0a0d14] rounded-lg border border-white/10 shadow-xl z-50 py-1 flex flex-col">
-                                        <div className="time-scroll h-full w-full overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-                                            {Array.from({ length: 60 }, (_, i) => (
-                                                <div
-                                                    key={i}
-                                                    onClick={() => { setMinutes(i); setOpenTimeSelector(null); }}
-                                                    className={`px-2 py-1.5 text-[13px] text-center cursor-pointer transition-colors ${minutes === i ? "text-[var(--neon-teal)] bg-white/10" : "text-white/60 hover:text-white hover:bg-white/5"}`}
-                                                >
-                                                    {String(i).padStart(2, '0')}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={handleConfirm}
-                            className="px-5 py-1.5 rounded-xl border border-[var(--neon-teal)] text-[var(--neon-teal)] text-sm font-bold hover:bg-[var(--neon-teal)]/10 transition-colors cursor-pointer"
-                        >
-                            Confirm
-                        </button>
-                    </div>
-                </div>
-            )}
+            {isOpen && renderCalendarContent()}
         </div>
     );
 }

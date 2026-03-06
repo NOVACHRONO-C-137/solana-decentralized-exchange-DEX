@@ -58,7 +58,8 @@ export async function GET() {
       cluster: "devnet",
       disableFeatureCheck: true,
       disableLoadToken: true,
-      signAllTransactions: async (txs: unknown[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      signAllTransactions: async (txs: any[]) => {
         return txs.map((tx) => {
           if (tx instanceof Transaction) {
             tx.sign(wallet);
@@ -140,7 +141,8 @@ export async function GET() {
           observationId: null,
           ownerInfo: { useSOLBalance: true },
           txVersion: TxVersion.LEGACY,
-        } as unknown);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
 
         await execute({ sendAndConfirm: true });
 
@@ -151,17 +153,19 @@ export async function GET() {
           direction: `${symIn}→${symOut}`,
           amount: amountFloat.toFixed(3),
         });
-      } catch (poolErr: unknown) {
-        console.error(`❌ Pool ${poolId.slice(0, 8)} failed:`, poolErr.message);
-        results.push({ poolId, status: "failed", error: poolErr.message });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (poolErr: any) {
+        console.error(`❌ Pool ${poolId.slice(0, 8)} failed:`, poolErr?.message || poolErr);
+        results.push({ poolId, status: "failed", error: poolErr?.message || String(poolErr) });
       }
     }
 
     return NextResponse.json({ success: true, solBalance, results });
-  } catch (error: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     console.error("❌ Bot error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error?.message || String(error) },
       { status: 500 },
     );
   }

@@ -9,6 +9,10 @@ import { Raydium, TxVersion, DEVNET_PROGRAM_ID, ApiV3PoolInfoConcentratedItem } 
 import BN from "bn.js";
 import Decimal from "decimal.js";
 import Image from "next/image";
+import { TokenInfo, TokenSelectorModal } from "@/components/liquidity/TokenSelectorModal";
+import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
+import { useTokenBalances } from "@/hooks/useTokenBalances";
+import { formatLargeNumber } from "@/lib/utils";
 
 // ── Gradient color map for tokens without logos ──────────
 const TOKEN_GRADIENTS: Record<string, string> = {
@@ -112,19 +116,42 @@ export default function CreateFarmPage() {
     const [poolKind, setPoolKind] = useState<"clmm" | "standard">("clmm");
     const [selectedPoolId, setSelectedPoolId] = useState<string>("");
 
-    // Step 2 state
-    const [rewardToken, setRewardToken] = useState<string>("");
-    const [rewardAmount, setRewardAmount] = useState<string>("");
-    const [farmDays, setFarmDays] = useState<string>("7");
+    // Step 2 state (Multiple Rewards)
+    type RewardConfig = {
+        id: string;
+        token: TokenInfo | null;
+        amount: string;
+        startDate: Date;
+        durationDays: string;
+        isDatePickerOpen: boolean;
+        hasSelectedPeriod: boolean;
+    };
+
+    const getInitialRewardDate = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() + 5); // Default 5 mins in future
+        return d;
+    };
+
+    const [rewards, setRewards] = useState<RewardConfig[]>([
+        { id: "1", token: null, amount: "", startDate: getInitialRewardDate(), durationDays: "7", isDatePickerOpen: false, hasSelectedPeriod: false }
+    ]);
+
+    const [isTokenSelectorOpen, setIsTokenSelectorOpen] = useState(false);
+    const [editingTokenIndex, setEditingTokenIndex] = useState<number | null>(null);
 
     // Stepper & Transaction states
     const [isCreating, setIsCreating] = useState(false);
     const [txSig, setTxSig] = useState<string | null>(null);
     const [txError, setTxError] = useState<string | null>(null);
 
-    const [customPools, setCustomPools] = useState<any[]>([]);
+    const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
+    const balancesMap = new Map<string, number>();
+    tokenBalances.forEach((tb, mint) => balancesMap.set(mint, tb.balance));
 
-    const [isLoadingPools, setIsLoadingPools] = useState(true);
+    // Custom data filtering hooks
+    const [customPools, setCustomPools] = useState<any[]>([]);
+    const [isLoadingPools, setIsLoadingPools] = useState<boolean>(true);
 
     // Standard pool dynamic lookup states
     const [standardPoolData, setStandardPoolData] = useState<any | null>(null);
@@ -506,76 +533,241 @@ export default function CreateFarmPage() {
     );
 
     // Step 2 — Add Rewards
+    const addReward = () => {
+        if (rewards.length >= 3) return;
+        setRewards([...rewards, {
+            id: Date.now().toString(),
+            token: null,
+            amount: "",
+            startDate: getInitialRewardDate(),
+            durationDays: "7",
+            isDatePickerOpen: false,
+            hasSelectedPeriod: false
+        }]);
+    };
+
+    const removeReward = (id: string) => {
+        setRewards(rewards.filter(r => r.id !== id));
+    };
+
+    const updateReward = (id: string, field: keyof RewardConfig, value: any) => {
+        setRewards(rewards.map(r => r.id === id ? { ...r, [field]: value } : r));
+    };
+
+    const openTokenSelector = (index: number) => {
+        setEditingTokenIndex(index);
+        setIsTokenSelectorOpen(true);
+    };
+
+    const handleTokenSelect = (token: TokenInfo) => {
+        if (editingTokenIndex !== null && editingTokenIndex >= 0 && editingTokenIndex < rewards.length) {
+            updateReward(rewards[editingTokenIndex].id, "token", token);
+        }
+        setIsTokenSelectorOpen(false);
+        setEditingTokenIndex(null);
+    };
+
+    const isStep2Valid = rewards.every(r => r.token !== null && r.amount !== "" && parseFloat(r.amount) > 0 && parseInt(r.durationDays) > 0);
+
     const renderStep2 = () => (
         <div className="w-full md:w-2/3">
-            <h2 className="text-xl font-bold mb-6">Next, add farm rewards</h2>
-
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-5">
-                <div>
-                    <p className="text-sm font-bold mb-2">Reward Token</p>
-                    <input
-                        type="text"
-                        placeholder="Enter token symbol or address"
-                        value={rewardToken}
-                        onChange={(e) => setRewardToken(e.target.value)}
-                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-white/20 placeholder:text-white/30"
-                    />
-                </div>
-
-                <div>
-                    <p className="text-sm font-bold mb-2">Total Reward Amount</p>
-                    <input
-                        type="number"
-                        placeholder="0"
-                        value={rewardAmount}
-                        onChange={(e) => setRewardAmount(e.target.value)}
-                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-white/20 placeholder:text-white/30"
-                    />
-                </div>
-
-                <div>
-                    <p className="text-sm font-bold mb-2">Farm Duration (days)</p>
-                    <div className="flex gap-2">
-                        {["7", "14", "30", "60"].map((d) => (
-                            <button
-                                key={d}
-                                onClick={() => setFarmDays(d)}
-                                className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${farmDays === d
-                                    ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                    : "border-white/10 text-white/40 hover:border-white/20"}`}
-                            >
-                                {d}d
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {rewardToken && rewardAmount && (
-                    <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/50">
-                        Daily rewards: <span className="text-white font-medium">
-                            {(parseFloat(rewardAmount) / parseInt(farmDays)).toFixed(4)} {rewardToken}/day
-                        </span>
-                    </div>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Next, enter rewards for the farm</h2>
+                {rewards.length < 3 && (
+                    <button
+                        onClick={addReward}
+                        className="text-[var(--neon-teal)] text-sm font-medium hover:underline flex items-center gap-1"
+                    >
+                        <span className="text-lg leading-none">+</span> Add another
+                    </button>
                 )}
+            </div>
 
-                <div className="flex gap-3">
+            <div className="flex flex-col gap-6">
+                {rewards.map((reward, i) => {
+                    const durationInt = parseInt(reward.durationDays) || 0;
+                    const endDate = new Date(reward.startDate.getTime() + durationInt * 24 * 60 * 60 * 1000);
+                    const weeklyEstimate = (parseFloat(reward.amount || "0") / durationInt) * 7;
+
+                    return (
+                        <div key={reward.id} className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-5 relative">
+                            <div className="flex justify-between items-center mb-2">
+                                <div>
+                                    <h3 className="text-base font-bold">Reward Token {i + 1}</h3>
+                                    {i === 0 && <p className="text-sm text-white/50 mt-1">You can add up to 3 reward tokens.</p>}
+                                </div>
+                                {rewards.length > 1 && (
+                                    <button onClick={() => removeReward(reward.id)} className="text-white/40 hover:text-red-400 transition-colors p-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Token Select & Amount */}
+                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center">
+                                <button
+                                    onClick={() => openTokenSelector(i)}
+                                    className="flex items-center gap-2 bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 rounded-xl px-3 py-2 transition-colors shrink-0"
+                                >
+                                    {reward.token ? (
+                                        <>
+                                            <TokenIcon logo={reward.token.logoURI} symbol={reward.token.symbol} size={24} />
+                                            <span className="font-bold text-lg">{reward.token.symbol}</span>
+                                        </>
+                                    ) : (
+                                        <span className="font-bold text-lg text-white/50 px-2">Select Token</span>
+                                    )}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 ml-1"><polyline points="6 9 12 15 18 9" /></svg>
+                                </button>
+
+                                <div className="flex flex-col items-end w-full ml-4">
+                                    <div className="flex items-center justify-end gap-2 w-full mb-1">
+                                        <div className="flex items-center gap-1 text-white/40 text-xs">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></svg>
+                                            {reward.token ? formatLargeNumber(balancesMap.get(reward.token.mint) || 0) : 0}
+                                        </div>
+                                        {reward.token && (
+                                            <>
+                                                <button onClick={() => updateReward(reward.id, "amount", String(balancesMap.get(reward.token!.mint) || 0))} className="text-xs bg-white/5 hover:bg-white/10 px-2 rounded text-white/60 transition-all">Max</button>
+                                                <button onClick={() => updateReward(reward.id, "amount", String((balancesMap.get(reward.token!.mint) || 0) * 0.5))} className="text-xs bg-white/5 hover:bg-white/10 px-2 rounded text-white/60 transition-all">50%</button>
+                                            </>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={reward.amount}
+                                        onChange={(e) => updateReward(reward.id, "amount", e.target.value)}
+                                        className="bg-transparent text-right text-2xl font-bold text-white outline-none w-full placeholder:text-white/20"
+                                    />
+                                    <span className="text-xs text-white/40 mt-1">~$0</span>
+                                </div>
+                            </div>
+
+                            {/* Duration & Dates */}
+                            <div className={`bg-black/20 border border-white/10 rounded-xl p-4 relative ${!reward.hasSelectedPeriod ? 'flex flex-col gap-2' : 'flex justify-between items-center'}`}>
+                                {!reward.hasSelectedPeriod ? (
+                                    <>
+                                        <div className="flex justify-between text-xs text-white/40 mb-1">
+                                            <span>Farming starts</span>
+                                            <span>Farming ends</span>
+                                        </div>
+                                        <button
+                                            onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
+                                            className="w-full bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 text-white font-bold py-3 rounded-xl transition-all"
+                                        >
+                                            Select
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-white/40">Farming starts</span>
+                                            <button
+                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", !reward.isDatePickerOpen)}
+                                                className="text-base font-bold my-1 hover:underline text-left flex items-center gap-2"
+                                            >
+                                                {reward.startDate.getUTCFullYear()}/{reward.startDate.getUTCMonth() + 1}/{reward.startDate.getUTCDate()}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40"><path d="m6 9 6 6 6-6" /></svg>
+                                            </button>
+                                            <span className="text-xs text-[var(--neon-teal)]">
+                                                {String(reward.startDate.getUTCHours()).padStart(2, '0')}:{String(reward.startDate.getUTCMinutes()).padStart(2, '0')} (UTC)
+                                            </span>
+                                        </div>
+
+                                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+                                            <div className="h-[1px] w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+                                            <div
+                                                className="bg-[#1a1b2e] border border-white/10 rounded-lg flex items-center px-1 cursor-pointer hover:border-white/20 transition-all"
+                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
+                                            >
+                                                <input
+                                                    type="number"
+                                                    value={reward.durationDays}
+                                                    onChange={(e) => updateReward(reward.id, "durationDays", e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="bg-transparent w-8 text-center text-sm font-medium outline-none py-1.5"
+                                                />
+                                                <span className="text-sm font-medium pr-2 text-white/80">Days</span>
+                                            </div>
+                                            <div className="h-[1px] w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+                                        </div>
+
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-xs text-white/40">Farming ends</span>
+                                            <span className="text-base font-bold my-1 text-white/80">
+                                                {endDate.getUTCFullYear()}/{endDate.getUTCMonth() + 1}/{endDate.getUTCDate()}
+                                            </span>
+                                            <span className="text-xs text-white/50">
+                                                {String(endDate.getUTCHours()).padStart(2, '0')}:{String(endDate.getUTCMinutes()).padStart(2, '0')} (UTC)
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Date Picker Overlay for this block */}
+                                {reward.isDatePickerOpen && (
+                                    <div className="absolute top-16 left-4 z-50 w-[320px] shadow-2xl">
+                                        <div className="bg-[#0f1421] border border-white/10 rounded-2xl p-4 relative">
+                                            <button
+                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", false)}
+                                                className="absolute top-4 right-4 text-white/50 hover:text-white"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                            </button>
+                                            <p className="text-sm font-bold mb-4">Start on</p>
+                                            <DateTimePicker
+                                                value={reward.startDate}
+                                                onChange={(d) => {
+                                                    updateReward(reward.id, "startDate", d);
+                                                    updateReward(reward.id, "hasSelectedPeriod", true);
+                                                    updateReward(reward.id, "isDatePickerOpen", false);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Estimates */}
+                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center text-sm">
+                                <span className="text-white/40 text-xs">Estimated rewards / week</span>
+                                <span className="font-bold text-lg text-white/90">
+                                    {isFinite(weeklyEstimate) && durationInt > 0 ? weeklyEstimate.toFixed(2) : "0"} {reward.token?.symbol || ""}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+
+
+                <div className="flex gap-3 pt-2">
                     <button
                         onClick={() => setCurrentStep(1)}
-                        className="flex-1 border border-white/10 text-white/60 font-bold py-4 rounded-xl hover:border-white/20 hover:text-white transition-all"
+                        className="w-1/3 border border-white/10 text-white/60 font-bold py-4 rounded-xl hover:border-white/20 hover:text-white transition-all"
                     >
                         Back
                     </button>
                     <button
                         onClick={() => setCurrentStep(3)}
-                        disabled={!rewardToken || !rewardAmount}
-                        className={`flex-1 font-bold py-4 rounded-xl transition-all ${rewardToken && rewardAmount
-                            ? "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
-                            : "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]/50 cursor-not-allowed"}`}
+                        disabled={!isStep2Valid}
+                        className={`w-2/3 font-bold py-4 rounded-xl transition-all ${isStep2Valid
+                            ? "bg-[var(--neon-teal)] text-[#0c0d14] hover:opacity-90 shadow-[0_0_15px_rgba(45,212,191,0.2)]"
+                            : "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]/30 cursor-not-allowed"}`}
                     >
-                        Continue
+                        Next Step
                     </button>
                 </div>
             </div>
+
+            <TokenSelectorModal
+                isOpen={isTokenSelectorOpen}
+                onClose={() => setIsTokenSelectorOpen(false)}
+                onSelectToken={handleTokenSelect}
+                balances={balancesMap}
+                balancesLoading={balancesLoading}
+                discoveredTokens={discoveredTokens}
+            />
         </div>
     );
 
@@ -626,41 +818,50 @@ export default function CreateFarmPage() {
 
             const poolInfo = poolInfoRaw[0];
 
-            const durationSeconds = parseInt(farmDays) * 24 * 60 * 60;
-            const rewardAmountDecimal = new Decimal(rewardAmount);
-            const perSecond = rewardAmountDecimal.div(durationSeconds).toFixed(6);
+            // Submit multiple initReward instructions sequentially.
+            // (Note: To send them in a single TX block requires manual instruction building via raydium.clmm.makeInitRewardInstruction, 
+            // but this execution block submits them sequentially through the wallet adapter for simplicity in this demo)
 
-            const perSecondBN = new BN(new Decimal(perSecond).mul(10 ** 6).toString());
-            const openTime = Math.floor(Date.now() / 1000);
-            const endTime = openTime + durationSeconds;
+            for (let i = 0; i < rewards.length; i++) {
+                const r = rewards[i];
+                if (!r.token) continue;
 
-            const { execute } = await raydium.clmm.initReward({
-                poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
-                ownerInfo: {
-                    useSOLBalance: true,
-                },
-                rewardInfo: {
-                    mint: {
-                        chainId: 103, // Devnet
-                        address: rewardToken,
-                        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-                        logoURI: "",
-                        symbol: "",
-                        name: "",
-                        decimals: 6,
-                        tags: [],
-                        extensions: {}
+                const durationSeconds = parseInt(r.durationDays) * 24 * 60 * 60;
+                const rewardAmountDecimal = new Decimal(r.amount);
+                const perSecond = rewardAmountDecimal.div(durationSeconds).toFixed(6);
+
+                const openTime = Math.floor(r.startDate.getTime() / 1000);
+                const endTime = openTime + durationSeconds;
+
+                console.log(`Executing reward ${i + 1} for token ${r.token.mint}`);
+                const { execute } = await raydium.clmm.initReward({
+                    poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
+                    ownerInfo: {
+                        useSOLBalance: true,
                     },
-                    perSecond: new Decimal(perSecond).mul(10 ** 6), // CLMM initReward perSecond takes a Decimal
-                    openTime,
-                    endTime
-                },
-                txVersion: TxVersion.LEGACY
-            });
+                    rewardInfo: {
+                        mint: {
+                            chainId: 103, // Devnet
+                            address: r.token.mint,
+                            programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                            logoURI: r.token.logoURI || "",
+                            symbol: r.token.symbol,
+                            name: r.token.name,
+                            decimals: r.token.decimals,
+                            tags: [],
+                            extensions: {}
+                        },
+                        perSecond: new Decimal(perSecond).mul(10 ** r.token.decimals), // Scale up appropriately
+                        openTime,
+                        endTime
+                    },
+                    txVersion: TxVersion.LEGACY
+                });
 
-            await execute({ sendAndConfirm: true });
+                await execute({ sendAndConfirm: true });
+            }
 
-            setTxSig(manualTxId);
+            setTxSig(manualTxId); // Shows the last one, perfectly fine for UI demo
             setIsCreating(false);
             setTimeout(() => router.push("/liquidity"), 2000);
 
@@ -678,17 +879,30 @@ export default function CreateFarmPage() {
 
             <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
                 <div className="flex flex-col gap-3">
-                    {[
-                        { label: "Pool Type", value: poolKind === "clmm" ? "Concentrated Liquidity (CLMM)" : "Standard AMM" },
-                        { label: "Selected Pool ID", value: selectedPoolId ? `${selectedPoolId.slice(0, 6)}...${selectedPoolId.slice(-4)}` : "—" },
-                        { label: "Reward Token", value: rewardToken },
-                        { label: "Total Rewards", value: `${rewardAmount} ${rewardToken}` },
-                        { label: "Duration", value: `${farmDays} days` },
-                        { label: "Daily Rate", value: `${(parseFloat(rewardAmount) / parseInt(farmDays)).toFixed(4)} ${rewardToken}/day` },
-                    ].map(({ label, value }) => (
-                        <div key={label} className="flex justify-between items-center py-2 border-b border-white/5">
-                            <span className="text-sm text-white/50">{label}</span>
-                            <span className="text-sm font-bold text-white">{value}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-white/5">
+                        <span className="text-sm text-white/50">Pool Type</span>
+                        <span className="text-sm font-bold text-white">{poolKind === "clmm" ? "Concentrated Liquidity (CLMM)" : "Standard AMM"}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-white/5">
+                        <span className="text-sm text-white/50">Selected Pool ID</span>
+                        <span className="text-sm font-bold text-white">{selectedPoolId ? `${selectedPoolId.slice(0, 6)}...${selectedPoolId.slice(-4)}` : "—"}</span>
+                    </div>
+
+                    {rewards.map((r, i) => (
+                        <div key={r.id} className="mt-4 p-4 border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 rounded-xl">
+                            <h4 className="text-[var(--neon-teal)] text-xs font-bold mb-3 uppercase tracking-wider">Reward {i + 1}</h4>
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-xs text-white/50">Token</span>
+                                <span className="text-sm font-bold text-white">{r.token?.symbol}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-xs text-white/50">Amount</span>
+                                <span className="text-sm font-bold text-white">{r.amount} {r.token?.symbol}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-xs text-white/50">Duration</span>
+                                <span className="text-sm font-bold text-white">{r.durationDays} days</span>
+                            </div>
                         </div>
                     ))}
                 </div>
