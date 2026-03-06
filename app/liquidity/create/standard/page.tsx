@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { TokenSelectorModal, TokenInfo, DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
+import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
@@ -35,6 +36,11 @@ export default function StandardPoolPage() {
     const [selectedFee, setSelectedFee] = useState<any>(null); // full config object
 
     const [startTime, setStartTime] = useState<"now" | "custom">("now");
+    const [customStartTime, setCustomStartTime] = useState<Date>(() => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() + 10); // default to 10 mins from now
+        return d;
+    });
 
     // NEW STATE: Loading flow
     const [isCreating, setIsCreating] = useState(false);
@@ -202,11 +208,15 @@ export default function StandardPoolPage() {
                 description: "",
             };
 
-            const startTimeSecs = new BN(startTime === "now" ? 0 : Math.floor(Date.now() / 1000) + 60);
+            const startTimeSecs = new BN(
+                startTime === "now"
+                    ? 0
+                    : Math.floor(customStartTime.getTime() / 1000)
+            );
 
             const { execute: createCpmmPool, extInfo } = await raydium.cpmm.createPool({
                 programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
-                poolFeeAccount: new PublicKey(selectedFee.createPoolFee),
+                poolFeeAccount: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
                 mintA,
                 mintB,
                 mintAAmount: amountA,
@@ -460,9 +470,9 @@ export default function StandardPoolPage() {
                                 </button>
                             </div>
                             {startTime === "custom" && (
-                                <input
-                                    type="datetime-local"
-                                    className="mt-3 w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none text-sm"
+                                <DateTimePicker
+                                    value={customStartTime}
+                                    onChange={(d) => setCustomStartTime(d)}
                                 />
                             )}
                         </div>
