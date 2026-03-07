@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lu
 import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal";
 import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 import BN from "bn.js";
 import Decimal from "decimal.js";
@@ -15,7 +15,7 @@ import { useTokenBalances } from "@/hooks/useTokenBalances";
 
 export default function LegacyPoolPage() {
     const router = useRouter();
-    const { publicKey, sendTransaction, connected } = useWallet();
+    const { publicKey, signAllTransactions, connected } = useWallet();
     const { connection } = useConnection();
 
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
@@ -136,33 +136,13 @@ export default function LegacyPoolPage() {
         setTxSig(null);
 
         try {
-            let marketTxId = "";
-            let poolTxId = "";
-            let manualTxId = "";
-            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(
-                txs: T[]
-            ): Promise<T[]> => {
-                console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
-                for (const tx of txs) {
-                    if ('serialize' in tx && 'feePayer' in tx) {
-                        const sig = await sendTransaction(tx as Transaction, connection);
-                        console.log("✅ TX sent! Sig:", sig);
-                        await connection.confirmTransaction(sig, "confirmed");
-                        manualTxId = sig;
-                    }
-                }
-                // Return empty array instead of throwing — tells SDK "already handled"
-                // This keeps extInfo alive for pool ID extraction after both steps
-                return [] as unknown as T[];
-            };
-
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
                 cluster: "devnet",
                 disableFeatureCheck: true,
                 disableLoadToken: true,
-                signAllTransactions: wrappedSignAllTransactions,
+                signAllTransactions: signAllTransactions as any,
             });
 
             const mintAInfo = {
@@ -184,8 +164,8 @@ export default function LegacyPoolPage() {
                 txVersion: TxVersion.LEGACY,
             });
 
-            await createMarket({ sendAndConfirm: true, sequentially: true });
-            marketTxId = manualTxId;
+            const { txIds: marketTxIds } = await createMarket({ sendAndConfirm: true, sequentially: true });
+            const marketTxId = marketTxIds[0];
             console.log("✅ Market created:", marketTxId);
 
             // 2. Create Pool
@@ -219,9 +199,8 @@ export default function LegacyPoolPage() {
                 feeDestinationId: DEVNET_PROGRAM_ID.FEE_DESTINATION_ID,
             });
 
-            await createPool({ sendAndConfirm: true });
-            poolTxId = manualTxId;
-            setTxSig(poolTxId); // show pool tx in success message
+            const { txId: poolTxId } = await createPool({ sendAndConfirm: true });
+            setTxSig(poolTxId);
 
             const poolIdStr = extInfo.address.ammId.toString();
             console.log("✅ Pool created:", poolTxId, "Pool ID:", poolIdStr);

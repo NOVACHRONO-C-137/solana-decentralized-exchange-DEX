@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Check, Search, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
-import { Raydium, TxVersion, DEVNET_PROGRAM_ID, ApiV3PoolInfoConcentratedItem } from "@raydium-io/raydium-sdk-v2";
+import { Raydium, TxVersion, DEVNET_PROGRAM_ID, ApiV3PoolInfoConcentratedItem, ApiV3PoolInfoStandardItem } from "@raydium-io/raydium-sdk-v2";
 import BN from "bn.js";
 import Decimal from "decimal.js";
 import Image from "next/image";
@@ -803,18 +803,76 @@ export default function CreateFarmPage() {
         setTxSig(null);
 
         try {
-            if (poolKind === "standard") {
-                throw new Error("Standard farm creation is not supported yet. Please use a CLMM pool.");
-            }
-
+            // Initialize Raydium SDK first
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
                 cluster: "devnet",
                 disableFeatureCheck: true,
-                disableLoadToken: false, // Let Raydium fetch user's token accounts so initReward can find the ownerRewardAccount
+                disableLoadToken: false,
                 signAllTransactions,
             });
+
+            if (poolKind === "standard") {
+                // Fetch pool type first
+                const res = await fetch(
+                    `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${selectedPoolId}`
+                );
+                const json = await res.json();
+                const pool = json?.data?.[0];
+
+                if (!pool) {
+                    throw new Error("Pool not found.");
+                }
+
+                // Check program ID to determine if Legacy or CPMM
+                const LEGACY_PROGRAM = DEVNET_PROGRAM_ID.AMM_V4.toBase58();
+                const CPMM_PROGRAM = DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM.toBase58();
+
+                if (pool.programId === CPMM_PROGRAM) {
+                    // CPMM — SDK doesn't support this yet
+                    throw new Error(
+                        "CPMM farm creation is not yet available in the public SDK. " +
+                        "Raydium handles CPMM farms through their own backend. " +
+                        "Please use a CLMM pool to create a permissionless farm."
+                    );
+                }
+
+                if (pool.programId === LEGACY_PROGRAM) {
+                    // Legacy AMM v4 — use farm.create
+                    const poolInfoRaw = await raydium.api.fetchPoolById({ ids: selectedPoolId });
+                    if (!poolInfoRaw || poolInfoRaw.length === 0) {
+                        throw new Error("Pool not found.");
+                    }
+
+                    const durationSeconds = parseInt(rewards[0].durationDays) * 24 * 60 * 60;
+                    const rewardAmountRaw = new Decimal(rewards[0].amount)
+                        .mul(10 ** (rewards[0].token?.decimals || 9));
+                    const perSecond = rewardAmountRaw.div(durationSeconds).floor();
+                    const openTime = Math.floor(rewards[0].startDate.getTime() / 1000);
+                    const endTime = openTime + durationSeconds;
+
+                    const { execute } = await raydium.farm.create({
+                        poolInfo: poolInfoRaw[0] as ApiV3PoolInfoStandardItem,
+                        rewardInfos: [{
+                            mint: new PublicKey(rewards[0].token!.mint),
+                            perSecond: perSecond.toString(),
+                            openTime,
+                            endTime,
+                            rewardType: "Standard SPL"
+                        }],
+                        txVersion: TxVersion.LEGACY
+                    });
+
+                    const { txId } = await execute({ sendAndConfirm: true });
+                    setTxSig(txId);
+                    setIsCreating(false);
+                    setTimeout(() => router.push("/liquidity"), 2000);
+                    return;
+                }
+
+                throw new Error("Unknown pool type. Cannot create farm.");
+            }
 
             console.log("Fetching pool info for", selectedPoolId);
             const poolInfoRaw = await raydium.api.fetchPoolById({ ids: selectedPoolId });
@@ -824,16 +882,109 @@ export default function CreateFarmPage() {
 
             const poolInfo = poolInfoRaw[0];
 
-            let activeTxSig = "";
-            let rewardsToProcess = [...rewards].filter((r) => r.token);
+            // Get existing rewards from on-chain state (more reliable than API)
+            let existingRewardMints: string[] = [];
+            try {
+                const rpcPoolInfos = await raydium.clmm.getRpcClmmPoolInfos({ poolIds: [selectedPoolId] });
+                const rpcPool = rpcPoolInfos[selectedPoolId];
+                if (rpcPool && rpcPool.rewardInfos) {
+                    existingRewardMints = rpcPool.rewardInfos
+                        .filter((r: any) => r.tokenMint && r.tokenMint.toString() !== "11111111111111111111111111111111")
+                        .map((r: any) => r.tokenMint.toString().toLowerCase());
+                    console.log("On-chain existing rewards:", existingRewardMints);
+                }
+            } catch (rpcErr) {
+                console.log("Failed to get RPC pool info, falling back to API:", rpcErr);
+                // Fallback to API data
+                existingRewardMints = (poolInfo.rewardDefaultInfos || []).map(
+                    (r: any) => r.mint?.address?.toLowerCase()
+                );
+            }
+            console.log("Existing rewards on pool:", existingRewardMints);
 
-            for (let i = 0; i < rewardsToProcess.length; i++) {
-                const r = rewardsToProcess[i];
+            let activeTxSig = "";
+
+            // Filter out rewards that are already on the pool
+            let rewardsToProcess = [...rewards].filter((r) => {
+                if (!r.token) return false;
+                const tokenMint = r.token.mint.toLowerCase();
+                const isDuplicate = existingRewardMints.includes(tokenMint);
+                if (isDuplicate) {
+                    console.log(`Skipping ${r.token.symbol} - already exists on pool`);
+                }
+                return !isDuplicate;
+            });
+
+            console.log(`Processing ${rewardsToProcess.length} new rewards (filtered from ${rewards.length})`);
+
+            if (rewardsToProcess.length === 0) {
+                setTxError("All selected rewards are already added to this pool.");
+                setIsCreating(false);
+                return;
+            }
+
+            // --- THE RAYDIUM "SLOT 2" RULE FIX ---
+            // Raydium Error 6032: Third-party tokens MUST go into the 3rd slot (index 2).
+            // Slots 0 & 1 are reserved for pool's native tokens (mintA or mintB).
+            // Pool: BIET/USDC, so BIET and USDC can use slots 0 & 1, but PLTR must go to slot 2
+            const poolMintA = poolInfo.mintA?.address?.toLowerCase();
+            const poolMintB = poolInfo.mintB?.address?.toLowerCase();
+
+            const isThirdParty = rewardsToProcess.some(r =>
+                r.token &&
+                r.token.mint.toLowerCase() !== poolMintA &&
+                r.token.mint.toLowerCase() !== poolMintB
+            );
+
+            if (isThirdParty) {
+                console.log("Third-party token detected! Forcing SDK to target Slot 2...");
+
+                // Count actual taken slots from on-chain
+                let takenSlots = existingRewardMints.length;
+
+                // Pad the array so SDK skips to Slot 2
+                if (!poolInfo.rewardDefaultInfos) poolInfo.rewardDefaultInfos = [];
+
+                // Ensure we have enough padding to reach slot 2 (index 2)
+                while (poolInfo.rewardDefaultInfos.length < Math.max(2, takenSlots)) {
+                    // Use a minimal padding object - the SDK will use this to determine slot assignment
+                    (poolInfo.rewardDefaultInfos as any[]).push({
+                        mint: { address: "11111111111111111111111111111111" }, // dummy
+                        perSecond: "0",
+                        startTime: "0",
+                        endTime: "0",
+                        isPadding: true
+                    });
+                }
+                console.log("Padded rewardDefaultInfos to length:", poolInfo.rewardDefaultInfos.length);
+            }
+            // ------------------------------------------
+
+            // Build ALL rewards into a single array (batch approach)
+            // This avoids stale pool state issues when sending multiple separate transactions
+            const rewardInfos: {
+                mint: {
+                    chainId: number;
+                    address: string;
+                    programId: string;
+                    logoURI: string;
+                    symbol: string;
+                    name: string;
+                    decimals: number;
+                    tags: string[];
+                    extensions: Record<string, unknown>;
+                };
+                perSecond: Decimal;
+                openTime: number;
+                endTime: number;
+            }[] = [];
+
+            for (const r of rewardsToProcess) {
                 if (!r.token) continue;
 
                 const durationSeconds = parseInt(r.durationDays || "7") * 24 * 60 * 60;
                 const rewardAmountRaw = new Decimal(r.amount || "0").mul(10 ** r.token.decimals);
-                const perSecondRaw = rewardAmountRaw.div(durationSeconds);
+                const perSecondRaw = rewardAmountRaw.div(durationSeconds).floor();
 
                 let openTime = Math.floor(r.startDate.getTime() / 1000);
                 const currentUnix = Math.floor(Date.now() / 1000);
@@ -843,37 +994,57 @@ export default function CreateFarmPage() {
                 }
                 const endTime = openTime + durationSeconds;
 
-                console.log(`Executing reward ${i + 1} for token ${r.token.mint}`);
+                rewardInfos.push({
+                    mint: {
+                        chainId: 103, // Devnet
+                        address: r.token.mint,
+                        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                        logoURI: r.token.logoURI || "",
+                        symbol: r.token.symbol,
+                        name: r.token.name,
+                        decimals: r.token.decimals,
+                        tags: [],
+                        extensions: {}
+                    },
+                    perSecond: perSecondRaw,
+                    openTime,
+                    endTime
+                });
+            }
 
-                // Pass existing rewards so SDK knows slots 0,1 are taken
+            if (rewardInfos.length === 0) {
+                setTxError("No valid rewards to add to the farm.");
+                setIsCreating(false);
+                return;
+            }
+
+            // Get pool keys for proper transaction construction
+            console.log("Fetching pool keys...");
+            const poolKeys = await raydium.clmm.getClmmPoolKeys(selectedPoolId);
+            console.log("Pool keys fetched:", poolKeys ? "Success" : "Failed");
+
+            console.log(`Executing batch initRewards for ${rewardInfos.length} reward(s)`);
+            console.log("Reward infos:", JSON.stringify(rewardInfos, null, 2));
+
+            try {
+                // Execute SINGLE transaction with ALL rewards
                 const { execute } = await raydium.clmm.initRewards({
                     poolInfo: poolInfo as any,
-                    poolKeys: undefined,
+                    poolKeys: poolKeys as any,
                     ownerInfo: {
                         useSOLBalance: true
                     },
-                    rewardInfos: [{
-                        mint: {
-                            chainId: 103, // Devnet
-                            address: r.token.mint,
-                            programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-                            logoURI: r.token.logoURI || "",
-                            symbol: r.token.symbol,
-                            name: r.token.name,
-                            decimals: r.token.decimals,
-                            tags: [],
-                            extensions: {}
-                        },
-                        perSecond: perSecondRaw,
-                        openTime,
-                        endTime
-                    }],
+                    rewardInfos: rewardInfos,
                     txVersion: TxVersion.LEGACY
                 });
 
+                console.log("Transaction built, executing...");
                 const { txId } = await execute({ sendAndConfirm: true });
                 activeTxSig = txId;
                 setTxSig(txId);
+            } catch (execErr: any) {
+                console.error("Execution error:", execErr);
+                throw execErr;
             }
 
             setIsCreating(false);
@@ -881,7 +1052,7 @@ export default function CreateFarmPage() {
 
         } catch (err: any) {
             console.error("Farm creation err", err);
-            // If the user rejected the transaction inside the loop, we catch it here
+            // If the user rejected the transaction
             setTxError(err?.message || "Failed to create farm.");
             setIsCreating(false);
         }

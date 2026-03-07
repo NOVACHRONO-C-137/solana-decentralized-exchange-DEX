@@ -256,7 +256,8 @@ function PositionPageInner() {
             manualTxId = sig;
           }
         }
-        throw new Error("__TX_SENT_MANUALLY__");
+        // Return empty array to prevent SDK from trying to serialize invalid transactions
+        return [];
       };
 
       const raydium = await Raydium.load({

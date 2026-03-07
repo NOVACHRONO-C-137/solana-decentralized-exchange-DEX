@@ -538,16 +538,8 @@ function PositionPageInner() {
       let manualTxId: string = "";
 
       // The manual sending workaround for the SDK bug
-      const wrappedSignAllTransactions = async <
-        T extends Transaction | VersionedTransaction,
-      >(
-        txs: T[],
-      ): Promise<T[]> => {
-        console.log(
-          "🔑 Intercepting",
-          txs.length,
-          "txs — sending via wallet adapter...",
-        );
+      const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+        console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
         for (let i = 0; i < txs.length; i++) {
           const tx = txs[i];
           if (tx instanceof Transaction) {
@@ -557,7 +549,8 @@ function PositionPageInner() {
             manualTxId = sig;
           }
         }
-        throw new Error("__TX_SENT_MANUALLY__");
+        // Return empty array to prevent SDK from trying to serialize invalid transactions
+        return [];
       };
 
       const raydium = await Raydium.load({
@@ -1156,8 +1149,8 @@ function PositionPageInner() {
                           key={tab}
                           onClick={() => setSlippageTab(tab)}
                           className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab
-                              ? "bg-white/10 text-white"
-                              : "text-white/40 hover:text-white"
+                            ? "bg-white/10 text-white"
+                            : "text-white/40 hover:text-white"
                             }`}
                         >
                           {tab}

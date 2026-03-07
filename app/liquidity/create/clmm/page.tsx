@@ -8,13 +8,13 @@ import { useState } from "react";
 import { ChevronLeft, Check, ChevronDown, Minus, Plus, Pencil, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID, TickUtils, ApiV3Token } from "@raydium-io/raydium-sdk-v2"
 import Decimal from "decimal.js";
 import BN from "bn.js";
 import { formatLargeNumber } from "@/lib/utils";
 import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
-import { PublicKey } from "@solana/web3.js"
 
 // ── Token Logo Helper ─────────────────────────────────────
 function CLMMTokenLogo({ token, size = 24 }: { token: TokenInfo | null; size?: number }) {
@@ -172,7 +172,7 @@ export default function CreatePoolPage() {
             // adapter's sendTransaction inside signAllTransactions, then throw a sentinel.
             let lastManualTxId = "";
 
-            const wrappedSignAllTransactions = async <T extends import("@solana/web3.js").Transaction | import("@solana/web3.js").VersionedTransaction>(txs: T[]): Promise<T[]> => {
+            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
                 console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
                 for (let i = 0; i < txs.length; i++) {
                     const tx = txs[i];
@@ -185,14 +185,15 @@ export default function CreatePoolPage() {
                                 hasSig: s.signature !== null,
                             }))
                         );
-                        const sig = await sendTransaction(tx as import("@solana/web3.js").Transaction, connection);
+                        const sig = await sendTransaction(tx as Transaction, connection);
                         console.log("✅ TX sent via wallet adapter! Sig:", sig);
                         const confirmation = await connection.confirmTransaction(sig, "confirmed");
                         console.log("✅ TX confirmed:", confirmation);
                         lastManualTxId = sig;
                     }
                 }
-                throw new Error("__TX_SENT_MANUALLY__");
+                // Return empty array to prevent SDK from trying to serialize invalid transactions
+                return [];
             };
 
             const raydium = await Raydium.load({
