@@ -5,7 +5,7 @@ import { ArrowDown, ChevronDown, Wallet, Settings, Link2, BarChart3, Loader2, Ch
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWallet, useConnection } from "@solana/wallet-adapter-react"
 import { VersionedTransaction, PublicKey } from "@solana/web3.js"
-import { Raydium, TxVersion } from "@raydium-io/raydium-sdk-v2"
+import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2"
 import BN from "bn.js"
 import Decimal from "decimal.js"
 import Image from "next/image"
@@ -273,98 +273,38 @@ export default function SwapCard() {
     }
 
     const handleSwap = async () => {
-        // Guard: wallet connected
-        if (!connected || !publicKey) {
-            setWalletModalOpen(true)
-            return
-        }
-
-        if (!signAllTransactions) {
-            setSwapError("Your wallet does not support signing. Please use Phantom or Solflare.");
-            return;
-        }
-
+        if (!connected || !publicKey) { setWalletModalOpen(true); return }
+        if (!signAllTransactions) { setSwapError("Wallet does not support signing."); return }
         const amount = Number(fromAmount)
-        if (!fromAmount || isNaN(amount) || amount <= 0) {
-            setSwapError("Please enter a valid amount.")
-            return
-        }
+        if (!fromAmount || isNaN(amount) || amount <= 0) { setSwapError("Please enter a valid amount."); return }
+        if (amount > fromBalance) { setSwapError(`Insufficient ${fromToken.symbol} balance.`); return }
 
-        if (amount > fromBalance) {
-            setSwapError(`Insufficient ${fromToken.symbol} balance.`)
-            return
-        }
-
-        setLoading(true)
-        setSwapError(null)
-        setTxSig(null)
+        setLoading(true); setSwapError(null); setTxSig(null)
 
         try {
-            // Step 2: Hybrid Pool Fetching
-            let poolSummary = null
+            const { DEVNET_PROGRAM_ID } = await import("@raydium-io/raydium-sdk-v2")
+            const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID
 
-            // 1. Try fetching the pool from the Devnet `/mint` API
-            const poolUrl1 = `https://api-v3-devnet.raydium.io/pools/info/mint?mint1=${fromToken.mint}&mint2=${toToken.mint}&poolType=all&poolSortField=liquidity&sortType=desc&pageSize=1&page=1`
-            try {
-                const poolResponse1 = await fetch(poolUrl1)
-                const poolData1 = await poolResponse1.json()
-                poolSummary = poolData1.data?.[0]
-                console.log("🔍 API Pool Fetch (forward):", poolSummary)
-            } catch (e) {
-                console.log("🔍 API Pool Fetch (forward) failed, trying inverted...")
-            }
+            const sortedMints = [fromToken.mint, toToken.mint].sort()
+            console.log("📡 Scanning on-chain for pool...", sortedMints[0], sortedMints[1])
 
-            // 2. If that returns undefined, try the inverted token order
-            if (!poolSummary) {
-                const poolUrl2 = `https://api-v3-devnet.raydium.io/pools/info/mint?mint1=${toToken.mint}&mint2=${fromToken.mint}&poolType=all&poolSortField=liquidity&sortType=desc&pageSize=1&page=1`
-                try {
-                    const poolResponse2 = await fetch(poolUrl2)
-                    const poolData2 = await poolResponse2.json()
-                    poolSummary = poolData2.data?.[0]
-                    console.log("🔍 API Pool Fetch (inverted):", poolSummary)
-                } catch (e) {
-                    console.log("🔍 API Pool Fetch (inverted) failed, checking localStorage...")
+            const accounts = await connection.getProgramAccounts(
+                new PublicKey(CLMM_PROGRAM),
+                {
+                    filters: [
+                        { dataSize: 1544 },
+                        { memcmp: { offset: 73, bytes: sortedMints[0] } },
+                        { memcmp: { offset: 105, bytes: sortedMints[1] } },
+                    ]
                 }
-            }
+            )
 
-            // 3. If both API calls fail, check localStorage
-            if (!poolSummary) {
-                console.log("🔍 Checking localStorage for custom pools...")
-                const customPools = localStorage.getItem("aeroCustomPools")
-                const createdPools = localStorage.getItem("aerodex_created_pools")
+            console.log("📡 Pools found on-chain:", accounts.length)
+            if (accounts.length === 0) throw new Error(`No pool found for ${fromToken.symbol}/${toToken.symbol} on-chain.`)
 
-                const allLocalPools = [
-                    ...(customPools ? JSON.parse(customPools) : []),
-                    ...(createdPools ? JSON.parse(createdPools) : [])
-                ]
+            const poolId = accounts[0].pubkey.toBase58()
+            console.log("✅ Pool ID:", poolId)
 
-                // Find pool matching the exact mint pair
-                const localPool = allLocalPools.find((p: any) =>
-                    (p.mintA === fromToken.mint && p.mintB === toToken.mint) ||
-                    (p.mintA === toToken.mint && p.mintB === fromToken.mint) ||
-                    (p.baseMint === fromToken.mint && p.quoteMint === toToken.mint) ||
-                    (p.baseMint === toToken.mint && p.quoteMint === fromToken.mint)
-                )
-
-                if (localPool) {
-                    console.log("🔍 Found local pool:", localPool)
-                    // 4. Fetch the final pool data using the reliable `/ids` API
-                    const idsUrl = `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${localPool.id}`
-                    const idsResponse = await fetch(idsUrl)
-                    const idsData = await idsResponse.json()
-                    poolSummary = idsData.data?.[0]
-                    console.log("🔍 Pool fetched via /ids API:", poolSummary)
-                }
-            }
-
-            // 5. If no pool is found after all these steps, throw an error
-            if (!poolSummary) {
-                throw new Error(`No pool found for ${fromToken.symbol}/${toToken.symbol}. Create a pool first.`)
-            }
-
-            console.log("🔍 Final Pool Summary:", poolSummary)
-
-            // Step 3: Native SDK Initialization with signAllTransactions
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
@@ -374,73 +314,54 @@ export default function SwapCard() {
                 signAllTransactions,
             })
             console.log("✅ Raydium SDK Initialized")
+            console.log("🔍 CLMM methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(raydium.clmm)))
 
-            // Fetch detailed pool info
-            const poolDetail = await raydium.api.fetchPoolById({ ids: poolSummary.id })
-            const poolInfo = poolDetail[0]
+            const clmmData = await raydium.clmm.getPoolInfoFromRpc(poolId)
+            console.log("🔍 clmmData keys:", Object.keys(clmmData))
+            console.log("🔍 poolInfo keys:", Object.keys(clmmData.poolInfo))
+            console.log("🔍 tickData:", clmmData.tickData)
+            console.log("🔍 computePoolInfo:", JSON.stringify(clmmData.computePoolInfo, null, 2))
+            const poolInfo = clmmData.poolInfo
+            const poolKeys = clmmData.poolKeys
 
-            // Step 4: Dynamic Pool Routing
-            // Calculate amountIn using Decimal and BN
-            const amountIn = new BN(Math.floor(new Decimal(amount).mul(new Decimal(10).pow(fromToken.decimals)).toNumber()))
-            const minAmountOut = new BN(0)
+            const amountIn = new BN(
+                new Decimal(amount).mul(new Decimal(10).pow(fromToken.decimals)).toFixed(0)
+            )
 
-            console.log("🔄 Pool Type:", poolSummary.type)
+            const epochInfo = await connection.getEpochInfo()
 
-            if (poolSummary.type === "Standard") {
-                console.log("🔄 Routing to Standard AMM Swap...")
+            const computeRes = await (raydium.clmm as any).computeAmountOut({
+                poolInfo: clmmData.poolInfo,
+                tickArrayCache: clmmData.tickData,
+                baseMint: fromToken.mint,
+                quoteMint: toToken.mint,
+                amountIn,
+                slippage: parseFloat(slippage) / 100,
+                epochInfo,
+            } as any)
 
-                const { execute } = await raydium.liquidity.swap({
-                    poolInfo: poolInfo as any,
-                    ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
-                    inputMint: fromToken.mint,
-                    amountIn,
-                    amountOutMin: minAmountOut,
-                    txVersion: TxVersion.V0,
-                } as any)
+            const { execute } = await raydium.clmm.swap({
+                poolInfo,
+                poolKeys,
+                ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
+                inputMint: new PublicKey(fromToken.mint),
+                amountIn,
+                amountOutMin: computeRes.minAmountOut,
+                observationId: (poolInfo as any).observationId,
+                remainingAccounts: computeRes.remainingAccounts,
+                txVersion: TxVersion.V0,
+            } as any)
 
-                // Step 5: Execute and log
-                const result = await execute({ sendAndConfirm: true })
-                const txId = result.txId
-                console.log("✅ Swap Successful! TxId:", txId)
-                setTxSig(txId)
-            } else if (poolSummary.type === "Concentrated") {
-                console.log("🔄 Routing to CLMM Swap...")
-
-                const poolKeys = await raydium.clmm.getClmmPoolKeys(poolSummary.id)
-                const poolInfoClmm = await raydium.clmm.getPoolInfoFromRpc(poolSummary.id)
-
-                const { execute } = await raydium.clmm.swap({
-                    poolInfo: poolInfoClmm.poolInfo as any,
-                    poolKeys: poolKeys,
-                    ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
-                    inputMint: fromToken.mint,
-                    amountIn,
-                    amountOutMin: minAmountOut,
-                    observationId: (poolInfoClmm.poolInfo as any).observationId ?? null,
-                    remainingAccounts: [],
-                    txVersion: TxVersion.V0,
-                } as any)
-
-                // Step 5: Execute and log
-                const result = await execute({ sendAndConfirm: true })
-                const txId = result.txId
-                console.log("✅ Swap Successful! TxId:", txId)
-                setTxSig(txId)
-            } else {
-                throw new Error(`Unsupported pool type: ${poolSummary.type}`)
-            }
-
-            // Refresh balances
+            const result = await execute({ sendAndConfirm: true })
+            const txId = (result as any).txIds?.[0] || (result as any).txId
+            console.log("✅ Swap successful! TxId:", txId)
+            setTxSig(txId)
             setTimeout(() => refetchBalances(), 2000)
 
         } catch (err: any) {
             console.error("❌ Swap Execution Failed:", err)
-            const msg = err?.message || "Swap failed";
-            if (msg.includes("insufficient") || msg.includes("0x1")) {
-                setSwapError("Insufficient SOL balance for network fee or slippage exceeded.");
-            } else {
-                setSwapError(msg.length > 120 ? msg.slice(0, 120) + "…" : msg);
-            }
+            const msg = err?.message || "Swap failed"
+            setSwapError(msg.length > 120 ? msg.slice(0, 120) + "…" : msg)
         } finally {
             setLoading(false)
         }
