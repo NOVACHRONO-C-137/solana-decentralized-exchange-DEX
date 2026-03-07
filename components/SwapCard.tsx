@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { ArrowDown, ChevronDown, Wallet, Settings, Link2, BarChart3, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWallet, useConnection } from "@solana/wallet-adapter-react"
-import { VersionedTransaction, PublicKey } from "@solana/web3.js"
-import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2"
+import { PublicKey } from "@solana/web3.js"
+import { Raydium, TxVersion, getPdaTickArrayAddress } from "@raydium-io/raydium-sdk-v2"
 import BN from "bn.js"
 import Decimal from "decimal.js"
 import Image from "next/image"
@@ -13,9 +13,17 @@ import { ConnectWalletModal } from "@/components/ConnectWalletModal"
 import { TokenSelectorModal, DEVNET_TOKENS, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 
-// ── Token Icons ────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants — devnet program IDs
+// ─────────────────────────────────────────────────────────────────────────────
+const CLMM_PROGRAM_ID = "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
+const AMM_V4_PROGRAM_ID = "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token icon
+// ─────────────────────────────────────────────────────────────────────────────
 function SwapTokenIcon({ token }: { token: TokenInfo }) {
-    const [imgError, setImgError] = useState(false);
+    const [imgError, setImgError] = useState(false)
 
     if (token.logoURI && !imgError) {
         return (
@@ -30,10 +38,9 @@ function SwapTokenIcon({ token }: { token: TokenInfo }) {
                     unoptimized
                 />
             </div>
-        );
+        )
     }
 
-    // Fallback: colored circle with icon
     if (token.symbol === "SOL") {
         return (
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195]">
@@ -43,16 +50,19 @@ function SwapTokenIcon({ token }: { token: TokenInfo }) {
                     <path d="M5.5 12L8.5 9H18.5L15.5 12H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
                 </svg>
             </div>
-        );
+        )
     }
 
     return (
         <div className={`flex h-8 w-8 items-center justify-center rounded-full ${token.color}`}>
             <span className="text-lg">{token.icon}</span>
         </div>
-    );
+    )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Token selector button
+// ─────────────────────────────────────────────────────────────────────────────
 function TokenSelector({ token, onSwitch }: { token: TokenInfo; onSwitch?: () => void }) {
     return (
         <button
@@ -66,8 +76,12 @@ function TokenSelector({ token, onSwitch }: { token: TokenInfo; onSwitch?: () =>
     )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Input field
+// ─────────────────────────────────────────────────────────────────────────────
 function GradientBorderField({
-    label, token, amount, usdValue, balance, onAmountChange, onTokenSwitch, onMax, readOnly,
+    label, token, amount, usdValue, balance,
+    onAmountChange, onTokenSwitch, onMax, readOnly,
 }: {
     label: string
     token: TokenInfo
@@ -80,10 +94,10 @@ function GradientBorderField({
     readOnly?: boolean
 }) {
     const formatBal = (b: number) => {
-        if (b < 0.001 && b > 0) return "<0.001";
-        if (b < 1) return b.toFixed(4);
-        return b.toLocaleString(undefined, { maximumFractionDigits: 4 });
-    };
+        if (b < 0.001 && b > 0) return "<0.001"
+        if (b < 1) return b.toFixed(4)
+        return b.toLocaleString(undefined, { maximumFractionDigits: 4 })
+    }
 
     return (
         <div className="flex flex-col gap-2">
@@ -132,7 +146,9 @@ function GradientBorderField({
     )
 }
 
-// ── Slippage Modal ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Slippage modal
+// ─────────────────────────────────────────────────────────────────────────────
 function SlippageModal({
     isOpen, onClose, value, onChange,
 }: {
@@ -179,7 +195,10 @@ function SlippageModal({
                     />
                     <span className="text-white/50 text-sm">%</span>
                 </div>
-                <button onClick={handleSave} className="w-full rounded-xl bg-[var(--neon-teal)] py-3 text-sm font-bold text-black hover:opacity-90 transition-opacity">
+                <button
+                    onClick={handleSave}
+                    className="w-full rounded-xl bg-[var(--neon-teal)] py-3 text-sm font-bold text-black hover:opacity-90 transition-opacity"
+                >
                     Save
                 </button>
             </DialogContent>
@@ -187,12 +206,24 @@ function SlippageModal({
     )
 }
 
-// ── Main SwapCard ──────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Debug logger — prefix every log with [AeroDEX] so they're easy to filter
+// ─────────────────────────────────────────────────────────────────────────────
+const log = (...args: any[]) => console.log("[AeroDEX]", ...args)
+const warn = (...args: any[]) => console.warn("[AeroDEX]", ...args)
+const err = (...args: any[]) => console.error("[AeroDEX]", ...args)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 export default function SwapCard() {
-    // Added signAllTransactions to intercept the native signing safely!
     const { connected, publicKey, signAllTransactions } = useWallet()
     const { connection } = useConnection()
-    const { balances, discoveredTokens, loading: balancesLoading, getBalance, refetch: refetchBalances } = useTokenBalances()
+    const {
+        balances, discoveredTokens,
+        loading: balancesLoading,
+        getBalance, refetch: refetchBalances,
+    } = useTokenBalances()
 
     const defaultFrom = DEVNET_TOKENS.find(t => t.symbol === "SOL") || DEVNET_TOKENS[0]
     const defaultTo = DEVNET_TOKENS.find(t => t.symbol === "PLTR") || DEVNET_TOKENS[1]
@@ -201,49 +232,45 @@ export default function SwapCard() {
     const [toAmount, setToAmount] = useState("")
     const [fromToken, setFromToken] = useState<TokenInfo>(defaultFrom)
     const [toToken, setToToken] = useState<TokenInfo>(defaultTo)
-    const [slippage, setSlippage] = useState<string>("0.5")
-    const [slippageOpen, setSlippageOpen] = useState<boolean>(false)
-    const [walletModalOpen, setWalletModalOpen] = useState<boolean>(false)
+    const [slippage, setSlippage] = useState("0.5")
+    const [slippageOpen, setSlippageOpen] = useState(false)
+    const [walletModalOpen, setWalletModalOpen] = useState(false)
     const [selectingFor, setSelectingFor] = useState<"from" | "to" | null>(null)
-
-    const [loading, setLoading] = useState<boolean>(false)
+    const [loading, setLoading] = useState(false)
     const [txSig, setTxSig] = useState<string | null>(null)
     const [swapError, setSwapError] = useState<string | null>(null)
+    const [currentPoolPrice, setCurrentPoolPrice] = useState<number | null>(null)
 
     const fromBalance = getBalance(fromToken.mint)
     const toBalance = getBalance(toToken.mint)
 
-    const balancesMap = new Map<string, number>();
-    balances.forEach((tb, mint) => {
-        balancesMap.set(mint, tb.balance);
-    });
+    const balancesMap = new Map<string, number>()
+    balances.forEach((tb, mint) => balancesMap.set(mint, tb.balance))
 
-    // We fetch current pool price dynamically when amounts change
-    const [currentPoolPrice, setCurrentPoolPrice] = useState<number | null>(null);
-
-    // Dynamic quote fetcher
+    // ── Live quote ──────────────────────────────────────────────────────
     useEffect(() => {
-        const fetchRealQuote = async () => {
-            if (!fromToken || !toToken || fromToken.mint === toToken.mint) return;
+        const fetchQuote = async () => {
+            if (!fromToken || !toToken || fromToken.mint === toToken.mint) return
             try {
-                const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/mint?mint1=${fromToken.mint}&mint2=${toToken.mint}&poolType=all&poolSortField=liquidity&sortType=desc&pageSize=1&page=1`);
-                const json = await res.json();
-                const pool = json?.data?.data?.[0];
-                if (pool && pool.price) {
-                    // Check if mint1 is our "from" token. If not, invert the price.
-                    const isMint1 = pool.mintA.address === fromToken.mint;
-                    setCurrentPoolPrice(isMint1 ? pool.price : 1 / pool.price);
+                const res = await fetch(
+                    `https://api-v3-devnet.raydium.io/pools/info/mint?mint1=${fromToken.mint}&mint2=${toToken.mint}&poolType=all&poolSortField=liquidity&sortType=desc&pageSize=1&page=1`
+                )
+                const json = await res.json()
+                const pool = json?.data?.data?.[0]
+                if (pool?.price) {
+                    const isMint1 = pool.mintA.address === fromToken.mint
+                    setCurrentPoolPrice(isMint1 ? pool.price : 1 / pool.price)
                 } else {
-                    setCurrentPoolPrice(null); // No pool found
+                    setCurrentPoolPrice(null)
                 }
-            } catch (err) {
-                console.error("Quote fetch error:", err);
+            } catch (e) {
+                warn("Quote fetch failed:", e)
             }
-        };
+        }
+        fetchQuote()
+    }, [fromToken, toToken])
 
-        fetchRealQuote();
-    }, [fromToken, toToken]);
-
+    // ── UI helpers ──────────────────────────────────────────────────────
     const handleFlipTokens = () => {
         setFromToken(toToken)
         setToToken(fromToken)
@@ -257,54 +284,91 @@ export default function SwapCard() {
         setFromAmount(val)
         setTxSig(null)
         setSwapError(null)
-
         const num = Number(val)
-        if (!val || isNaN(num) || num <= 0) {
-            setToAmount("")
-            return
-        }
-
-        // Apply real pool price if found, otherwise fallback to the visual dummy rate
-        const rate = currentPoolPrice !== null
-            ? currentPoolPrice
-            : (fromToken.symbol === "SOL" ? 50 : fromToken.symbol === toToken.symbol ? 1 : 0.02);
-
+        if (!val || isNaN(num) || num <= 0) { setToAmount(""); return }
+        const rate = currentPoolPrice ?? (fromToken.symbol === "SOL" ? 50 : 0.02)
         setToAmount((num * rate).toFixed(6))
     }
 
+    // ── Core swap ───────────────────────────────────────────────────────
     const handleSwap = async () => {
         if (!connected || !publicKey) { setWalletModalOpen(true); return }
         if (!signAllTransactions) { setSwapError("Wallet does not support signing."); return }
         const amount = Number(fromAmount)
-        if (!fromAmount || isNaN(amount) || amount <= 0) { setSwapError("Please enter a valid amount."); return }
+        if (!fromAmount || isNaN(amount) || amount <= 0) { setSwapError("Enter a valid amount."); return }
         if (amount > fromBalance) { setSwapError(`Insufficient ${fromToken.symbol} balance.`); return }
 
         setLoading(true); setSwapError(null); setTxSig(null)
 
         try {
-            const { DEVNET_PROGRAM_ID } = await import("@raydium-io/raydium-sdk-v2")
-            const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID
+            // ── Step 1: discover pool ─────────────────────────────────
+            // Mints must be sorted the same way the pool was created.
+            // We try both orderings for AMM; CLMM always stores sorted mints.
+            const sorted = [fromToken.mint, toToken.mint].sort()
+            log("── STEP 1: Pool discovery ──────────────────────────────")
+            log("fromMint:", fromToken.mint)
+            log("toMint  :", toToken.mint)
+            log("sorted  :", sorted)
 
-            const sortedMints = [fromToken.mint, toToken.mint].sort()
-            console.log("📡 Scanning on-chain for pool...", sortedMints[0], sortedMints[1])
+            let poolType: "clmm" | "amm" | null = null
+            let poolId = ""
 
-            const accounts = await connection.getProgramAccounts(
-                new PublicKey(CLMM_PROGRAM),
+            // CLMM scan — state size 1544, mintA @ offset 73, mintB @ offset 105
+            log("Scanning CLMM (dataSize=1544, offsets 73/105)...")
+            const clmmHits = await connection.getProgramAccounts(
+                new PublicKey(CLMM_PROGRAM_ID),
                 {
+                    dataSlice: { offset: 0, length: 0 },        // save bandwidth
                     filters: [
                         { dataSize: 1544 },
-                        { memcmp: { offset: 73, bytes: sortedMints[0] } },
-                        { memcmp: { offset: 105, bytes: sortedMints[1] } },
-                    ]
+                        { memcmp: { offset: 73, bytes: sorted[0] } },
+                        { memcmp: { offset: 105, bytes: sorted[1] } },
+                    ],
                 }
             )
+            log(`CLMM hits: ${clmmHits.length}`)
 
-            console.log("📡 Pools found on-chain:", accounts.length)
-            if (accounts.length === 0) throw new Error(`No pool found for ${fromToken.symbol}/${toToken.symbol} on-chain.`)
+            if (clmmHits.length > 0) {
+                poolType = "clmm"
+                poolId = clmmHits[0].pubkey.toBase58()
+                log("✅ CLMM pool found:", poolId)
+            }
 
-            const poolId = accounts[0].pubkey.toBase58()
-            console.log("✅ Pool ID:", poolId)
+            // Legacy AMM v4 scan — state size 752, coinMint @ 400, pcMint @ 432
+            // Try both orderings because creation order isn't guaranteed
+            if (!poolType) {
+                log("Scanning Legacy AMM v4 (dataSize=752, offsets 400/432)...")
+                for (const [m1, m2] of [[sorted[0], sorted[1]], [sorted[1], sorted[0]]]) {
+                    const ammHits = await connection.getProgramAccounts(
+                        new PublicKey(AMM_V4_PROGRAM_ID),
+                        {
+                            dataSlice: { offset: 0, length: 0 },
+                            filters: [
+                                { dataSize: 752 },
+                                { memcmp: { offset: 400, bytes: m1 } },
+                                { memcmp: { offset: 432, bytes: m2 } },
+                            ],
+                        }
+                    )
+                    log(`AMM hits (${m1.slice(0, 8)}… / ${m2.slice(0, 8)}…): ${ammHits.length}`)
+                    if (ammHits.length > 0) {
+                        poolType = "amm"
+                        poolId = ammHits[0].pubkey.toBase58()
+                        log("✅ AMM v4 pool found:", poolId)
+                        break
+                    }
+                }
+            }
 
+            if (!poolType) {
+                throw new Error(
+                    `No pool found for ${fromToken.symbol}/${toToken.symbol}.\n` +
+                    `Checked CLMM (${CLMM_PROGRAM_ID.slice(0, 8)}…) and AMM v4 (${AMM_V4_PROGRAM_ID.slice(0, 8)}…).`
+                )
+            }
+
+            // ── Step 2: init SDK ──────────────────────────────────────
+            log("── STEP 2: Init Raydium SDK ────────────────────────────")
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
@@ -313,60 +377,177 @@ export default function SwapCard() {
                 disableLoadToken: false,
                 signAllTransactions,
             })
-            console.log("✅ Raydium SDK Initialized")
-            console.log("🔍 CLMM methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(raydium.clmm)))
+            log("✅ SDK ready")
 
-            const clmmData = await raydium.clmm.getPoolInfoFromRpc(poolId)
-            console.log("🔍 clmmData keys:", Object.keys(clmmData))
-            console.log("🔍 poolInfo keys:", Object.keys(clmmData.poolInfo))
-            console.log("🔍 tickData:", clmmData.tickData)
-            console.log("🔍 computePoolInfo:", JSON.stringify(clmmData.computePoolInfo, null, 2))
-            const poolInfo = clmmData.poolInfo
-            const poolKeys = clmmData.poolKeys
-
+            const slippageFraction = parseFloat(slippage) / 100
             const amountIn = new BN(
-                new Decimal(amount).mul(new Decimal(10).pow(fromToken.decimals)).toFixed(0)
+                new Decimal(amount)
+                    .mul(new Decimal(10).pow(fromToken.decimals))
+                    .toFixed(0)
             )
+            log("amountIn (raw lamports):", amountIn.toString())
+            log("slippage:", (slippageFraction * 100).toFixed(2) + "%")
 
-            const epochInfo = await connection.getEpochInfo()
+            // ── Step 3a: CLMM swap ────────────────────────────────────
+            if (poolType === "clmm") {
+                log("── STEP 3a: CLMM swap ──────────────────────────────────")
 
-            const computeRes = await (raydium.clmm as any).computeAmountOut({
-                poolInfo: clmmData.poolInfo,
-                tickArrayCache: clmmData.tickData,
-                baseMint: fromToken.mint,
-                quoteMint: toToken.mint,
-                amountIn,
-                slippage: parseFloat(slippage) / 100,
-                epochInfo,
-            } as any)
+                const clmmData = await raydium.clmm.getPoolInfoFromRpc(poolId)
+                const { poolInfo: _poolInfo, poolKeys, tickData } = clmmData
+                const poolInfo = _poolInfo as any
 
-            const { execute } = await raydium.clmm.swap({
-                poolInfo,
-                poolKeys,
-                ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
-                inputMint: new PublicKey(fromToken.mint),
-                amountIn,
-                amountOutMin: computeRes.minAmountOut,
-                observationId: (poolInfo as any).observationId,
-                remainingAccounts: computeRes.remainingAccounts,
-                txVersion: TxVersion.V0,
-            } as any)
+                log("poolInfo.mintA      :", poolInfo.mintA.address)
+                log("poolInfo.mintB      :", poolInfo.mintB.address)
+                log("poolInfo.tickCurrent:", poolInfo.tickCurrent)
+                log("poolInfo.tickSpacing:", poolInfo.tickSpacing)
+                log("poolInfo.currentPrice:", poolInfo.currentPrice?.toString())
+                log("poolInfo.observationId:", (poolInfo as any).observationId)
 
-            const result = await execute({ sendAndConfirm: true })
-            const txId = (result as any).txIds?.[0] || (result as any).txId
-            console.log("✅ Swap successful! TxId:", txId)
-            setTxSig(txId)
+                // Swap direction: a2b = selling mintA for mintB (price decreases)
+                const a2b = fromToken.mint === poolInfo.mintA.address
+                const tickSpacing = poolInfo.tickSpacing
+                const ticksPerArr = tickSpacing * 60          // ticks per array
+                const curTick = poolInfo.tickCurrent
+
+                log(`Swap direction: ${a2b ? "A→B (a2b)" : "B→A (b2a)"}`)
+                log(`ticksPerArray: ${ticksPerArr}`)
+
+                // Anchor to the tick array that contains the current tick
+                const anchorStart = Math.floor(curTick / ticksPerArr) * ticksPerArr
+                log("anchorStart:", anchorStart)
+
+                // 3 consecutive arrays in the direction of travel
+                const neededIndexes: number[] = a2b
+                    ? [anchorStart, anchorStart - ticksPerArr, anchorStart - ticksPerArr * 2]
+                    : [anchorStart, anchorStart + ticksPerArr, anchorStart + ticksPerArr * 2]
+
+                log("neededTickArrayIndexes:", neededIndexes)
+
+                // Map of initialized arrays from tickData (keyed by pool ID → tick index → {address})
+                const poolTickMap: Record<number, { address: PublicKey }> =
+                    (tickData as any)[poolId] ?? {}
+                const initIndexes = Object.keys(poolTickMap).map(Number)
+                log("initializedTickArrayIndexes:", initIndexes)
+
+                const clmmProgram = new PublicKey(CLMM_PROGRAM_ID)
+                const poolPubkey = new PublicKey(poolId)
+
+                const remainingAccounts = neededIndexes.map(idx => {
+                    const entry = poolTickMap[idx]
+                    if (entry?.address) {
+                        log(`  tick[${idx}] → initialized: ${(entry.address as PublicKey).toBase58()}`)
+                        return entry.address as PublicKey
+                    }
+                    // Not initialized — compute PDA; on-chain will skip uninitialised arrays
+                    const { publicKey: pda } = getPdaTickArrayAddress(clmmProgram, poolPubkey, idx)
+                    log(`  tick[${idx}] → PDA (uninit): ${pda.toBase58()}`)
+                    return pda
+                })
+
+                // amountOutMin: price × amount × (1 − slippage)
+                const rawPrice = parseFloat(poolInfo.currentPrice?.toString() ?? "1") || 1
+                const estOut = a2b ? amount * rawPrice : amount / rawPrice
+                const minOut = Math.max(0, estOut * (1 - slippageFraction))
+                const amountOutMin = new BN(
+                    new Decimal(minOut)
+                        .mul(new Decimal(10).pow(toToken.decimals))
+                        .toFixed(0)
+                )
+                log("estimated output :", estOut.toFixed(6), toToken.symbol)
+                log("amountOutMin (raw):", amountOutMin.toString())
+
+                log("Calling raydium.clmm.swap()...")
+                const { execute } = await raydium.clmm.swap({
+                    poolInfo,
+                    poolKeys,
+                    ownerInfo: {
+                        useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL",
+                    },
+                    inputMint: new PublicKey(fromToken.mint),
+                    amountIn,
+                    amountOutMin,
+                    observationId: (poolInfo as any).observationId,
+                    remainingAccounts,
+                    txVersion: TxVersion.V0,
+                } as any)
+
+                log("Sending CLMM swap transaction...")
+                const result = await execute({ sendAndConfirm: true })
+                const txId = (result as any).txIds?.[0] ?? (result as any).txId
+                log("✅ CLMM swap confirmed! txId:", txId)
+                setTxSig(txId)
+
+                // ── Step 3b: Legacy AMM v4 swap ───────────────────────────
+            } else {
+                log("── STEP 3b: Legacy AMM v4 swap ─────────────────────────")
+
+                const { poolInfo: _ammInfo, poolKeys } = await raydium.liquidity.getPoolInfoFromRpc({ poolId })
+                const poolInfo = _ammInfo as any
+
+                log("poolInfo.baseMint  :", poolInfo.baseMint.address)
+                log("poolInfo.quoteMint :", poolInfo.quoteMint.address)
+                log("poolInfo.baseReserve  :", poolInfo.baseReserve.toString())
+                log("poolInfo.quoteReserve :", poolInfo.quoteReserve.toString())
+
+                const baseIn = fromToken.mint === poolInfo.baseMint.address
+                log(`Swap direction: ${baseIn ? "base→quote" : "quote→base"}`)
+
+                const reserveIn = baseIn ? poolInfo.baseReserve : poolInfo.quoteReserve
+                const reserveOut = baseIn ? poolInfo.quoteReserve : poolInfo.baseReserve
+
+                // Constant-product: out = reserveOut * in / (reserveIn + in)
+                const estOutBN = reserveOut.mul(amountIn).div(reserveIn.add(amountIn))
+                const slipBps = Math.floor(slippageFraction * 10000)
+                const amountOutMin = estOutBN.muln(10000 - slipBps).divn(10000)
+
+                log("estOut (raw BN)    :", estOutBN.toString())
+                log("slipBps            :", slipBps)
+                log("amountOutMin (raw) :", amountOutMin.toString())
+
+                log("Calling raydium.liquidity.swap()...")
+                const { execute } = await raydium.liquidity.swap({
+                    poolInfo,
+                    poolKeys,
+                    amountIn,
+                    amountOutMin,
+                    inputMint: new PublicKey(fromToken.mint),
+                    fixedSide: "in",
+                    txVersion: TxVersion.V0,
+                    ownerInfo: {
+                        useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL",
+                    },
+                } as any)
+
+                log("Sending AMM v4 swap transaction...")
+                const result = await execute({ sendAndConfirm: true })
+                const txId = (result as any).txIds?.[0] ?? (result as any).txId
+                log("✅ AMM v4 swap confirmed! txId:", txId)
+                setTxSig(txId)
+            }
+
             setTimeout(() => refetchBalances(), 2000)
 
-        } catch (err: any) {
-            console.error("❌ Swap Execution Failed:", err)
-            const msg = err?.message || "Swap failed"
-            setSwapError(msg.length > 120 ? msg.slice(0, 120) + "…" : msg)
+        } catch (e: any) {
+            err("Swap failed:", e)
+
+            // Extract the most useful error string
+            let msg: string = e?.message ?? "Swap failed"
+
+            // Raydium SDK sometimes wraps the real error inside logs
+            if (e?.logs) {
+                const failLog = (e.logs as string[]).find((l: string) => l.includes("Error") || l.includes("failed"))
+                if (failLog) msg = failLog
+            }
+
+            // Trim if very long
+            if (msg.length > 160) msg = msg.slice(0, 160) + "…"
+            setSwapError(msg)
         } finally {
             setLoading(false)
         }
     }
 
+    // ── Button state ─────────────────────────────────────────────────
     const buttonLabel = () => {
         if (!connected) return "Connect Wallet to Swap"
         if (loading) return null
@@ -375,8 +556,10 @@ export default function SwapCard() {
         return "Swap"
     }
 
-    const buttonDisabled = loading || (connected && (!fromAmount || Number(fromAmount) <= 0))
+    const buttonDisabled =
+        loading || (connected && (!fromAmount || Number(fromAmount) <= 0))
 
+    // ── Render ───────────────────────────────────────────────────────
     return (
         <>
             <div className="w-full max-w-[420px]">
@@ -414,9 +597,11 @@ export default function SwapCard() {
                         onAmountChange={handleFromAmountChange}
                         onTokenSwitch={() => setSelectingFor("from")}
                         onMax={() => {
-                            const maxBal = fromToken.symbol === "SOL" ? Math.max(0, fromBalance - 0.01) : fromBalance;
-                            setFromAmount(maxBal.toString());
-                            handleFromAmountChange(maxBal.toString());
+                            const max = fromToken.symbol === "SOL"
+                                ? Math.max(0, fromBalance - 0.01)
+                                : fromBalance
+                            setFromAmount(max.toString())
+                            handleFromAmountChange(max.toString())
                         }}
                     />
 
@@ -440,15 +625,15 @@ export default function SwapCard() {
                         readOnly
                     />
 
-                    {/* Error message */}
+                    {/* Error */}
                     {swapError && (
-                        <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            {swapError}
+                        <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                            <span className="break-all">{swapError}</span>
                         </div>
                     )}
 
-                    {/* Success message */}
+                    {/* Success */}
                     {txSig && (
                         <div className="mt-3 flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">
                             <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -501,19 +686,16 @@ export default function SwapCard() {
                 onClose={() => setSelectingFor(null)}
                 onSelectToken={(token) => {
                     if (selectingFor === "from") {
-                        if (token.mint === toToken.mint) {
-                            setToToken(fromToken); // swap them
-                        }
-                        setFromToken(token);
+                        if (token.mint === toToken.mint) setToToken(fromToken)
+                        setFromToken(token)
                     }
                     if (selectingFor === "to") {
-                        if (token.mint === fromToken.mint) {
-                            setFromToken(toToken); // swap them
-                        }
-                        setToToken(token);
+                        if (token.mint === fromToken.mint) setFromToken(toToken)
+                        setToToken(token)
                     }
-                    setFromAmount("");
-                    setToAmount("");
+                    setFromAmount("")
+                    setToAmount("")
+                    setSelectingFor(null)
                 }}
                 balances={balancesMap}
                 balancesLoading={balancesLoading}
