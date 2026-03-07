@@ -109,7 +109,7 @@ async function discoverCreatedPools(
 
 export default function CreateFarmPage() {
     const router = useRouter();
-    const { publicKey, sendTransaction, connected } = useWallet();
+    const { publicKey, sendTransaction, signAllTransactions, connected } = useWallet();
     const { connection } = useConnection();
 
     const [currentStep, setCurrentStep] = useState<number>(1);
@@ -455,6 +455,13 @@ export default function CreateFarmPage() {
                                     background: rgba(45, 212, 191, 0.8);
                                     box-shadow: 0 0 15px rgba(45, 212, 191, 0.6);
                                 }
+                                .animate-duration-pop {
+                                    animation: fadeScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                                }
+                                @keyframes fadeScaleIn {
+                                    0% { opacity: 0; transform: scale(0.95); }
+                                    100% { opacity: 1; transform: scale(1); }
+                                }
                             `}} />
                         </div>
                     ) : (
@@ -551,7 +558,7 @@ export default function CreateFarmPage() {
     };
 
     const updateReward = (id: string, field: keyof RewardConfig, value: any) => {
-        setRewards(rewards.map(r => r.id === id ? { ...r, [field]: value } : r));
+        setRewards(prevRewards => prevRewards.map(r => r.id === id ? { ...r, [field]: value } : r));
     };
 
     const openTokenSelector = (index: number) => {
@@ -567,7 +574,7 @@ export default function CreateFarmPage() {
         setEditingTokenIndex(null);
     };
 
-    const isStep2Valid = rewards.every(r => r.token !== null && r.amount !== "" && parseFloat(r.amount) > 0 && parseInt(r.durationDays) > 0);
+    const isStep2Valid = rewards.every(r => r.token !== null && r.amount !== "" && parseFloat(r.amount) > 0 && parseInt(r.durationDays) > 0 && r.hasSelectedPeriod);
 
     const renderStep2 = () => (
         <div className="w-full md:w-2/3">
@@ -645,86 +652,101 @@ export default function CreateFarmPage() {
                             </div>
 
                             {/* Duration & Dates */}
-                            <div className={`bg-black/20 border border-white/10 rounded-xl p-4 relative ${!reward.hasSelectedPeriod ? 'flex flex-col gap-2' : 'flex justify-between items-center'}`}>
-                                {!reward.hasSelectedPeriod ? (
-                                    <>
-                                        <div className="flex justify-between text-xs text-white/40 mb-1">
-                                            <span>Farming starts</span>
-                                            <span>Farming ends</span>
-                                        </div>
+                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center relative">
+                                {/* Left: Start Date */}
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-white/40">Farming starts</span>
+                                    {!reward.hasSelectedPeriod ? (
+                                        <span className="text-base font-bold my-1 text-white/20">--/--/--</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-base font-bold my-1 text-white/80">
+                                                {reward.startDate.getUTCFullYear()}/{reward.startDate.getUTCMonth() + 1}/{reward.startDate.getUTCDate()}
+                                            </span>
+                                            <span className="text-xs text-white/50">
+                                                {String(reward.startDate.getUTCHours()).padStart(2, '0')}:{String(reward.startDate.getUTCMinutes()).padStart(2, '0')} (UTC)
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Middle: Select Button OR Days Input */}
+                                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+
+                                    {!reward.hasSelectedPeriod ? (
                                         <button
                                             onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
-                                            className="w-full bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 text-white font-bold py-3 rounded-xl transition-all"
+                                            className="bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 text-white text-sm font-bold py-1.5 px-6 rounded-lg transition-all"
                                         >
                                             Select
                                         </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-white/40">Farming starts</span>
-                                            <button
-                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", !reward.isDatePickerOpen)}
-                                                className="text-base font-bold my-1 hover:underline text-left flex items-center gap-2"
-                                            >
-                                                {reward.startDate.getUTCFullYear()}/{reward.startDate.getUTCMonth() + 1}/{reward.startDate.getUTCDate()}
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40"><path d="m6 9 6 6 6-6" /></svg>
-                                            </button>
-                                            <span className="text-xs text-[var(--neon-teal)]">
-                                                {String(reward.startDate.getUTCHours()).padStart(2, '0')}:{String(reward.startDate.getUTCMinutes()).padStart(2, '0')} (UTC)
-                                            </span>
+                                    ) : (
+                                        <div
+                                            className="bg-[#1a1b2e] hover:border-white/30 border border-white/10 rounded-lg flex items-center px-1 cursor-pointer transition-all animate-duration-pop"
+                                            onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
+                                        >
+                                            <input
+                                                type="number"
+                                                min={7}
+                                                max={90}
+                                                value={reward.durationDays}
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    // Instantly block numbers higher than 90 while typing
+                                                    if (parseInt(val) > 90) {
+                                                        val = "90";
+                                                    }
+                                                    updateReward(reward.id, "durationDays", val);
+                                                }}
+                                                onBlur={(e) => {
+                                                    let val = parseInt(e.target.value);
+                                                    // When they click away, if it's blank or less than 7, snap it to 7
+                                                    if (isNaN(val) || val < 7) val = 7;
+                                                    updateReward(reward.id, "durationDays", val.toString());
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="bg-transparent w-8 text-center text-sm font-bold outline-none py-1.5 text-white"
+                                            />
+                                            <span className="text-sm font-bold pr-2 text-white">Days</span>
                                         </div>
+                                    )}
 
-                                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-                                            <div className="h-[1px] w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
-                                            <div
-                                                className="bg-[#1a1b2e] border border-white/10 rounded-lg flex items-center px-1 cursor-pointer hover:border-white/20 transition-all"
-                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
-                                            >
-                                                <input
-                                                    type="number"
-                                                    value={reward.durationDays}
-                                                    onChange={(e) => updateReward(reward.id, "durationDays", e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="bg-transparent w-8 text-center text-sm font-medium outline-none py-1.5"
-                                                />
-                                                <span className="text-sm font-medium pr-2 text-white/80">Days</span>
-                                            </div>
-                                            <div className="h-[1px] w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
-                                        </div>
+                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+                                </div>
 
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-xs text-white/40">Farming ends</span>
+                                {/* Right: End Date */}
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs text-white/40">Farming ends</span>
+                                    {!reward.hasSelectedPeriod ? (
+                                        <span className="text-base font-bold my-1 text-white/20">--/--/--</span>
+                                    ) : (
+                                        <>
                                             <span className="text-base font-bold my-1 text-white/80">
                                                 {endDate.getUTCFullYear()}/{endDate.getUTCMonth() + 1}/{endDate.getUTCDate()}
                                             </span>
                                             <span className="text-xs text-white/50">
                                                 {String(endDate.getUTCHours()).padStart(2, '0')}:{String(endDate.getUTCMinutes()).padStart(2, '0')} (UTC)
                                             </span>
-                                        </div>
-                                    </>
-                                )}
+                                        </>
+                                    )}
+                                </div>
 
-                                {/* Date Picker Overlay for this block */}
+                                {/* Date Picker Overlay - Now opens directly without the extra wrapper */}
                                 {reward.isDatePickerOpen && (
-                                    <div className="absolute top-16 left-4 z-50 w-[320px] shadow-2xl">
-                                        <div className="bg-[#0f1421] border border-white/10 rounded-2xl p-4 relative">
-                                            <button
-                                                onClick={() => updateReward(reward.id, "isDatePickerOpen", false)}
-                                                className="absolute top-4 right-4 text-white/50 hover:text-white"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                            </button>
-                                            <p className="text-sm font-bold mb-4">Start on</p>
-                                            <DateTimePicker
-                                                value={reward.startDate}
-                                                onChange={(d) => {
-                                                    updateReward(reward.id, "startDate", d);
-                                                    updateReward(reward.id, "hasSelectedPeriod", true);
-                                                    updateReward(reward.id, "isDatePickerOpen", false);
-                                                }}
-                                            />
-                                        </div>
+                                    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 shadow-2xl">
+                                        <DateTimePicker
+                                            inline={true}
+                                            value={reward.startDate}
+                                            onChange={(d) => {
+                                                setRewards(prev => prev.map(r => r.id === reward.id ? {
+                                                    ...r,
+                                                    startDate: d,
+                                                    hasSelectedPeriod: true,
+                                                    isDatePickerOpen: false
+                                                } : r));
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -785,29 +807,13 @@ export default function CreateFarmPage() {
                 throw new Error("Standard farm creation is not supported yet. Please use a CLMM pool.");
             }
 
-            let manualTxId = "";
-            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(
-                txs: T[]
-            ): Promise<T[]> => {
-                console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
-                for (const tx of txs) {
-                    if ('serialize' in tx && 'feePayer' in tx) {
-                        const sig = await sendTransaction(tx as Transaction, connection);
-                        console.log("✅ TX sent! Sig:", sig);
-                        await connection.confirmTransaction(sig, "confirmed");
-                        manualTxId = sig;
-                    }
-                }
-                return [] as unknown as T[];
-            };
-
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
                 cluster: "devnet",
                 disableFeatureCheck: true,
-                disableLoadToken: true,
-                signAllTransactions: wrappedSignAllTransactions,
+                disableLoadToken: false, // Let Raydium fetch user's token accounts so initReward can find the ownerRewardAccount
+                signAllTransactions,
             });
 
             console.log("Fetching pool info for", selectedPoolId);
@@ -818,28 +824,35 @@ export default function CreateFarmPage() {
 
             const poolInfo = poolInfoRaw[0];
 
-            // Submit multiple initReward instructions sequentially.
-            // (Note: To send them in a single TX block requires manual instruction building via raydium.clmm.makeInitRewardInstruction, 
-            // but this execution block submits them sequentially through the wallet adapter for simplicity in this demo)
+            let activeTxSig = "";
+            let rewardsToProcess = [...rewards].filter((r) => r.token);
 
-            for (let i = 0; i < rewards.length; i++) {
-                const r = rewards[i];
+            for (let i = 0; i < rewardsToProcess.length; i++) {
+                const r = rewardsToProcess[i];
                 if (!r.token) continue;
 
-                const durationSeconds = parseInt(r.durationDays) * 24 * 60 * 60;
-                const rewardAmountDecimal = new Decimal(r.amount);
-                const perSecond = rewardAmountDecimal.div(durationSeconds).toFixed(6);
+                const durationSeconds = parseInt(r.durationDays || "7") * 24 * 60 * 60;
+                const rewardAmountRaw = new Decimal(r.amount || "0").mul(10 ** r.token.decimals);
+                const perSecondRaw = rewardAmountRaw.div(durationSeconds);
 
-                const openTime = Math.floor(r.startDate.getTime() / 1000);
+                let openTime = Math.floor(r.startDate.getTime() / 1000);
+                const currentUnix = Math.floor(Date.now() / 1000);
+
+                if (openTime <= currentUnix + 15) {
+                    openTime = currentUnix + 30; // 30 second safe buffer
+                }
                 const endTime = openTime + durationSeconds;
 
                 console.log(`Executing reward ${i + 1} for token ${r.token.mint}`);
-                const { execute } = await raydium.clmm.initReward({
-                    poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
+
+                // Pass existing rewards so SDK knows slots 0,1 are taken
+                const { execute } = await raydium.clmm.initRewards({
+                    poolInfo: poolInfo as any,
+                    poolKeys: undefined,
                     ownerInfo: {
-                        useSOLBalance: true,
+                        useSOLBalance: true
                     },
-                    rewardInfo: {
+                    rewardInfos: [{
                         mint: {
                             chainId: 103, // Devnet
                             address: r.token.mint,
@@ -851,22 +864,24 @@ export default function CreateFarmPage() {
                             tags: [],
                             extensions: {}
                         },
-                        perSecond: new Decimal(perSecond).mul(10 ** r.token.decimals), // Scale up appropriately
+                        perSecond: perSecondRaw,
                         openTime,
                         endTime
-                    },
+                    }],
                     txVersion: TxVersion.LEGACY
                 });
 
-                await execute({ sendAndConfirm: true });
+                const { txId } = await execute({ sendAndConfirm: true });
+                activeTxSig = txId;
+                setTxSig(txId);
             }
 
-            setTxSig(manualTxId); // Shows the last one, perfectly fine for UI demo
             setIsCreating(false);
             setTimeout(() => router.push("/liquidity"), 2000);
 
         } catch (err: any) {
             console.error("Farm creation err", err);
+            // If the user rejected the transaction inside the loop, we catch it here
             setTxError(err?.message || "Failed to create farm.");
             setIsCreating(false);
         }
@@ -888,23 +903,57 @@ export default function CreateFarmPage() {
                         <span className="text-sm font-bold text-white">{selectedPoolId ? `${selectedPoolId.slice(0, 6)}...${selectedPoolId.slice(-4)}` : "—"}</span>
                     </div>
 
-                    {rewards.map((r, i) => (
-                        <div key={r.id} className="mt-4 p-4 border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 rounded-xl">
-                            <h4 className="text-[var(--neon-teal)] text-xs font-bold mb-3 uppercase tracking-wider">Reward {i + 1}</h4>
-                            <div className="flex justify-between items-center py-1">
-                                <span className="text-xs text-white/50">Token</span>
-                                <span className="text-sm font-bold text-white">{r.token?.symbol}</span>
+                    {rewards.map((r, i) => {
+                        const durationInt = parseInt(r.durationDays) || 0;
+                        const endDate = new Date(r.startDate.getTime() + durationInt * 24 * 60 * 60 * 1000);
+                        const dailyRate = durationInt > 0 ? (parseFloat(r.amount || "0") / durationInt) : 0;
+
+                        const formatDate = (date: Date) => {
+                            return `${date.getUTCFullYear()}/${date.getUTCMonth() + 1}/${date.getUTCDate()} ${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')} (UTC)`;
+                        };
+
+                        return (
+                            <div key={r.id} className="mt-4 border border-[var(--neon-teal)]/30 bg-gradient-to-b from-[var(--neon-teal)]/5 to-transparent rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
+                                {/* Card Header */}
+                                <div className="bg-[var(--neon-teal)]/10 px-4 py-3 border-b border-[var(--neon-teal)]/20 flex justify-between items-center">
+                                    <h4 className="text-[var(--neon-teal)] text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                                        Reward {i + 1}
+                                    </h4>
+                                    {r.token && <TokenIcon logo={r.token.logoURI} symbol={r.token.symbol} size={20} />}
+                                </div>
+
+                                {/* Card Body */}
+                                <div className="p-4 flex flex-col gap-3">
+                                    {/* Amounts */}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-white/50">Total Amount</span>
+                                        <span className="text-sm font-bold text-white">{r.amount} {r.token?.symbol}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-white/50">Estimated Rate</span>
+                                        <span className="text-sm font-bold text-[var(--neon-teal)]">~{dailyRate.toFixed(4)} {r.token?.symbol} / day</span>
+                                    </div>
+
+                                    <div className="h-[1px] w-full bg-white/5 my-1"></div>
+
+                                    {/* Dates */}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-white/50">Start Date</span>
+                                        <span className="text-xs font-medium text-white/80">{formatDate(r.startDate)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-white/50">End Date</span>
+                                        <span className="text-xs font-medium text-white/80">{formatDate(endDate)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-white/50">Duration</span>
+                                        <span className="text-xs font-medium text-white/80">{r.durationDays} Days</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center py-1">
-                                <span className="text-xs text-white/50">Amount</span>
-                                <span className="text-sm font-bold text-white">{r.amount} {r.token?.symbol}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-1">
-                                <span className="text-xs text-white/50">Duration</span>
-                                <span className="text-sm font-bold text-white">{r.durationDays} days</span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <p className="text-xs text-yellow-400/80 mt-2">
