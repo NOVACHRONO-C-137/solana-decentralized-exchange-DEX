@@ -319,12 +319,24 @@ async function discoverCreatedPools(
     }
 }
 
+// ── Fetch transaction count for a pool ───────────────────────
+async function fetchPoolTxCount(poolId: string, connection: any): Promise<number> {
+    try {
+        const signatures = await connection.getSignaturesForAddress(new PublicKey(poolId), { limit: 100 });
+        return signatures.length;
+    } catch {
+        return 0;
+    }
+}
+
 export default function LiquidityPoolsTable() {
     const [selectedPool, setSelectedPool] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [copiedMint, setCopiedMint] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const router = useRouter();
     const [pools, setPools] = useState<PoolData[]>([]);
+    const [poolTxCounts, setPoolTxCounts] = useState<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(true);
     const { publicKey, connected } = useWallet();
     const { connection } = useConnection();
@@ -443,6 +455,18 @@ export default function LiquidityPoolsTable() {
                     }
 
                     setPools(livePools);
+
+                    // Fetch transaction counts for each pool
+                    if (connection) {
+                        const txCounts = await Promise.all(
+                            livePools.map(pool => fetchPoolTxCount(pool.id, connection))
+                        );
+                        const countsMap = new Map<string, number>();
+                        livePools.forEach((pool, idx) => {
+                            countsMap.set(pool.id, txCounts[idx]);
+                        });
+                        setPoolTxCounts(countsMap);
+                    }
                 } else {
                     // API returned nothing — show localStorage pools + placeholders for hardcoded
                     const fallbackPools: PoolData[] = idsArray.map(id => {
@@ -529,7 +553,7 @@ export default function LiquidityPoolsTable() {
                             <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border/50">
                                 <th className="px-6 py-4 font-medium">Pool</th>
                                 <th className="px-6 py-4 font-medium text-right">Liquidity</th>
-                                <th className="px-6 py-4 font-medium text-right">Volume 24H</th>
+                                <th className="px-6 py-4 font-medium text-right">Swaps</th>
                                 <th className="px-6 py-4 font-medium text-right">Fees 24H</th>
                                 <th className="px-6 py-4 font-medium text-right">APR 24H</th>
                                 <th className="px-6 py-4 font-medium text-right">Actions</th>
@@ -582,7 +606,7 @@ export default function LiquidityPoolsTable() {
                                                             </div>
                                                         </div>
                                                     </TooltipTrigger>
-                                                    <TooltipContent side="right" className="bg-popover dark:bg-[#1C202F] border-border dark:border-border/10 p-4 w-72 shadow-xl z-[100] text-popover-foreground dark:text-white rounded-xl">
+                                                    <TooltipContent side="right" className="bg-popover dark:bg-[#1C202F] border-border dark:border-border/10 p-4 w-80 shadow-xl z-[100] text-popover-foreground dark:text-white rounded-xl">
                                                         <div className="flex flex-col gap-3">
                                                             <div className="flex justify-between items-center text-[12px]">
                                                                 <span className="text-muted-foreground dark:text-white/70 font-medium">Pool id:</span>
@@ -601,6 +625,13 @@ export default function LiquidityPoolsTable() {
                                                                     <TokenIcon logo={pool.logoA} symbol={symA} size={16} className="!border-0" />
                                                                     <span className="text-muted-foreground dark:text-white/70">{symA}</span>
                                                                 </div>
+                                                                <button
+                                                                    onClick={() => { navigator.clipboard.writeText(pool.mintA || ""); setCopiedMint(pool.mintA || null); setTimeout(() => setCopiedMint(null), 2000); }}
+                                                                    className="text-foreground dark:text-white hover:text-foreground/80 dark:hover:text-white/80 transition-colors flex items-center gap-1 font-mono text-[10px]"
+                                                                >
+                                                                    {pool.mintA ? `${pool.mintA.slice(0, 6)}...${pool.mintA.slice(-4)}` : "—"}
+                                                                    {copiedMint === pool.mintA ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-70" />}
+                                                                </button>
                                                             </div>
                                                             {/* Token B */}
                                                             <div className="flex justify-between items-center text-[12px]">
@@ -608,6 +639,13 @@ export default function LiquidityPoolsTable() {
                                                                     <TokenIcon logo={pool.logoB} symbol={symB} size={16} className="!border-0" />
                                                                     <span className="text-muted-foreground dark:text-white/70">{symB}</span>
                                                                 </div>
+                                                                <button
+                                                                    onClick={() => { navigator.clipboard.writeText(pool.mintB || ""); setCopiedMint(pool.mintB || null); setTimeout(() => setCopiedMint(null), 2000); }}
+                                                                    className="text-foreground dark:text-white hover:text-foreground/80 dark:hover:text-white/80 transition-colors flex items-center gap-1 font-mono text-[10px]"
+                                                                >
+                                                                    {pool.mintB ? `${pool.mintB.slice(0, 6)}...${pool.mintB.slice(-4)}` : "—"}
+                                                                    {copiedMint === pool.mintB ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-70" />}
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </TooltipContent>
@@ -617,8 +655,8 @@ export default function LiquidityPoolsTable() {
                                             {/* Liquidity */}
                                             <td className="px-6 py-4 text-right text-foreground/90 text-sm">{pool.liquidity}</td>
 
-                                            {/* Volume */}
-                                            <td className="px-6 py-4 text-right text-foreground/90 text-sm">{pool.volume}</td>
+                                            {/* Swaps */}
+                                            <td className="px-6 py-4 text-right text-foreground/90 text-sm">{poolTxCounts.get(pool.id) ?? "—"} txs</td>
 
                                             {/* Fees 24H */}
                                             <td className="px-6 py-4 text-right text-foreground/90 text-sm">{pool.fees || "$0"}</td>
@@ -642,11 +680,11 @@ export default function LiquidityPoolsTable() {
                                                             </div>
                                                             <div className="flex items-center gap-4">
                                                                 <div className="relative h-12 w-12 rounded-full border-[4px] border-secondary dark:border-white/5 flex items-center justify-center">
-                                                                    <div className="absolute inset-[-4px] rounded-full border-[4px] border-t-purple-500 border-r-purple-500 border-b-transparent border-l-transparent" />
+                                                                    <div className="absolute inset-[-4px] rounded-full border-[4px] border-t-[#1E7FBF] border-r-[#1E7FBF] border-b-transparent border-l-transparent" />
                                                                 </div>
                                                                 <div className="flex flex-col gap-1 text-foreground dark:text-white">
                                                                     <div className="flex items-center gap-2">
-                                                                        <div className="h-2 w-2 rounded-full bg-purple-500" />
+                                                                        <div className="h-2 w-2 rounded-full bg-[#1E7FBF]" />
                                                                         <span className="text-[11px] text-muted-foreground dark:text-white/60">Trade fees</span>
                                                                         <span className="text-[11px] font-bold">{pool.aprBreakdown.tradeFees}</span>
                                                                     </div>

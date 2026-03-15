@@ -12,9 +12,8 @@ import { CheckCircle2 } from "lucide-react";
 export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const router = useRouter();
     const [farmType, setFarmType] = useState<"clmm" | "standard">("clmm");
-    const [burnType, setBurnType] = useState<"clmm" | "standard">("clmm");
     // Tracks which main card is selected
-    const [mainOption, setMainOption] = useState<"pool" | "farm" | "burn">("pool");
+    const [mainOption, setMainOption] = useState<"pool" | "farm">("pool");
     // Tracks which pool type is selected inside the first card
     const [poolType, setPoolType] = useState<"concentrated" | "standard" | "legacy">("concentrated");
 
@@ -146,52 +145,6 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                         )}
                     </div>
 
-                    {/* OPTION 3: BURN & EARN */}
-                    <div
-                        onClick={() => setMainOption("burn")}
-                        className={`rounded-xl p-4 cursor-pointer transition-all ${mainOption === "burn"
-                            ? "border border-[var(--neon-teal)] bg-[#1a1b26]"
-                            : "border border-white/10 bg-[#161722] hover:border-white/30"}`}
-                    >
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-base">Burn & Earn</h3>
-                            {mainOption === "burn" && <CheckCircle2 className="h-5 w-5 text-[var(--neon-teal)]" />}
-                        </div>
-
-                        {mainOption === "burn" && (
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                <p className="text-xs text-white/70 mb-4 leading-relaxed">
-                                    Permanently burn/lock liquidity for an existing position. Trading fees remain claimable.{" "}
-                                    <span className="text-[var(--neon-teal)] hover:underline cursor-pointer">Learn more</span>
-                                </p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setBurnType("clmm"); }}
-                                        className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${burnType === "clmm"
-                                            ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                            : "border-white/10 text-white/40"}`}
-                                    >
-                                        <div className={`w-2.5 h-2.5 rounded-full border-2 flex items-center justify-center shrink-0 ${burnType === "clmm" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
-                                            {burnType === "clmm" && <div className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />}
-                                        </div>
-                                        Concentrated Liquidity
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setBurnType("standard"); }}
-                                        className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${burnType === "standard"
-                                            ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                            : "border-white/10 text-white/40"}`}
-                                    >
-                                        <div className={`w-2.5 h-2.5 rounded-full border-2 flex items-center justify-center shrink-0 ${burnType === "standard" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
-                                            {burnType === "standard" && <div className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />}
-                                        </div>
-                                        Standard AMM
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
                     {/* ACTION BUTTONS */}
                     <div className="flex flex-col gap-2 mt-4 pt-2">
                         <button
@@ -200,8 +153,6 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                                     router.push(`/liquidity/create/${poolType === "concentrated" ? "clmm" : poolType}`);
                                 } else if (mainOption === "farm") {
                                     router.push(`/liquidity/create-farm`);
-                                } else if (mainOption === "burn") {
-                                    router.push(`/liquidity/burn-earn?type=${burnType}`);
                                 }
                                 onClose();
                             }}

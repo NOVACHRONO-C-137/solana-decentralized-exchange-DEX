@@ -832,9 +832,7 @@ export default function CreateFarmPage() {
                 if (pool.programId === CPMM_PROGRAM) {
                     // CPMM — SDK doesn't support this yet
                     throw new Error(
-                        "CPMM farm creation is not yet available in the public SDK. " +
-                        "Raydium handles CPMM farms through their own backend. " +
-                        "Please use a CLMM pool to create a permissionless farm."
+                        "CPMM farm creation is not yet available. Please use a CLMM pool to create a permissionless farm."
                     );
                 }
 

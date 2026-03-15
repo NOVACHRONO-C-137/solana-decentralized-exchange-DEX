@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, ExternalLink, Copy, Check, Wallet } from "lucide-react";
+import { Search, ExternalLink, Copy, Check } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 export type TokenInfo = {
@@ -139,19 +139,19 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-[#11121a] text-white border-white/10 sm:max-w-[450px] p-0 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <DialogContent className="bg-popover text-popover-foreground border-border sm:max-w-[450px] p-0 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
 
                 {/* Header & Search */}
                 <div className="p-6 pb-2 shrink-0">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">Select a token</DialogTitle>
+                        <DialogTitle className="text-xl font-bold text-foreground">Select a token</DialogTitle>
                     </DialogHeader>
 
                     <div className="relative mt-4">
                         <input
                             type="text"
                             placeholder="Search by name, symbol or address"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-white/30"
+                            className="w-full bg-muted border-border text-foreground rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -160,7 +160,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
 
                     {/* Quick select chips with balances */}
                     <div className="mt-5">
-                        <p className="text-xs font-semibold text-white/50 mb-3">Devnet tokens</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-3">Devnet tokens</p>
                         <div className="flex flex-wrap gap-2">
                             {DEVNET_TOKENS.map((token) => {
                                 const bal = balances?.get(token.mint) ?? 0;
@@ -168,7 +168,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                                     <button
                                         key={token.symbol}
                                         onClick={() => { onSelectToken(token); onClose(); }}
-                                        className="flex items-center gap-1.5 bg-black/40 hover:bg-white/10 border border-white/5 rounded-lg px-3 py-1.5 transition-colors"
+                                        className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 border-border text-foreground rounded-lg px-3 py-1.5 transition-colors"
                                     >
                                         <TokenLogo token={token} size={18} />
                                         <span className="text-sm font-medium">{token.symbol}</span>
@@ -181,18 +181,16 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                         </div>
                     </div>
 
-                    <div className="flex justify-between text-xs font-semibold text-white/40 mt-6 px-1 pb-2 border-b border-white/5">
+                    <div className="flex justify-between text-xs font-semibold text-muted-foreground mt-6 px-1 pb-2 border-b border-border">
                         <span>Token</span>
-                        <span className="flex items-center gap-1">
-                            <Wallet className="h-3 w-3" /> Balance
-                        </span>
+                        <span>Balance</span>
                     </div>
                 </div>
 
                 {/* Token List */}
                 <div className="overflow-y-auto flex-1 px-4 pb-4 custom-scrollbar-teal">
                     {sorted.length === 0 ? (
-                        <p className="text-center text-white/30 text-sm py-8">No tokens found</p>
+                        <p className="text-center text-muted-foreground text-sm py-8">No tokens found</p>
                     ) : (
                         sorted.map((token) => {
                             const bal = balances?.get(token.mint) ?? 0;
@@ -200,13 +198,13 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                                 <div
                                     key={token.mint}
                                     onClick={() => { onSelectToken(token); onClose(); }}
-                                    className="flex justify-between items-center p-3 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group"
+                                    className="flex justify-between items-center p-3 hover:bg-secondary/60 rounded-xl cursor-pointer transition-colors group"
                                 >
                                     <div className="flex items-center gap-3">
                                         <TokenLogo token={token} size={36} />
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-sm">{token.symbol}</span>
-                                            <span className="text-xs text-white/50">{token.name}</span>
+                                            <span className="font-bold text-sm text-foreground">{token.symbol}</span>
+                                            <span className="text-xs text-muted-foreground">{token.name}</span>
                                         </div>
                                     </div>
 
@@ -216,17 +214,17 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                                             {balancesLoading ? (
                                                 <div className="w-12 h-4 bg-white/5 rounded animate-pulse" />
                                             ) : bal > 0 ? (
-                                                <span className="text-sm font-bold text-white">{formatBalance(bal)}</span>
+                                                <span className="text-sm font-bold text-foreground">{formatBalance(bal)}</span>
                                             ) : (
                                                 <span className="text-sm text-white/20">0</span>
                                             )}
                                         </div>
                                         {/* Address */}
-                                        <div className="flex items-center gap-2 text-xs text-white/30">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <span>{shortAddress(token.mint)}</span>
                                             <button
                                                 onClick={(e) => handleCopy(e, token.mint)}
-                                                className="hover:text-white transition-colors"
+                                                className="text-muted-foreground hover:text-foreground transition-colors"
                                             >
                                                 {copiedAddress === token.mint
                                                     ? <Check className="h-3.5 w-3.5 text-green-400" />
@@ -269,8 +267,8 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                     }
                 ` }} />
 
-                <div className="p-4 shrink-0 bg-black/20 border-t border-white/5">
-                    <p className="text-center text-xs text-white/30">{connected ? "Showing all your wallet tokens" : "Connect wallet to see all your tokens"}</p>
+                <div className="p-4 shrink-0 bg-muted/50 border-t border-border">
+                    <p className="text-center text-xs text-muted-foreground">{connected ? "Showing all your wallet tokens" : "Connect wallet to see all your tokens"}</p>
                 </div>
             </DialogContent>
         </Dialog>

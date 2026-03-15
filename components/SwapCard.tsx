@@ -129,8 +129,8 @@ function GradientBorderField({
                     )}
                 </div>
             </div>
-            <div className="rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#6366f1] to-[#3b82f6] p-[1.5px]">
-                <div className="flex items-center justify-between rounded-[calc(1rem-1.5px)] bg-card/95 dark:bg-card/80 px-4 py-4 backdrop-blur-sm">
+            <div className="rounded-2xl border border-[#0D9B5F]/40 dark:border-[#14F195]/20">
+                <div className="flex items-center justify-between rounded-2xl bg-[#edf9f4] dark:bg-card/80 px-4 py-4">
                     <TokenSelector token={token} onSwitch={onTokenSwitch} />
                     <div className="flex flex-col items-end gap-0.5">
                         <input
@@ -177,9 +177,9 @@ function SlippageModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-[#11121a] text-white border-white/10 sm:max-w-[360px] rounded-2xl p-6 shadow-2xl font-sans">
+            <DialogContent className="bg-popover text-popover-foreground border-border sm:max-w-[360px] rounded-2xl p-6 shadow-2xl font-sans">
                 <div className="flex items-center justify-between mb-5">
-                    <p className="text-base font-bold">Slippage Settings</p>
+                    <p className="text-base font-bold text-foreground">Slippage Settings</p>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-4">
                     {["0.1", "0.5", "1.0", "2.0"].map((v) => (
@@ -188,7 +188,7 @@ function SlippageModal({
                             onClick={() => setLocalValue(v)}
                             className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all border ${localValue === v
                                 ? "bg-[var(--neon-teal)]/10 border-[var(--neon-teal)] text-[var(--neon-teal)]"
-                                : "bg-white/5 border-white/10 text-white/70 hover:border-white/20"
+                                : "bg-muted border-border text-foreground hover:border-[var(--neon-teal)]/50"
                                 }`}
                         >
                             {v}%
@@ -200,11 +200,11 @@ function SlippageModal({
                         type="number"
                         value={localValue}
                         onChange={(e) => setLocalValue(e.target.value)}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 py-3 px-4 text-sm text-white focus:outline-none focus:border-[var(--neon-teal)]"
+                        className="w-full rounded-xl bg-muted border-border py-3 px-4 text-sm text-foreground focus:outline-none focus:border-[var(--neon-teal)]"
                         placeholder="0.5"
                         step="0.1"
                     />
-                    <span className="text-white/50 text-sm">%</span>
+                    <span className="text-muted-foreground text-sm">%</span>
                 </div>
                 <button
                     onClick={handleSave}
