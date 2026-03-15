@@ -43,7 +43,7 @@ function TokenLogo({
   if (!token)
     return (
       <div
-        className={`rounded-full bg-gray-600 border-2 border-[#161722] shrink-0 ${className}`}
+        className={`rounded-full bg-gray-600 border-2 border-card shrink-0 ${className}`}
         style={{ width: size, height: size }}
       />
     );
@@ -51,7 +51,7 @@ function TokenLogo({
   if (token.logoURI && !imgError) {
     return (
       <div
-        className={`rounded-full overflow-hidden border-2 border-[#161722] shrink-0 shadow-lg ${className}`}
+        className={`rounded-full overflow-hidden border-2 border-card shrink-0 shadow-lg ${className}`}
         style={{ width: size, height: size }}
       >
         <Image
@@ -79,7 +79,7 @@ function TokenLogo({
 
   return (
     <div
-      className={`rounded-full border-2 border-[#161722] flex items-center justify-center font-bold text-white shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
+      className={`rounded-full border-2 border-card flex items-center justify-center font-bold text-foreground shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
       style={{
         width: size,
         height: size,
@@ -847,18 +847,18 @@ function PositionPageInner() {
   const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
 
   return (
-    <main className="min-h-screen text-white bg-[#0d0e14] px-4 py-8">
+    <main className="min-h-screen text-foreground bg-background px-4 py-8">
       <div className="max-w-6xl mx-auto">
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="flex items-center text-white/60 hover:text-white transition-colors mb-6"
+          className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ChevronLeft className="h-5 w-5 mr-1" /> Back
         </button>
 
         {/* Header bar */}
-        <div className="bg-[#161722] border border-white/10 rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="bg-card border border-border rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               <TokenLogo token={tokenAInfo} size={32} className="z-10" />
@@ -873,25 +873,25 @@ function PositionPageInner() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             {poolLoading && (
-              <span className="text-xs text-white/40 flex items-center gap-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" /> Fetching price...
               </span>
             )}
             {poolPrice && !poolLoading && (
-              <span className="text-xs text-white/60 flex gap-2">
+              <span className="text-xs text-muted-foreground flex gap-2">
                 <span>
-                  1 {tokenA} = <span className="text-white font-mono">{poolPrice.toFixed(4)}</span> {tokenB}
+                  1 {tokenA} = <span className="text-foreground font-mono">{poolPrice.toFixed(4)}</span> {tokenB}
                 </span>
-                <span className="text-white/20">|</span>
+                <span className="text-muted-foreground/30">|</span>
                 <span>
-                  1 {tokenB} = <span className="text-white font-mono">{(1 / poolPrice).toFixed(4)}</span> {tokenA}
+                  1 {tokenB} = <span className="text-foreground font-mono">{(1 / poolPrice).toFixed(4)}</span> {tokenA}
                 </span>
               </span>
             )}
             {poolId && (
               <div>
-                <span className="text-white/40">Pool ID </span>
-                <span className="font-mono text-xs text-white/70">
+                <span className="text-muted-foreground">Pool ID </span>
+                <span className="font-mono text-xs text-foreground/70">
                   {poolId.slice(0, 8)}...{poolId.slice(-6)}
                 </span>
               </div>
@@ -907,17 +907,17 @@ function PositionPageInner() {
         {/* Main content */}
         <div className="flex flex-col lg:flex-row gap-6">
           {/* LEFT — Price Range Chart */}
-          <div className="flex-1 bg-[#161722] border border-white/10 rounded-2xl p-6">
+          <div className="flex-1 bg-card border border-border rounded-2xl p-6">
             <h3 className="text-base font-bold mb-5">Set Price Range</h3>
 
             {/* Chart area */}
             <div
               ref={chartRef}
-              className="relative bg-[#1b1d2a] border border-white/5 rounded-xl p-4 mb-5 h-64 overflow-hidden select-none"
+              className="relative bg-card border border-border/50 rounded-xl p-4 mb-5 h-64 overflow-hidden select-none"
             >
               <div className="absolute top-3 right-3 flex gap-2 z-20">
-                <button onClick={fetchBalances} className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                  <RefreshCw className={`h-3.5 w-3.5 text-white/50 ${isFetchingBalances ? "animate-spin" : ""}`} />
+                <button onClick={fetchBalances} className="w-7 h-7 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center transition-all">
+                  <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${isFetchingBalances ? "animate-spin" : ""}`} />
                 </button>
               </div>
 
@@ -978,7 +978,7 @@ function PositionPageInner() {
                 </div>
               </div>
 
-              <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-white/40">
+              <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-muted-foreground">
                 {bars.length > 0
                   ? [0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
                     const minP = bars[0].price;
@@ -993,12 +993,12 @@ function PositionPageInner() {
             {/* Min / Max inputs */}
             <div className="flex gap-4 mb-4">
               {/* Min */}
-              <div className="flex-1 bg-black/20 border border-white/10 rounded-xl p-3">
-                <p className="text-[10px] text-white/40 mb-2">Min Price</p>
+              <div className="flex-1 bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground mb-2">Min Price</p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => adjustDisplayPrice(true, "down")}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
+                    className="w-6 h-6 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center text-muted-foreground font-bold shrink-0"
                   >
                     -
                   </button>
@@ -1010,23 +1010,23 @@ function PositionPageInner() {
                   />
                   <button
                     onClick={() => adjustDisplayPrice(true, "up")}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
+                    className="w-6 h-6 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center text-muted-foreground font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
-                <p className="text-[9px] text-white/30 mt-1 text-center">
+                <p className="text-[9px] text-muted-foreground mt-1 text-center">
                   {priceToggle === "B" ? `${tokenB} per ${tokenA}` : `${tokenA} per ${tokenB}`}
                 </p>
               </div>
 
               {/* Max */}
-              <div className="flex-1 bg-black/20 border border-white/10 rounded-xl p-3">
-                <p className="text-[10px] text-white/40 mb-2">Max Price</p>
+              <div className="flex-1 bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground mb-2">Max Price</p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => adjustDisplayPrice(false, "down")}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
+                    className="w-6 h-6 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center text-muted-foreground font-bold shrink-0"
                   >
                     -
                   </button>
@@ -1038,12 +1038,12 @@ function PositionPageInner() {
                   />
                   <button
                     onClick={() => adjustDisplayPrice(false, "up")}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 font-bold shrink-0"
+                    className="w-6 h-6 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center text-muted-foreground font-bold shrink-0"
                   >
                     +
                   </button>
                 </div>
-                <p className="text-[9px] text-white/30 mt-1 text-center">
+                <p className="text-[9px] text-muted-foreground mt-1 text-center">
                   {priceToggle === "B" ? `${tokenB} per ${tokenA}` : `${tokenA} per ${tokenB}`}
                 </p>
               </div>
@@ -1058,8 +1058,8 @@ function PositionPageInner() {
                     onClick={() => applyQuickRange(r)}
                     disabled={!poolPrice}
                     className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${activeRange === r
-                      ? "bg-[var(--neon-teal)]/20 border-[var(--neon-teal)] text-white font-bold"
-                      : "border-white/10 text-white/50 hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] disabled:opacity-30"
+                      ? "bg-[var(--neon-teal)]/20 border-[var(--neon-teal)] text-foreground font-bold"
+                      : "border-border text-muted-foreground hover:border-[var(--neon-teal)]/50 hover:text-[var(--neon-teal)] disabled:opacity-30"
                       }`}
                   >
                     {r}
@@ -1073,7 +1073,7 @@ function PositionPageInner() {
                       setMaxPrice((poolPrice * 1.2).toFixed(6));
                     }
                   }}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-white/40 hover:border-white/20 transition-all"
+                  className="text-xs px-3 py-1.5 rounded-xl border border-border text-muted-foreground hover:border-border transition-all"
                 >
                   Reset
                 </button>
@@ -1087,20 +1087,20 @@ function PositionPageInner() {
             </div>
 
             {/* Estimated APR */}
-            <div className="mt-5 pt-5 border-t border-white/5">
+            <div className="mt-5 pt-5 border-t border-border/50">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold">Estimated APR</p>
-                  <span className="text-white/30 text-xs cursor-pointer hover:text-white">
+                  <span className="text-muted-foreground text-xs cursor-pointer hover:text-foreground">
                     ⓘ
                   </span>
                 </div>
-                <div className="flex bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-lg overflow-hidden">
                   {(["24H", "7D", "30D"] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setAprTab(tab)}
-                      className={`px-3 py-1 text-xs font-medium transition-all ${aprTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}
+                      className={`px-3 py-1 text-xs font-medium transition-all ${aprTab === tab ? "bg-secondary dark:bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       {tab}
                     </button>
@@ -1109,48 +1109,48 @@ function PositionPageInner() {
               </div>
               <div className="flex items-center gap-4">
                 <p className="text-2xl font-bold">0%</p>
-                <div className="flex items-center gap-2 text-xs text-white/50">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="w-2 h-2 rounded-full bg-[var(--neon-teal)]" />
                   <span>Trade fees</span>
-                  <span className="font-bold text-white">0%</span>
+                  <span className="font-bold text-foreground">0%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* RIGHT — Deposit Amount */}
-          <div className="w-full lg:w-80 bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+          <div className="w-full lg:w-80 bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">Add Deposit Amount</h3>
               <div className="flex items-center gap-2 relative" ref={slippageRef}>
                 <button
                   onClick={() => setShowSlippageSettings(!showSlippageSettings)}
-                  className="text-xs text-white flex items-center gap-1.5 focus:outline-none transition-all active:scale-95 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                  className="text-xs text-foreground flex items-center gap-1.5 focus:outline-none transition-all active:scale-95 px-2.5 py-1.5 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
                   <span>{slippageTab === "Auto" ? "2.5" : customSlippage}%</span>
                 </button>
                 {/* Slippage Dropdown */}
                 {showSlippageSettings && (
-                  <div className="absolute top-full right-0 mt-2 w-72 bg-[#1b1d2a] border border-white/10 rounded-2xl p-4 shadow-2xl z-50">
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50">
                     <div className="mb-4 flex items-center gap-2">
                       <p className="text-sm font-bold">Max Slippage</p>
                       <div className="group relative">
-                        <span className="text-white/30 text-xs cursor-pointer hover:text-white">ⓘ</span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-xs text-white/70 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center pointer-events-none z-50">
+                        <span className="text-muted-foreground text-xs cursor-pointer hover:text-foreground">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-xs text-foreground/70 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center pointer-events-none z-50">
                           The maximum price difference you are willing to accept.
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex bg-black/30 border border-white/10 rounded-xl p-1 mb-4">
+                    <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 mb-4">
                       {(["Auto", "Custom"] as const).map((tab) => (
                         <button
                           key={tab}
                           onClick={() => setSlippageTab(tab)}
                           className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab
-                            ? "bg-white/10 text-white"
-                            : "text-white/40 hover:text-white"
+                            ? "bg-secondary dark:bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white"
+                            : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                           {tab}
@@ -1164,10 +1164,10 @@ function PositionPageInner() {
                           type="number"
                           value={customSlippage}
                           onChange={(e) => setCustomSlippage(e.target.value)}
-                          className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-[var(--neon-teal)]/50 transition-all placeholder:text-white/20"
+                          className="w-full bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground outline-none focus:border-[var(--neon-teal)]/50 transition-all placeholder:text-muted-foreground/30"
                           placeholder="0.0"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-sm">%</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">%</span>
                       </div>
                     )}
 
@@ -1183,15 +1183,15 @@ function PositionPageInner() {
 
                 <button
                   onClick={fetchBalances}
-                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all"
+                  className="w-7 h-7 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center transition-all"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 text-white/50 ${isFetchingBalances ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${isFetchingBalances ? "animate-spin" : ""}`} />
                 </button>
               </div>
             </div>
 
             {/* Top Token */}
-            <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
@@ -1199,21 +1199,21 @@ function PositionPageInner() {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Show Real Balance */}
-                  <span className="text-xs text-white/40 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     {formatLargeNumber(isInverted ? balanceB : balanceA)}
                   </span>
                   {/* Fixed 50% Button */}
                   <button
                     onClick={() => handleSetPercentage(0.5, true)}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                    className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     50%
                   </button>
                   {/* Fixed Max Button */}
                   <button
                     onClick={() => handleSetPercentage(1, true)}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                    className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     Max
                   </button>
@@ -1230,9 +1230,9 @@ function PositionPageInner() {
                     ? handleDepositBChange(val)
                     : handleDepositAChange(val);
                 }}
-                className={`bg-transparent font-bold text-white outline-none w-full text-right ${String(topDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
+                className={`bg-transparent font-bold text-foreground outline-none w-full text-right ${String(topDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
               />
-              <p className="text-xs text-white/30 text-right mt-1">
+              <p className="text-xs text-muted-foreground text-right mt-1">
                 ~${formatLargeNumber(isInverted ? (parseFloat(topDeposit) || 0) : (parseFloat(topDeposit) || 0) * (poolPrice || 1))}
               </p>
             </div>
@@ -1241,14 +1241,14 @@ function PositionPageInner() {
             <div className="flex justify-center -my-3 z-10 relative">
               <button
                 onClick={() => setIsInverted(!isInverted)}
-                className="w-8 h-8 rounded-full bg-[#161722] border border-white/10 flex items-center justify-center text-white/40 hover:text-[var(--neon-teal)] hover:border-[var(--neon-teal)]/30 transition-all shadow-lg"
+                className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-[var(--neon-teal)] hover:border-[var(--neon-teal)]/30 transition-all shadow-lg"
               >
                 <ArrowDownUp className="h-4 w-4" />
               </button>
             </div>
 
             {/* Bottom Token */}
-            <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
@@ -1256,21 +1256,21 @@ function PositionPageInner() {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Show Real Balance */}
-                  <span className="text-xs text-white/40 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     {formatLargeNumber(isInverted ? balanceA : balanceB)}
                   </span>
                   {/* Fixed 50% Button */}
                   <button
                     onClick={() => handleSetPercentage(0.5, false)}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                    className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     50%
                   </button>
                   {/* Fixed Max Button */}
                   <button
                     onClick={() => handleSetPercentage(1, false)}
-                    className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all"
+                    className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     Max
                   </button>
@@ -1287,35 +1287,35 @@ function PositionPageInner() {
                     ? handleDepositAChange(val)
                     : handleDepositBChange(val);
                 }}
-                className={`bg-transparent font-bold text-white outline-none w-full text-right ${String(bottomDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
+                className={`bg-transparent font-bold text-foreground outline-none w-full text-right ${String(bottomDeposit).length > 10 ? 'text-lg' : 'text-2xl'}`}
               />
-              <p className="text-xs text-white/30 text-right mt-1">
+              <p className="text-xs text-muted-foreground text-right mt-1">
                 ~${formatLargeNumber(isInverted ? (parseFloat(bottomDeposit) || 0) * (poolPrice || 1) : (parseFloat(bottomDeposit) || 0))}
               </p>
             </div>
 
             {/* Legend */}
-            <div className="absolute right-4 top-10 text-[10px] text-white/50 flex flex-col gap-1">
+            <div className="absolute right-4 top-10 text-[10px] text-muted-foreground flex flex-col gap-1">
               <div className="flex items-center gap-1">
                 <div className="w-4 h-px bg-white/60" />
                 <span>Current Price</span>
               </div>
-              <span className="text-white/40 ml-5">
+              <span className="text-muted-foreground ml-5">
                 {priceToggle === "B" ? `1.0 ${tokenA} = ${poolPrice?.toFixed(4) || "—"} ${tokenB}` : `1.0 ${tokenB} = ${(1 / (poolPrice || 1)).toFixed(4)} ${tokenA}`}
               </span>
             </div>
 
             {/* Total + Ratio */}
-            <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
+            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex justify-between">
-                <span className="text-sm text-white/60">Total Deposit</span>
+                <span className="text-sm text-muted-foreground">Total Deposit</span>
                 <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-white/60">Deposit Ratio</span>
+                <span className="text-sm text-muted-foreground">Deposit Ratio</span>
                 <div className="flex items-center gap-1 text-xs">
                   <span>≈{displayRatioA}%</span>
-                  <span className="text-white/30">/</span>
+                  <span className="text-muted-foreground">/</span>
                   <span>≈{displayRatioB}%</span>
                   <div className="flex -space-x-1 ml-1">
                     <TokenLogo
@@ -1384,7 +1384,7 @@ export default function PositionPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0d0e14] flex items-center justify-center text-white/40">
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
           Loading...
         </div>
       }

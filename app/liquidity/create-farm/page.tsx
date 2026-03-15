@@ -33,7 +33,7 @@ function TokenIcon({ logo, symbol, size = 24, className = "" }: { logo?: string;
 
     if (logo && !imgError) {
         return (
-            <div className={`rounded-full overflow-hidden border border-[#0c0d14] bg-[#1a1b2e] ${className}`}
+            <div className={`rounded-full overflow-hidden border border-card bg-card ${className}`}
                 style={{ width: size, height: size }}>
                 <Image
                     src={logo}
@@ -50,7 +50,7 @@ function TokenIcon({ logo, symbol, size = 24, className = "" }: { logo?: string;
 
     return (
         <div
-            className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center border border-[#0c0d14] text-white font-bold ${className}`}
+            className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center border border-card text-foreground font-bold ${className}`}
             style={{ width: size, height: size, fontSize: size * 0.4 }}
         >
             {symbol ? symbol.charAt(0) : "?"}
@@ -310,12 +310,12 @@ export default function CreateFarmPage() {
         <div className="w-full md:w-1/3 flex flex-col gap-4">
             <button
                 onClick={() => router.back()}
-                className="flex items-center text-white/60 hover:text-white transition-colors w-fit mb-2"
+                className="flex items-center text-muted-foreground hover:text-foreground transition-colors w-fit mb-2"
             >
                 <ChevronLeft className="h-5 w-5 mr-1" /> Back
             </button>
 
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
                 {[
                     { n: 1, label: "Select Pool" },
                     { n: 2, label: "Add Rewards" },
@@ -326,16 +326,16 @@ export default function CreateFarmPage() {
                             <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 transition-all
                                 ${currentStep > n ? "bg-[var(--neon-teal)] border-[var(--neon-teal)] text-black" :
                                     currentStep === n ? "border-[var(--neon-teal)] text-[var(--neon-teal)]" :
-                                        "border-white/20 text-white/40"}`}>
+                                        "border-border text-muted-foreground"}`}>
                                 {currentStep > n ? <Check className="h-4 w-4" /> : n}
                             </div>
-                            {i < arr.length - 1 && <div className="w-0.5 h-12 bg-white/10 mt-2" />}
+                            {i < arr.length - 1 && <div className="w-0.5 h-12 bg-border mt-2" />}
                         </div>
                         <div className={`pt-1 ${currentStep < n ? "opacity-40" : ""}`}>
-                            <p className={`text-xs font-medium mb-0.5 ${currentStep >= n ? "text-[var(--neon-teal)]" : "text-white/40"}`}>
+                            <p className={`text-xs font-medium mb-0.5 ${currentStep >= n ? "text-[var(--neon-teal)]" : "text-muted-foreground"}`}>
                                 Step {n}
                             </p>
-                            <p className={`text-sm font-bold ${currentStep === n ? "text-white" : "text-white/60"}`}>
+                            <p className={`text-sm font-bold ${currentStep === n ? "text-foreground" : "text-muted-foreground"}`}>
                                 {label}
                             </p>
                         </div>
@@ -343,12 +343,12 @@ export default function CreateFarmPage() {
                 ))}
             </div>
 
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-5">
+            <div className="bg-card border border-border rounded-2xl p-5">
                 <h4 className="flex items-center text-sm font-bold mb-2">
-                    <span className="w-4 h-4 rounded-full border border-white/40 text-white/60 flex items-center justify-center text-[10px] mr-2">!</span>
+                    <span className="w-4 h-4 rounded-full border border-white/40 text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                     Please Note
                 </h4>
-                <p className="text-xs text-white/50 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                     A farm can be created for any pool that is already live. For detailed instructions, read the guide for{" "}
                     <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">CLMM</span> or{" "}
                     <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">Standard</span> farms.
@@ -362,7 +362,7 @@ export default function CreateFarmPage() {
         <div className="w-full md:w-2/3">
             <h2 className="text-xl font-bold mb-6">First, select a pool for farm rewards</h2>
 
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-5">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
                 <div>
                     <p className="text-sm font-bold mb-3">Select Pool</p>
 
@@ -371,9 +371,9 @@ export default function CreateFarmPage() {
                             onClick={() => { setPoolKind("clmm"); setSelectedPoolId(""); }}
                             className={`flex items-center gap-2 flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${poolKind === "clmm"
                                 ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                : "border-white/10 text-white/40 hover:border-white/20"}`}
+                                : "border-border text-muted-foreground hover:border-border"}`}
                         >
-                            <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${poolKind === "clmm" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
+                            <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${poolKind === "clmm" ? "border-[var(--neon-teal)]" : "border-border"}`}>
                                 {poolKind === "clmm" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--neon-teal)]" />}
                             </div>
                             Concentrated Liquidity
@@ -382,9 +382,9 @@ export default function CreateFarmPage() {
                             onClick={() => { setPoolKind("standard"); setSelectedPoolId(""); }}
                             className={`flex items-center gap-2 flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${poolKind === "standard"
                                 ? "border-[var(--neon-teal)] text-[var(--neon-teal)] bg-[var(--neon-teal)]/5"
-                                : "border-white/10 text-white/40 hover:border-white/20"}`}
+                                : "border-border text-muted-foreground hover:border-border"}`}
                         >
-                            <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${poolKind === "standard" ? "border-[var(--neon-teal)]" : "border-white/30"}`}>
+                            <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${poolKind === "standard" ? "border-[var(--neon-teal)]" : "border-border"}`}>
                                 {poolKind === "standard" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--neon-teal)]" />}
                             </div>
                             Standard AMM
@@ -394,7 +394,7 @@ export default function CreateFarmPage() {
                     {poolKind === "clmm" ? (
                         <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar-green relative">
                             {isLoadingPools && (
-                                <div className="absolute inset-0 z-10 bg-[#161722]/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
+                                <div className="absolute inset-0 z-10 bg-card/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
                                     <Loader2 className="h-6 w-6 text-[var(--neon-teal)] animate-spin" />
                                 </div>
                             )}
@@ -407,7 +407,7 @@ export default function CreateFarmPage() {
                                         onClick={() => setSelectedPoolId(p.id)}
                                         className={`flex items-center justify-between p-4 rounded-xl border text-sm transition-all ${selectedPoolId === p.id
                                             ? "border-[var(--neon-teal)] bg-[var(--neon-teal)]/5 shadow-[0_0_10px_var(--neon-teal-glow)]"
-                                            : "border-white/10 bg-black/20 hover:border-white/30 hover:bg-white/5"
+                                            : "border-border bg-secondary/30 dark:bg-black/20 hover:border-[#0D9B5F]/40 dark:hover:border-border hover:bg-secondary/60 dark:hover:bg-white/5"
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -417,18 +417,18 @@ export default function CreateFarmPage() {
                                             </div>
                                             <div className="flex flex-col items-start">
                                                 <span className="font-bold">{p.name || `${p.symbolA}-${p.symbolB}`}</span>
-                                                <span className="text-[10px] text-white/40">Concentrated · {p.fee || "0.25%"}</span>
+                                                <span className="text-[10px] text-muted-foreground">Concentrated · {p.fee || "0.25%"}</span>
                                             </div>
                                         </div>
-                                        <span className="text-xs text-white/40 font-mono">
+                                        <span className="text-xs text-muted-foreground font-mono">
                                             {p.id ? `${p.id.slice(0, 6)}...${p.id.slice(-4)}` : "—"}
                                         </span>
                                     </button>
                                 ))}
 
                             {!isLoadingPools && customPools.filter(p => p.type !== "Legacy" && p.type !== "Standard").length === 0 && (
-                                <div className="text-center py-8 px-4 rounded-xl border border-dashed border-white/10 bg-black/10">
-                                    <p className="text-sm text-white/60 mb-2">No CLMM pools found for this wallet.</p>
+                                <div className="text-center py-8 px-4 rounded-xl border border-dashed border-border bg-secondary/20 dark:bg-black/10">
+                                    <p className="text-sm text-muted-foreground mb-2">No CLMM pools found for this wallet.</p>
                                     <button
                                         onClick={() => router.push("/liquidity/create/clmm")}
                                         className="text-xs font-medium text-[var(--neon-teal)] bg-[var(--neon-teal)]/10 px-4 py-2 rounded-lg hover:bg-[var(--neon-teal)]/20 transition-all">
@@ -467,13 +467,13 @@ export default function CreateFarmPage() {
                     ) : (
                         <>
                             <div className="relative mb-2">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <input
                                     type="text"
                                     placeholder="Enter Standard AMM Pool ID"
                                     value={selectedPoolId}
                                     onChange={(e) => setSelectedPoolId(e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white outline-none focus:border-white/20 placeholder:text-white/30"
+                                    className="w-full bg-white/60 dark:bg-black/20 border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-foreground outline-none focus:border-[var(--neon-teal)]/50 placeholder:text-muted-foreground"
                                 />
                             </div>
 
@@ -502,20 +502,20 @@ export default function CreateFarmPage() {
                                             </div>
                                             <div className="flex flex-col items-start">
                                                 <span className="font-bold">{standardPoolData.name}</span>
-                                                <span className="text-[10px] text-white/40">{standardPoolData.type} AMM · {standardPoolData.fee}</span>
+                                                <span className="text-[10px] text-muted-foreground">{standardPoolData.type} AMM · {standardPoolData.fee}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            <p className="text-xs text-white/40">
+                            <p className="text-xs text-muted-foreground">
                                 Paste your Standard AMM pool ID to attach a farm to it. Ensure the address exists on devnet.
                             </p>
                         </>
                     )}
 
-                    <p className="text-xs text-white/40 mt-4">
+                    <p className="text-xs text-muted-foreground mt-4">
                         Can&apos;t find what you want?{" "}
                         <span
                             onClick={() => router.push(poolKind === "clmm" ? "/liquidity/create/clmm" : "/liquidity/create/standard")}
@@ -597,24 +597,24 @@ export default function CreateFarmPage() {
                     const weeklyEstimate = (parseFloat(reward.amount || "0") / durationInt) * 7;
 
                     return (
-                        <div key={reward.id} className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-5 relative">
+                        <div key={reward.id} className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5 relative">
                             <div className="flex justify-between items-center mb-2">
                                 <div>
                                     <h3 className="text-base font-bold">Reward Token {i + 1}</h3>
-                                    {i === 0 && <p className="text-sm text-white/50 mt-1">You can add up to 3 reward tokens.</p>}
+                                    {i === 0 && <p className="text-sm text-muted-foreground mt-1">You can add up to 3 reward tokens.</p>}
                                 </div>
                                 {rewards.length > 1 && (
-                                    <button onClick={() => removeReward(reward.id)} className="text-white/40 hover:text-red-400 transition-colors p-2">
+                                    <button onClick={() => removeReward(reward.id)} className="text-muted-foreground hover:text-red-400 transition-colors p-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                                     </button>
                                 )}
                             </div>
 
                             {/* Token Select & Amount */}
-                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 flex justify-between items-center">
                                 <button
                                     onClick={() => openTokenSelector(i)}
-                                    className="flex items-center gap-2 bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 rounded-xl px-3 py-2 transition-colors shrink-0"
+                                    className="flex items-center gap-2 bg-secondary/50 dark:bg-[#1a1b2e] hover:bg-secondary border border-border rounded-xl px-3 py-2 transition-colors shrink-0"
                                 >
                                     {reward.token ? (
                                         <>
@@ -622,21 +622,21 @@ export default function CreateFarmPage() {
                                             <span className="font-bold text-lg">{reward.token.symbol}</span>
                                         </>
                                     ) : (
-                                        <span className="font-bold text-lg text-white/50 px-2">Select Token</span>
+                                        <span className="font-bold text-lg text-muted-foreground px-2">Select Token</span>
                                     )}
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 ml-1"><polyline points="6 9 12 15 18 9" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground ml-1"><polyline points="6 9 12 15 18 9" /></svg>
                                 </button>
 
                                 <div className="flex flex-col items-end w-full ml-4">
                                     <div className="flex items-center justify-end gap-2 w-full mb-1">
-                                        <div className="flex items-center gap-1 text-white/40 text-xs">
+                                        <div className="flex items-center gap-1 text-muted-foreground text-xs">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></svg>
                                             {reward.token ? formatLargeNumber(balancesMap.get(reward.token.mint) || 0) : 0}
                                         </div>
                                         {reward.token && (
                                             <>
-                                                <button onClick={() => updateReward(reward.id, "amount", String(balancesMap.get(reward.token!.mint) || 0))} className="text-xs bg-white/5 hover:bg-white/10 px-2 rounded text-white/60 transition-all">Max</button>
-                                                <button onClick={() => updateReward(reward.id, "amount", String((balancesMap.get(reward.token!.mint) || 0) * 0.5))} className="text-xs bg-white/5 hover:bg-white/10 px-2 rounded text-white/60 transition-all">50%</button>
+                                                <button onClick={() => updateReward(reward.id, "amount", String(balancesMap.get(reward.token!.mint) || 0))} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 rounded text-muted-foreground transition-all">Max</button>
+                                                <button onClick={() => updateReward(reward.id, "amount", String((balancesMap.get(reward.token!.mint) || 0) * 0.5))} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 rounded text-muted-foreground transition-all">50%</button>
                                             </>
                                         )}
                                     </div>
@@ -645,25 +645,25 @@ export default function CreateFarmPage() {
                                         placeholder="0"
                                         value={reward.amount}
                                         onChange={(e) => updateReward(reward.id, "amount", e.target.value)}
-                                        className="bg-transparent text-right text-2xl font-bold text-white outline-none w-full placeholder:text-white/20"
+                                        className="bg-transparent text-right text-2xl font-bold text-foreground outline-none w-full placeholder:text-muted-foreground/30"
                                     />
-                                    <span className="text-xs text-white/40 mt-1">~$0</span>
+                                    <span className="text-xs text-muted-foreground mt-1">~$0</span>
                                 </div>
                             </div>
 
                             {/* Duration & Dates */}
-                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center relative">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 flex justify-between items-center relative">
                                 {/* Left: Start Date */}
                                 <div className="flex flex-col">
-                                    <span className="text-xs text-white/40">Farming starts</span>
+                                    <span className="text-xs text-muted-foreground">Farming starts</span>
                                     {!reward.hasSelectedPeriod ? (
                                         <span className="text-base font-bold my-1 text-white/20">--/--/--</span>
                                     ) : (
                                         <>
-                                            <span className="text-base font-bold my-1 text-white/80">
+                                            <span className="text-base font-bold my-1 text-foreground/80">
                                                 {reward.startDate.getUTCFullYear()}/{reward.startDate.getUTCMonth() + 1}/{reward.startDate.getUTCDate()}
                                             </span>
-                                            <span className="text-xs text-white/50">
+                                            <span className="text-xs text-muted-foreground">
                                                 {String(reward.startDate.getUTCHours()).padStart(2, '0')}:{String(reward.startDate.getUTCMinutes()).padStart(2, '0')} (UTC)
                                             </span>
                                         </>
@@ -672,18 +672,18 @@ export default function CreateFarmPage() {
 
                                 {/* Middle: Select Button OR Days Input */}
                                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-border hidden sm:block"></div>
 
                                     {!reward.hasSelectedPeriod ? (
                                         <button
                                             onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
-                                            className="bg-[#1a1b2e] hover:bg-[#202236] border border-white/10 text-white text-sm font-bold py-1.5 px-6 rounded-lg transition-all"
+                                            className="bg-secondary/50 dark:bg-[#1a1b2e] hover:bg-secondary border border-border text-foreground text-sm font-bold py-1.5 px-6 rounded-lg transition-all"
                                         >
                                             Select
                                         </button>
                                     ) : (
                                         <div
-                                            className="bg-[#1a1b2e] hover:border-white/30 border border-white/10 rounded-lg flex items-center px-1 cursor-pointer transition-all animate-duration-pop"
+                                            className="bg-secondary/50 dark:bg-[#1a1b2e] hover:border-[#0D9B5F]/40 dark:hover:border-border border border-border rounded-lg flex items-center px-1 cursor-pointer transition-all animate-duration-pop"
                                             onClick={() => updateReward(reward.id, "isDatePickerOpen", true)}
                                         >
                                             <input
@@ -706,26 +706,26 @@ export default function CreateFarmPage() {
                                                     updateReward(reward.id, "durationDays", val.toString());
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="bg-transparent w-8 text-center text-sm font-bold outline-none py-1.5 text-white"
+                                                className="bg-transparent w-8 text-center text-sm font-bold outline-none py-1.5 text-foreground"
                                             />
-                                            <span className="text-sm font-bold pr-2 text-white">Days</span>
+                                            <span className="text-sm font-bold pr-2 text-foreground">Days</span>
                                         </div>
                                     )}
 
-                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-white/20 hidden sm:block"></div>
+                                    <div className="h-[1px] w-8 lg:w-12 bg-white/10 border-t border-dashed border-border hidden sm:block"></div>
                                 </div>
 
                                 {/* Right: End Date */}
                                 <div className="flex flex-col items-end">
-                                    <span className="text-xs text-white/40">Farming ends</span>
+                                    <span className="text-xs text-muted-foreground">Farming ends</span>
                                     {!reward.hasSelectedPeriod ? (
                                         <span className="text-base font-bold my-1 text-white/20">--/--/--</span>
                                     ) : (
                                         <>
-                                            <span className="text-base font-bold my-1 text-white/80">
+                                            <span className="text-base font-bold my-1 text-foreground/80">
                                                 {endDate.getUTCFullYear()}/{endDate.getUTCMonth() + 1}/{endDate.getUTCDate()}
                                             </span>
-                                            <span className="text-xs text-white/50">
+                                            <span className="text-xs text-muted-foreground">
                                                 {String(endDate.getUTCHours()).padStart(2, '0')}:{String(endDate.getUTCMinutes()).padStart(2, '0')} (UTC)
                                             </span>
                                         </>
@@ -752,9 +752,9 @@ export default function CreateFarmPage() {
                             </div>
 
                             {/* Estimates */}
-                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center text-sm">
-                                <span className="text-white/40 text-xs">Estimated rewards / week</span>
-                                <span className="font-bold text-lg text-white/90">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground text-xs">Estimated rewards / week</span>
+                                <span className="font-bold text-lg text-foreground/90">
                                     {isFinite(weeklyEstimate) && durationInt > 0 ? weeklyEstimate.toFixed(2) : "0"} {reward.token?.symbol || ""}
                                 </span>
                             </div>
@@ -766,7 +766,7 @@ export default function CreateFarmPage() {
                 <div className="flex gap-3 pt-2">
                     <button
                         onClick={() => setCurrentStep(1)}
-                        className="w-1/3 border border-white/10 text-white/60 font-bold py-4 rounded-xl hover:border-white/20 hover:text-white transition-all"
+                        className="w-1/3 border border-border text-muted-foreground font-bold py-4 rounded-xl hover:border-border hover:text-foreground transition-all"
                     >
                         Back
                     </button>
@@ -1061,15 +1061,15 @@ export default function CreateFarmPage() {
         <div className="w-full md:w-2/3">
             <h2 className="text-xl font-bold mb-6">Review farm details</h2>
 
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
                 <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center py-2 border-b border-white/5">
-                        <span className="text-sm text-white/50">Pool Type</span>
-                        <span className="text-sm font-bold text-white">{poolKind === "clmm" ? "Concentrated Liquidity (CLMM)" : "Standard AMM"}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-sm text-muted-foreground">Pool Type</span>
+                        <span className="text-sm font-bold text-foreground">{poolKind === "clmm" ? "Concentrated Liquidity (CLMM)" : "Standard AMM"}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/5">
-                        <span className="text-sm text-white/50">Selected Pool ID</span>
-                        <span className="text-sm font-bold text-white">{selectedPoolId ? `${selectedPoolId.slice(0, 6)}...${selectedPoolId.slice(-4)}` : "—"}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-sm text-muted-foreground">Selected Pool ID</span>
+                        <span className="text-sm font-bold text-foreground">{selectedPoolId ? `${selectedPoolId.slice(0, 6)}...${selectedPoolId.slice(-4)}` : "—"}</span>
                     </div>
 
                     {rewards.map((r, i) => {
@@ -1096,28 +1096,28 @@ export default function CreateFarmPage() {
                                 <div className="p-4 flex flex-col gap-3">
                                     {/* Amounts */}
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-white/50">Total Amount</span>
-                                        <span className="text-sm font-bold text-white">{r.amount} {r.token?.symbol}</span>
+                                        <span className="text-xs text-muted-foreground">Total Amount</span>
+                                        <span className="text-sm font-bold text-foreground">{r.amount} {r.token?.symbol}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-white/50">Estimated Rate</span>
+                                        <span className="text-xs text-muted-foreground">Estimated Rate</span>
                                         <span className="text-sm font-bold text-[var(--neon-teal)]">~{dailyRate.toFixed(4)} {r.token?.symbol} / day</span>
                                     </div>
 
-                                    <div className="h-[1px] w-full bg-white/5 my-1"></div>
+                                    <div className="h-[1px] w-full bg-border my-1"></div>
 
                                     {/* Dates */}
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-white/50">Start Date</span>
-                                        <span className="text-xs font-medium text-white/80">{formatDate(r.startDate)}</span>
+                                        <span className="text-xs text-muted-foreground">Start Date</span>
+                                        <span className="text-xs font-medium text-foreground/80">{formatDate(r.startDate)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-white/50">End Date</span>
-                                        <span className="text-xs font-medium text-white/80">{formatDate(endDate)}</span>
+                                        <span className="text-xs text-muted-foreground">End Date</span>
+                                        <span className="text-xs font-medium text-foreground/80">{formatDate(endDate)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-white/50">Duration</span>
-                                        <span className="text-xs font-medium text-white/80">{r.durationDays} Days</span>
+                                        <span className="text-xs text-muted-foreground">Duration</span>
+                                        <span className="text-xs font-medium text-foreground/80">{r.durationDays} Days</span>
                                     </div>
                                 </div>
                             </div>
@@ -1154,7 +1154,7 @@ export default function CreateFarmPage() {
                         <button
                             onClick={() => setCurrentStep(2)}
                             disabled={isCreating}
-                            className={`flex-1 border border-white/10 text-white/60 font-bold py-4 rounded-xl transition-all ${isCreating ? "opacity-50 cursor-not-allowed" : "hover:border-white/20 hover:text-white"}`}
+                            className={`flex-1 border border-border text-muted-foreground font-bold py-4 rounded-xl transition-all ${isCreating ? "opacity-50 cursor-not-allowed" : "hover:border-border hover:text-foreground"}`}
                         >
                             Back
                         </button>
@@ -1179,7 +1179,7 @@ export default function CreateFarmPage() {
     );
 
     return (
-        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-white">
+        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
                 {renderStepper()}
                 {currentStep === 1 && renderStep1()}

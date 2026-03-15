@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Cagliostro } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
 
 const inter = Inter({ subsets: ["latin"] });
+const cagliostro = Cagliostro({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-cagliostro"
+});
 
 export const metadata: Metadata = {
   title: "Aero DEX",
@@ -19,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground antialiased`}>
+      <body className={`${inter.className} ${cagliostro.variable} bg-background text-foreground antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

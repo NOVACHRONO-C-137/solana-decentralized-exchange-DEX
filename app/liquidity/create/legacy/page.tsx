@@ -248,24 +248,24 @@ export default function LegacyPoolPage() {
     const canInitialize = baseToken && quoteToken && initialPrice && baseAmount && quoteAmount && isCreating === "idle";
 
     return (
-        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-white">
+        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
 
                 {/* LEFT SIDEBAR */}
                 <div className="w-full md:w-1/3 flex flex-col gap-4">
                     <button
                         onClick={() => router.back()}
-                        className="flex items-center text-white/60 hover:text-white transition-colors w-fit mb-2"
+                        className="flex items-center text-muted-foreground hover:text-foreground transition-colors w-fit mb-2"
                     >
                         <ChevronLeft className="h-5 w-5 mr-1" /> Back
                     </button>
 
-                    <div className="bg-[#161722] border border-white/10 rounded-2xl p-5">
+                    <div className="bg-card border border-border rounded-2xl p-5">
                         <h4 className="flex items-center text-sm font-bold mb-2">
-                            <span className="w-4 h-4 rounded-full border border-white/40 text-white/60 flex items-center justify-center text-[10px] mr-2">!</span>
+                            <span className="w-4 h-4 rounded-full border border-border text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                             Please Note
                         </h4>
-                        <p className="text-xs text-white/50 leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                             This tool is for advanced users. For detailed instructions, read the guide for{" "}
                             <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">CLMM</span> or{" "}
                             <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">Standard</span> pools.
@@ -277,35 +277,35 @@ export default function LegacyPoolPage() {
                 <div className="w-full md:w-2/3">
                     <h2 className="text-xl font-bold mb-6">Initialize AMM v4 pool</h2>
 
-                    <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-5">
+                    <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
 
                         {/* Initial Liquidity */}
                         <div>
                             <p className="text-sm font-bold mb-3">Initial liquidity</p>
 
                             {/* Base Token */}
-                            <div className="bg-black/20 border border-white/10 rounded-xl p-4 mb-1">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 mb-1">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-xs text-white/40">Base token</span>
+                                    <span className="text-xs text-muted-foreground">Base token</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-white/40">{formatLargeNumber(baseBalance)}</span>
-                                        <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
-                                        <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                        <span className="text-xs text-muted-foreground">{formatLargeNumber(baseBalance)}</span>
+                                        <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">Max</button>
+                                        <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">50%</button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <button
                                         onClick={() => { setActiveSlot("base"); setIsTokenModalOpen(true); }}
-                                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
+                                        className="flex items-center gap-2 bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
                                     >
                                         {baseToken && (
                                             <div className="w-6 h-6 rounded-full overflow-hidden border">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img src={baseToken.logoURI} alt={baseToken.symbol} className="w-full h-full object-cover bg-[#0d0e14]" />
+                                                <img src={baseToken.logoURI} alt={baseToken.symbol} className="w-full h-full object-cover bg-background" />
                                             </div>
                                         )}
                                         <span className="font-bold text-sm">{baseToken?.symbol || "Select"}</span>
-                                        <ChevronDown className="h-4 w-4 text-white/40" />
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                     </button>
                                     <div className="text-right">
                                         <input
@@ -313,7 +313,7 @@ export default function LegacyPoolPage() {
                                             placeholder="0"
                                             value={baseAmount}
                                             onChange={(e) => handleBaseChange(e.target.value)}
-                                            className="bg-transparent text-2xl font-bold text-white outline-none text-right w-36"
+                                            className="bg-transparent text-2xl font-bold text-foreground outline-none text-right w-36"
                                         />
                                     </div>
                                 </div>
@@ -321,34 +321,34 @@ export default function LegacyPoolPage() {
 
                             {/* Plus divider */}
                             <div className="flex justify-center my-1">
-                                <div className="w-8 h-8 rounded-full bg-[#161722] border border-white/10 flex items-center justify-center text-white/40 font-bold text-lg">
+                                <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground font-bold text-lg">
                                     +
                                 </div>
                             </div>
 
                             {/* Quote Token */}
-                            <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-xs text-white/40">Quote token</span>
+                                    <span className="text-xs text-muted-foreground">Quote token</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-white/40">{formatLargeNumber(quoteBalance)}</span>
-                                        <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
-                                        <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                        <span className="text-xs text-muted-foreground">{formatLargeNumber(quoteBalance)}</span>
+                                        <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">Max</button>
+                                        <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">50%</button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <button
                                         onClick={() => { setActiveSlot("quote"); setIsTokenModalOpen(true); }}
-                                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
+                                        className="flex items-center gap-2 bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-3 py-2 rounded-xl transition-all"
                                     >
                                         {quoteToken && (
                                             <div className="w-6 h-6 rounded-full overflow-hidden border">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img src={quoteToken.logoURI} alt={quoteToken.symbol} className="w-full h-full object-cover bg-[#0d0e14]" />
+                                                <img src={quoteToken.logoURI} alt={quoteToken.symbol} className="w-full h-full object-cover bg-background" />
                                             </div>
                                         )}
                                         <span className="font-bold text-sm">{quoteToken?.symbol || "Select"}</span>
-                                        <ChevronDown className="h-4 w-4 text-white/40" />
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                     </button>
                                     <div className="text-right">
                                         <input
@@ -356,7 +356,7 @@ export default function LegacyPoolPage() {
                                             placeholder="0"
                                             value={quoteAmount}
                                             onChange={(e) => handleQuoteChange(e.target.value)}
-                                            className="bg-transparent text-2xl font-bold text-white outline-none text-right w-36"
+                                            className="bg-transparent text-2xl font-bold text-foreground outline-none text-right w-36"
                                         />
                                     </div>
                                 </div>
@@ -367,23 +367,23 @@ export default function LegacyPoolPage() {
                         <div>
                             <p className="text-sm font-bold mb-2 flex items-center gap-1">
                                 Initial price
-                                <span className="text-white/30 cursor-pointer hover:text-white text-xs">ⓘ</span>
+                                <span className="text-muted-foreground cursor-pointer hover:text-foreground text-xs">ⓘ</span>
                             </p>
-                            <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex justify-between items-center">
+                            <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex justify-between items-center">
                                 <input
                                     type="number"
                                     placeholder="Enter price"
                                     value={initialPrice}
                                     onChange={(e) => handlePriceChange(e.target.value)}
-                                    className="bg-transparent text-lg font-bold text-white outline-none flex-1"
+                                    className="bg-transparent text-lg font-bold text-foreground outline-none flex-1"
                                 />
-                                <span className="text-xs text-white/40 shrink-0">
+                                <span className="text-xs text-muted-foreground shrink-0">
                                     {quoteToken && baseToken ? `${quoteToken.symbol}/${baseToken.symbol}` : "—"}
                                 </span>
                             </div>
                             {baseToken && quoteToken && initialPrice && (
-                                <p className="text-xs text-white/40 mt-2 text-right">
-                                    Current price: <span className="text-white/60">1 {baseToken.symbol} ≈ {initialPrice} {quoteToken.symbol}</span>
+                                <p className="text-xs text-muted-foreground mt-2 text-right">
+                                    Current price: <span className="text-muted-foreground">1 {baseToken.symbol} ≈ {initialPrice} {quoteToken.symbol}</span>
                                 </p>
                             )}
                         </div>
@@ -391,16 +391,16 @@ export default function LegacyPoolPage() {
                         {/* Start Time — Legacy has custom date/time display like screenshot */}
                         <div>
                             <p className="text-sm font-bold mb-2">Start time:</p>
-                            <div className="flex bg-black/30 border border-white/10 rounded-xl overflow-hidden mb-3">
+                            <div className="flex bg-secondary/40 dark:bg-black/30 border border-border rounded-xl overflow-hidden mb-3">
                                 <button
                                     onClick={() => setStartTime("now")}
-                                    className={`flex-1 py-2.5 text-sm font-medium transition-all ${startTime === "now" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}
+                                    className={`flex-1 py-2.5 text-sm font-medium transition-all ${startTime === "now" ? "bg-[#0D9B5F]/20 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}
                                 >
                                     Start Now
                                 </button>
                                 <button
                                     onClick={() => setStartTime("custom")}
-                                    className={`flex-1 py-2.5 text-sm font-medium transition-all ${startTime === "custom" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}
+                                    className={`flex-1 py-2.5 text-sm font-medium transition-all ${startTime === "custom" ? "bg-[#0D9B5F]/20 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}
                                 >
                                     Custom
                                 </button>
@@ -417,7 +417,7 @@ export default function LegacyPoolPage() {
                         {/* Warning note */}
                         <p className="text-xs text-yellow-400/80 flex items-center gap-1">
                             Note: A creation fee of ~0.45 SOL is required for new pools.
-                            <span className="text-white/40 cursor-pointer hover:text-white">ⓘ</span>
+                            <span className="text-muted-foreground cursor-pointer hover:text-foreground">ⓘ</span>
                         </p>
 
                         <div className="flex flex-col gap-2">

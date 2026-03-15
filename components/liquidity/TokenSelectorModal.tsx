@@ -151,11 +151,11 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                         <input
                             type="text"
                             placeholder="Search by name, symbol or address"
-                            className="w-full bg-white/60 dark:bg-black/40 border border-[#0D9B5F]/40 dark:border-white/10 rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
+                            className="w-full bg-white/60 dark:bg-secondary/50 dark:bg-black/40 border border-[#0D9B5F]/40 dark:border-border rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0D9B5F]/60 dark:text-white/40" />
+                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#0D9B5F]/60 dark:text-muted-foreground" />
                     </div>
 
                     {/* Quick select chips with balances */}

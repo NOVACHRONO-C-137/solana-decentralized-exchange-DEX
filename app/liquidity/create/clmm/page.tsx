@@ -23,7 +23,7 @@ function CLMMTokenLogo({ token, size = 24 }: { token: TokenInfo | null; size?: n
 
     if (token.logoURI && !imgErr) {
         return (
-            <div className="rounded-full overflow-hidden shrink-0 border-2 border-[#161722]" style={{ width: size, height: size }}>
+            <div className="rounded-full overflow-hidden shrink-0 border-2 border-card" style={{ width: size, height: size }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={token.logoURI} alt={token.symbol} width={size} height={size}
                     className="rounded-full object-cover" style={{ width: size, height: size }}
@@ -34,7 +34,7 @@ function CLMMTokenLogo({ token, size = 24 }: { token: TokenInfo | null; size?: n
 
     if (token.symbol === "SOL") {
         return (
-            <div className="rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195] border-2 border-[#161722] flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+            <div className="rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195] border-2 border-card flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
                 <svg viewBox="0 0 24 24" fill="none" style={{ width: size * 0.55, height: size * 0.55 }}>
                     <path d="M5.5 17.5L8.5 14.5H18.5L15.5 17.5H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
                     <path d="M5.5 6.5L8.5 9.5H18.5L15.5 6.5H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
@@ -45,7 +45,7 @@ function CLMMTokenLogo({ token, size = 24 }: { token: TokenInfo | null; size?: n
     }
 
     return (
-        <div className={`rounded-full ${token.color} border-2 border-[#161722] flex items-center justify-center font-bold text-white shrink-0`}
+        <div className={`rounded-full ${token.color} border-2 border-card flex items-center justify-center font-bold text-white shrink-0`}
             style={{ width: size, height: size, fontSize: size * 0.35 }}>
             {token.icon || token.symbol[0]}
         </div>
@@ -412,10 +412,10 @@ export default function CreatePoolPage() {
     // ── STEPPER SIDEBAR ──────────────────────────────────────
     const renderStepper = () => (
         <div className="w-full md:w-1/3 flex flex-col gap-4">
-            <button onClick={() => router.back()} className="flex items-center text-white/60 hover:text-white transition-colors w-fit mb-2">
+            <button onClick={() => router.back()} className="flex items-center text-muted-foreground hover:text-foreground transition-colors w-fit mb-2">
                 <ChevronLeft className="h-5 w-5 mr-1" /> Back
             </button>
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
                 {[
                     { n: 1, label: "Select token & fee tier" },
                     { n: 2, label: "Set initial price & range" },
@@ -426,24 +426,24 @@ export default function CreatePoolPage() {
                             <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 transition-all
                 ${currentStep > n ? "bg-[var(--neon-teal)] border-[var(--neon-teal)] text-black" :
                                     currentStep === n ? "border-[var(--neon-teal)] text-[var(--neon-teal)]" :
-                                        "border-white/20 text-white/40"}`}>
+                                        "border-border text-muted-foreground"}`}>
                                 {currentStep > n ? <Check className="h-4 w-4" /> : n}
                             </div>
-                            {i < arr.length - 1 && <div className="w-0.5 h-12 bg-white/10 mt-2" />}
+                            {i < arr.length - 1 && <div className="w-0.5 h-12 bg-border mt-2" />}
                         </div>
                         <div className={`pt-1 ${currentStep < n ? "opacity-40" : ""}`}>
-                            <p className={`text-xs font-medium mb-0.5 ${currentStep >= n ? "text-[var(--neon-teal)]" : "text-white/40"}`}>Step {n}</p>
-                            <p className={`text-sm font-bold ${currentStep === n ? "text-white" : "text-white/60"}`}>{label}</p>
+                            <p className={`text-xs font-medium mb-0.5 ${currentStep >= n ? "text-[var(--neon-teal)]" : "text-muted-foreground"}`}>Step {n}</p>
+                            <p className={`text-sm font-bold ${currentStep === n ? "text-foreground" : "text-muted-foreground"}`}>{label}</p>
                         </div>
                     </div>
                 ))}
             </div>
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-5">
+            <div className="bg-card border border-border rounded-2xl p-5">
                 <h4 className="flex items-center text-sm font-bold mb-2">
-                    <span className="w-4 h-4 rounded-full border border-white/40 text-white/60 flex items-center justify-center text-[10px] mr-2">!</span>
+                    <span className="w-4 h-4 rounded-full border border-white/40 text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                     Please Note
                 </h4>
-                <p className="text-xs text-white/50 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                     This tool is for advanced users. For detailed instructions, read the guide for{" "}
                     <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">CLMM</span> or{" "}
                     <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">Standard</span> pools.
@@ -454,7 +454,7 @@ export default function CreatePoolPage() {
 
     // ── PAIR BAR ─────────────────────────────────────────────
     const PairBar = ({ onEdit }: { onEdit: () => void }) => (
-        <div className="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl px-4 py-3 mb-4">
+        <div className="flex items-center justify-between bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 mb-4">
             <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">
                     <CLMMTokenLogo token={baseToken} size={24} />
@@ -463,7 +463,7 @@ export default function CreatePoolPage() {
                 <span className="font-bold text-sm">{baseToken?.symbol} / {quoteToken?.symbol}</span>
                 <span className="text-xs bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/20 px-2 py-0.5 rounded-full">Fee {selectedFee.label}</span>
             </div>
-            <button onClick={onEdit} className="text-white/40 hover:text-white transition-colors">
+            <button onClick={onEdit} className="text-muted-foreground hover:text-foreground transition-colors">
                 <Pencil className="h-4 w-4" />
             </button>
         </div>
@@ -473,48 +473,48 @@ export default function CreatePoolPage() {
     const renderStep1 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">First, select tokens & fee tier</h2>
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6">
+            <div className="bg-card border border-border rounded-2xl p-6">
                 <p className="text-sm font-bold mb-4">Tokens</p>
                 <div className="flex gap-4 mb-6">
                     <div onClick={() => { setActiveSelectionSlot("base"); setIsTokenModalOpen(true); }}
-                        className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${baseToken ? "bg-[#1a1b26] border-[var(--neon-teal)]/50" : "bg-black/20 border-white/10 hover:border-white/30"}`}>
+                        className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${baseToken ? "bg-card border-[var(--neon-teal)]/50" : "bg-secondary/30 dark:bg-black/20 border-border hover:border-[#0D9B5F]/40 dark:hover:border-white/30"}`}>
                         <div className="flex items-center gap-2">
                             {baseToken && <CLMMTokenLogo token={baseToken} size={24} />}
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-white/50">Base token</span>
-                                <span className={`font-bold text-sm ${baseToken ? "text-white" : "text-white/60"}`}>{baseToken?.symbol || "Select"}</span>
+                                <span className="text-[10px] text-muted-foreground">Base token</span>
+                                <span className={`font-bold text-sm ${baseToken ? "text-foreground" : "text-muted-foreground"}`}>{baseToken?.symbol || "Select"}</span>
                             </div>
                         </div>
-                        <ChevronDown className="text-white/40 group-hover:text-white transition-colors h-4 w-4" />
+                        <ChevronDown className="text-muted-foreground group-hover:text-foreground transition-colors h-4 w-4" />
                     </div>
                     <div onClick={() => { setActiveSelectionSlot("quote"); setIsTokenModalOpen(true); }}
-                        className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${quoteToken ? "bg-[#1a1b26] border-[var(--neon-teal)]/50" : "bg-black/20 border-white/10 hover:border-white/30"}`}>
+                        className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${quoteToken ? "bg-card border-[var(--neon-teal)]/50" : "bg-secondary/30 dark:bg-black/20 border-border hover:border-[#0D9B5F]/40 dark:hover:border-white/30"}`}>
                         <div className="flex items-center gap-2">
                             {quoteToken && <CLMMTokenLogo token={quoteToken} size={24} />}
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-white/50">Quote token</span>
-                                <span className={`font-bold text-sm ${quoteToken ? "text-white" : "text-white/60"}`}>{quoteToken?.symbol || "Select"}</span>
+                                <span className="text-[10px] text-muted-foreground">Quote token</span>
+                                <span className={`font-bold text-sm ${quoteToken ? "text-foreground" : "text-muted-foreground"}`}>{quoteToken?.symbol || "Select"}</span>
                             </div>
                         </div>
-                        <ChevronDown className="text-white/40 group-hover:text-white transition-colors h-4 w-4" />
+                        <ChevronDown className="text-muted-foreground group-hover:text-foreground transition-colors h-4 w-4" />
                     </div>
                 </div>
 
                 <p className="text-sm font-bold mb-4">Fee Tier</p>
                 <div className="relative w-full mb-8">
                     <div onClick={() => setFeeTierOpen(!feeTierOpen)}
-                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:border-white/20 transition-all">
+                        className="w-full bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 flex justify-between items-center cursor-pointer hover:border-border transition-all">
                         <span className="font-bold">{selectedFee.label}</span>
-                        <ChevronDown className={`h-5 w-5 text-white/40 transition-transform duration-200 ${feeTierOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${feeTierOpen ? "rotate-180" : ""}`} />
                     </div>
                     {feeTierOpen && (
-                        <div className="absolute top-full left-0 w-full mt-1 bg-[#0f1421] border border-white/10 rounded-xl overflow-hidden z-50">
+                        <div className="absolute top-full left-0 w-full mt-1 bg-card border border-border rounded-xl overflow-hidden z-50">
                             {FEE_TIERS.map((tier) => (
                                 <div key={tier.label} onClick={() => { setSelectedFee(tier); setFeeTierOpen(false); }}
-                                    className="flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-white/5 transition-all">
+                                    className="flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-secondary/60 dark:hover:bg-white/5 transition-all">
                                     <div className="flex flex-col">
-                                        <span className={`font-medium ${selectedFee.label === tier.label ? "text-white" : "text-white/50"}`}>{tier.label}</span>
-                                        <span className="text-[10px] text-white/30">{tier.bps} bps</span>
+                                        <span className={`font-medium ${selectedFee.label === tier.label ? "text-foreground" : "text-muted-foreground"}`}>{tier.label}</span>
+                                        <span className="text-[10px] text-muted-foreground">{tier.bps} bps</span>
                                     </div>
                                     {selectedFee.label === tier.label && <Check className="h-5 w-5 text-cyan-400" />}
                                 </div>
@@ -537,12 +537,12 @@ export default function CreatePoolPage() {
     const renderStep2 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Next, set initial token price & position price range</h2>
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
                 <PairBar onEdit={() => setCurrentStep(1)} />
                 <div>
                     <div className="flex items-center justify-between mb-3">
                         <p className="text-sm font-bold">Price Setting</p>
-                        <div className="flex bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                        <div className="flex bg-secondary/40 dark:bg-black/30 border border-border rounded-lg overflow-hidden">
                             <button onClick={() => {
                                 if (priceBase !== "base") {
                                     const current = parseFloat(initialPrice || "1")
@@ -550,7 +550,7 @@ export default function CreatePoolPage() {
                                     setPriceBase("base")
                                 }
                             }}
-                                className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "base" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-white/40 hover:text-white"}`}>
+                                className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "base" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-muted-foreground hover:text-foreground"}`}>
                                 {baseToken?.symbol} price
                             </button>
                             <button onClick={() => {
@@ -560,48 +560,48 @@ export default function CreatePoolPage() {
                                     setPriceBase("quote")
                                 }
                             }}
-                                className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "quote" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-white/40 hover:text-white"}`}>
+                                className={`px-3 py-1.5 text-xs font-medium transition-all ${priceBase === "quote" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "text-muted-foreground hover:text-foreground"}`}>
                                 {quoteToken?.symbol} price
                             </button>
                         </div>
                     </div>
-                    <p className="text-xs text-white/50 mb-2">Initial price</p>
-                    <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground mb-2">Initial price</p>
+                    <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex justify-between items-center">
                         <input type="number" value={initialPrice} onChange={(e) => setInitialPrice(e.target.value)}
-                            className="bg-transparent text-lg font-bold text-white outline-none w-48" />
-                        <span className="text-xs text-white/40">{priceLabel}</span>
+                            className="bg-transparent text-lg font-bold text-foreground outline-none w-48" />
+                        <span className="text-xs text-muted-foreground">{priceLabel}</span>
                     </div>
                 </div>
                 <div>
                     <p className="text-sm font-bold mb-3">Price range</p>
-                    <div className="flex bg-black/30 border border-white/10 rounded-xl overflow-hidden mb-4">
+                    <div className="flex bg-secondary/40 dark:bg-black/30 border border-border rounded-xl overflow-hidden mb-4">
                         <button onClick={() => setPriceRangeMode("full")}
-                            className={`flex-1 py-2.5 text-sm font-medium transition-all ${priceRangeMode === "full" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}>
+                            className={`flex-1 py-2.5 text-sm font-medium transition-all ${priceRangeMode === "full" ? "bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}>
                             Full Range
                         </button>
                         <button onClick={() => setPriceRangeMode("custom")}
-                            className={`flex-1 py-2.5 text-sm font-medium transition-all ${priceRangeMode === "custom" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}>
+                            className={`flex-1 py-2.5 text-sm font-medium transition-all ${priceRangeMode === "custom" ? "bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}>
                             Custom
                         </button>
                     </div>
                     {priceRangeMode === "custom" && (
                         <div className="flex gap-4">
                             {[{ label: "Min", val: minPrice, setter: setMinPrice }, { label: "Max", val: maxPrice, setter: setMaxPrice }].map(({ label, val, setter }) => (
-                                <div key={label} className="flex-1 bg-black/20 border border-white/10 rounded-xl p-4">
-                                    <p className="text-[10px] text-white/40 mb-3">{label}</p>
+                                <div key={label} className="flex-1 bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
+                                    <p className="text-[10px] text-muted-foreground mb-3">{label}</p>
                                     <div className="flex items-center justify-between gap-2">
                                         <button onClick={() => adjustPrice(setter, val, "down")}
-                                            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all shrink-0">
+                                            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-secondary dark:hover:bg-white/10 flex items-center justify-center transition-all shrink-0">
                                             <Minus className="h-3 w-3" />
                                         </button>
                                         <input type="number" value={val} onChange={(e) => setter(e.target.value)}
-                                            className="bg-transparent text-center font-bold text-white outline-none w-full text-sm" />
+                                            className="bg-transparent text-center font-bold text-foreground outline-none w-full text-sm" />
                                         <button onClick={() => adjustPrice(setter, val, "up")}
-                                            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all shrink-0">
+                                            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-secondary dark:hover:bg-white/10 flex items-center justify-center transition-all shrink-0">
                                             <Plus className="h-3 w-3" />
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-white/30 mt-2 text-center">{priceLabel}</p>
+                                    <p className="text-[10px] text-muted-foreground mt-2 text-center">{priceLabel}</p>
                                 </div>
                             ))}
                         </div>
@@ -644,21 +644,21 @@ export default function CreatePoolPage() {
     const renderStep3 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Last, please enter token deposit amount</h2>
-            <div className="bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
                 <PairBar onEdit={() => setCurrentStep(1)} />
-                <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex justify-between items-start">
+                <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex justify-between items-start">
                     <div className="flex flex-col gap-1">
-                        <p className="text-xs text-white/50">
-                            Initial price: <span className="text-white font-medium">{initialPrice} {priceLabel}</span>
+                        <p className="text-xs text-muted-foreground">
+                            Initial price: <span className="text-foreground font-medium">{initialPrice} {priceLabel}</span>
                         </p>
-                        <p className="text-xs text-white/50">
+                        <p className="text-xs text-muted-foreground">
                             Price range:{" "}
-                            <span className="text-white font-medium">
+                            <span className="text-foreground font-medium">
                                 {priceRangeMode === "full" ? "Full Range" : `${minPrice} – ${maxPrice} ${priceLabel}`}
                             </span>
                         </p>
                     </div>
-                    <button onClick={() => setCurrentStep(2)} className="text-white/40 hover:text-white transition-colors">
+                    <button onClick={() => setCurrentStep(2)} className="text-muted-foreground hover:text-foreground transition-colors">
                         <Pencil className="h-4 w-4" />
                     </button>
                 </div>
@@ -671,19 +671,19 @@ export default function CreatePoolPage() {
                     <div key={idx}>
                         {idx === 1 && (
                             <div className="flex justify-center my-1">
-                                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                                    <Plus className="h-4 w-4 text-white/40" />
+                                <div className="w-8 h-8 rounded-full bg-secondary dark:bg-white/5 border border-border flex items-center justify-center">
+                                    <Plus className="h-4 w-4 text-muted-foreground" />
                                 </div>
                             </div>
                         )}
-                        <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+                        <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-2">
                                     <CLMMTokenLogo token={token} size={28} />
                                     <span className="font-bold">{token?.symbol}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-white/40">
+                                    <span className="text-xs text-muted-foreground">
                                         {idx === 0
                                             ? formatLargeNumber(tokenBalances.get(baseToken?.mint || "")?.balance || 0)
                                             : formatLargeNumber(tokenBalances.get(quoteToken?.mint || "")?.balance || 0)
@@ -695,36 +695,36 @@ export default function CreatePoolPage() {
                                             : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0);
                                         const valStr = String(bal);
                                         if (idx === 0) handleDepositAChange(valStr); else handleDepositBChange(valStr);
-                                    }} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                                    }} className="text-xs bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">Max</button>
                                     <button onClick={() => {
                                         const bal = idx === 0
                                             ? (tokenBalances.get(baseToken?.mint || "")?.balance || 0)
                                             : (tokenBalances.get(quoteToken?.mint || "")?.balance || 0);
                                         const valStr = String(bal * 0.5);
                                         if (idx === 0) handleDepositAChange(valStr); else handleDepositBChange(valStr);
-                                    }} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
+                                    }} className="text-xs bg-white/5 hover:bg-secondary dark:hover:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">50%</button>
                                 </div>
                             </div>
                             <input type="number" placeholder="0" value={val}
                                 onChange={(e) => idx === 0 ? handleDepositAChange(e.target.value) : handleDepositBChange(e.target.value)}
-                                className={`bg-transparent font-bold text-white outline-none w-full ${String(val).length > 10 ? 'text-lg md:text-xl text-right' : 'text-2xl text-right'}`} />
-                            <p className="text-xs text-white/30 mt-1 text-right">~${formatLargeNumber(idx === 0 ? ((parseFloat(val) || 0) * currentPrice) : (parseFloat(val) || 0))}</p>
+                                className={`bg-transparent font-bold text-foreground outline-none w-full ${String(val).length > 10 ? 'text-lg md:text-xl text-right' : 'text-2xl text-right'}`} />
+                            <p className="text-xs text-muted-foreground mt-1 text-right">~${formatLargeNumber(idx === 0 ? ((parseFloat(val) || 0) * currentPrice) : (parseFloat(val) || 0))}</p>
                         </div>
                     </div>
                 ))}
 
                 {/* Total + ratio */}
-                <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
+                <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-white/70">Total Deposit</span>
+                        <span className="text-sm font-bold text-foreground/70">Total Deposit</span>
                         <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-white/70">Deposit Ratio</span>
+                        <span className="text-sm font-bold text-foreground/70">Deposit Ratio</span>
                         <div className="flex items-center gap-1.5 text-sm font-medium">
                             <div className={`w-2 h-2 rounded-full ${baseToken?.color || "bg-blue-400"}`} />
                             <span>{ratioA}%</span>
-                            <span className="text-white/30">/</span>
+                            <span className="text-muted-foreground">/</span>
                             <span>{ratioB}%</span>
                             <div className="flex -space-x-1 ml-1">
                                 <CLMMTokenLogo token={baseToken} size={16} />
@@ -782,7 +782,7 @@ export default function CreatePoolPage() {
 
     // ── MAIN ─────────────────────────────────────────────────
     return (
-        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-white">
+        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
                 {renderStepper()}
                 {currentStep === 1 && renderStep1()}

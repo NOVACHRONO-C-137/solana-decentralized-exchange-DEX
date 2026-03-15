@@ -26,7 +26,7 @@ function TokenLogo({
   if (!token)
     return (
       <div
-        className={`rounded-full bg-gray-600 border-2 border-[#161722] shrink-0 ${className}`}
+        className={`rounded-full bg-gray-600 border-2 border-card shrink-0 ${className}`}
         style={{ width: size, height: size }}
       />
     );
@@ -34,7 +34,7 @@ function TokenLogo({
   if (token.logoURI && !imgError) {
     return (
       <div
-        className={`rounded-full overflow-hidden border-2 border-[#161722] shrink-0 shadow-lg ${className}`}
+        className={`rounded-full overflow-hidden border-2 border-card shrink-0 shadow-lg ${className}`}
         style={{ width: size, height: size }}
       >
         <Image
@@ -62,7 +62,7 @@ function TokenLogo({
 
   return (
     <div
-      className={`rounded-full border-2 border-[#161722] flex items-center justify-center font-bold text-white shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
+      className={`rounded-full border-2 border-card flex items-center justify-center font-bold text-foreground shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
       style={{
         width: size,
         height: size,
@@ -338,13 +338,13 @@ function PositionPageInner() {
   const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
 
   return (
-    <main className="min-h-screen text-white bg-[#0d0e14] px-4 py-8">
+    <main className="min-h-screen text-foreground bg-background px-4 py-8">
       <div className="max-w-2xl mx-auto">
-        <button onClick={() => router.back()} className="flex items-center text-white/60 hover:text-white transition-colors mb-6">
+        <button onClick={() => router.back()} className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ChevronLeft className="h-5 w-5 mr-1" /> Back
         </button>
 
-        <div className="bg-[#161722] border border-white/10 rounded-2xl px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <div className="bg-card border border-border rounded-2xl px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               <TokenLogo token={tokenAInfo} size={32} className="z-10" />
@@ -355,33 +355,33 @@ function PositionPageInner() {
           </div>
         </div>
 
-        <div className="w-full bg-[#161722] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+        <div className="w-full bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold">Add Deposit Amount</h3>
             <div className="flex items-center gap-2 relative" ref={slippageRef}>
               <button
                 onClick={() => setShowSlippageSettings(!showSlippageSettings)}
-                className="text-xs text-white flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                className="text-xs text-foreground flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
                 <span>{slippageTab === "Auto" ? "2.5" : customSlippage}%</span>
               </button>
               {showSlippageSettings && (
-                <div className="absolute top-full right-0 mt-2 w-72 bg-[#1b1d2a] border border-white/10 rounded-2xl p-4 shadow-2xl z-50">
+                <div className="absolute top-full right-0 mt-2 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50">
                   <div className="mb-4 flex items-center gap-2">
                     <p className="text-sm font-bold">Max Slippage</p>
                   </div>
-                  <div className="flex bg-black/30 border border-white/10 rounded-xl p-1 mb-4">
+                  <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 mb-4">
                     {(["Auto", "Custom"] as const).map((tab) => (
-                      <button key={tab} onClick={() => setSlippageTab(tab)} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`}>
+                      <button key={tab} onClick={() => setSlippageTab(tab)} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab ? "bg-secondary dark:bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}>
                         {tab}
                       </button>
                     ))}
                   </div>
                   {slippageTab === "Custom" && (
                     <div className="relative">
-                      <input type="number" value={customSlippage} onChange={(e) => setCustomSlippage(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none" placeholder="0.0" />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-bold text-sm">%</span>
+                      <input type="number" value={customSlippage} onChange={(e) => setCustomSlippage(e.target.value)} className="w-full bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground outline-none" placeholder="0.0" />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">%</span>
                     </div>
                   )}
                 </div>
@@ -389,50 +389,50 @@ function PositionPageInner() {
             </div>
           </div>
 
-          <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+          <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
                 <span className="font-bold text-sm">{topToken}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-white/40 flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceB : balanceA)}</span>
-                <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
-                <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceB : balanceA)}</span>
+                <button onClick={() => handleSetPercentage(0.5, true)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">50%</button>
+                <button onClick={() => handleSetPercentage(1, true)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">Max</button>
               </div>
             </div>
-            <input type="number" placeholder="0" value={topDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositBChange(val) : handleDepositAChange(val); }} className={`bg-transparent font-bold text-white outline-none w-full text-right text-2xl`} />
+            <input type="number" placeholder="0" value={topDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositBChange(val) : handleDepositAChange(val); }} className={`bg-transparent font-bold text-foreground outline-none w-full text-right text-2xl`} />
           </div>
 
           <div className="flex justify-center -my-3 z-10 relative">
-            <button onClick={() => setIsInverted(!isInverted)} className="w-8 h-8 rounded-full bg-[#161722] border border-white/10 flex items-center justify-center text-white/40 hover:text-[var(--neon-teal)] hover:border-[var(--neon-teal)]/30 transition-all shadow-lg">
+            <button onClick={() => setIsInverted(!isInverted)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-[var(--neon-teal)] hover:border-[var(--neon-teal)]/30 transition-all shadow-lg">
               <ArrowDownUp className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+          <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
                 <span className="font-bold text-sm">{bottomToken}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-white/40 flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceA : balanceB)}</span>
-                <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">50%</button>
-                <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-white/60 transition-all">Max</button>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">{isFetchingBalances && <Loader2 className="w-3 h-3 animate-spin" />} {formatLargeNumber(isInverted ? balanceA : balanceB)}</span>
+                <button onClick={() => handleSetPercentage(0.5, false)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">50%</button>
+                <button onClick={() => handleSetPercentage(1, false)} className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all">Max</button>
               </div>
             </div>
-            <input type="number" placeholder="0" value={bottomDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositAChange(val) : handleDepositBChange(val); }} className={`bg-transparent font-bold text-white outline-none w-full text-right text-2xl`} />
+            <input type="number" placeholder="0" value={bottomDeposit} onChange={(e) => { const val = e.target.value; if (Number(val) < 0) return; isInverted ? handleDepositAChange(val) : handleDepositBChange(val); }} className={`bg-transparent font-bold text-foreground outline-none w-full text-right text-2xl`} />
           </div>
 
-          <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2 mt-4">
+          <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2 mt-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-white/60">Estimated Total Deposit</span>
+              <span className="text-sm text-muted-foreground">Estimated Total Deposit</span>
               <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>
             </div>
-            <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
-              <span className="text-xs text-white/50">Pool Deposit Ratio</span>
-              <span className="text-xs font-bold text-white/70">50% / 50%</span>
+            <div className="flex justify-between items-center mt-2 border-t border-border/50 pt-2">
+              <span className="text-xs text-muted-foreground">Pool Deposit Ratio</span>
+              <span className="text-xs font-bold text-foreground/70">50% / 50%</span>
             </div>
           </div>
 
@@ -455,7 +455,7 @@ function PositionPageInner() {
 
 export default function StandardPositionPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0d0e14] flex items-center justify-center text-white/40">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>}>
       <PositionPageInner />
     </Suspense>
   );

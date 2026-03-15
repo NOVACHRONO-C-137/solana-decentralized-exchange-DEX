@@ -81,16 +81,16 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                 </DialogHeader>
 
                 {/* Raydium-style Tabs */}
-                <div className="flex gap-1 mt-4 bg-black/30 border border-white/10 rounded-xl p-1 w-fit">
+                <div className="flex gap-1 mt-4 bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 w-fit">
                     <button
                         onClick={() => setActiveTab("volume")}
-                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "volume" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-white/40 hover:text-white"}`}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "volume" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         Volume
                     </button>
                     <button
                         onClick={() => setActiveTab("liquidity")}
-                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "liquidity" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-white/40 hover:text-white"}`}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "liquidity" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         Liquidity
                     </button>
@@ -137,7 +137,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                     </ResponsiveContainer>
                 </div>
 
-                <p className="text-center text-xs text-white/30 mt-2">Chart data is illustrative. Real on-chain data coming soon.</p>
+                <p className="text-center text-xs text-muted-foreground mt-2">Chart data is illustrative. Real on-chain data coming soon.</p>
 
                 <button
                     onClick={onClose}
