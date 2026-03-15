@@ -18,6 +18,8 @@ import { useTokenBalances } from "@/hooks/useTokenBalances"
 // ─────────────────────────────────────────────────────────────────────────────
 const CLMM_PROGRAM_ID = "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
 const AMM_V4_PROGRAM_ID = "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8"
+// Step 1: CPMM Program ID for devnet
+const CPMM_PROGRAM_ID = "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Token icon
@@ -310,7 +312,7 @@ export default function SwapCard() {
             log("toMint  :", toToken.mint)
             log("sorted  :", sorted)
 
-            let poolType: "clmm" | "amm" | null = null
+            let poolType: "clmm" | "amm" | "cpmm" | null = null
             let poolId = ""
 
             // CLMM scan — state size 1544, mintA @ offset 73, mintB @ offset 105
@@ -332,6 +334,39 @@ export default function SwapCard() {
                 poolType = "clmm"
                 poolId = clmmHits[0].pubkey.toBase58()
                 log("✅ CLMM pool found:", poolId)
+            }
+
+            // ── NEW: CPMM scan — state size 637, mintA @ 168, mintB @ 200
+            if (!poolType) {
+                log("Scanning Standard AMM CPMM (dataSize=637, offsets 168/200)...")
+
+                // Try both orderings because JS string sort might not match Rust byte sort!
+                const orderings = [
+                    [fromToken.mint, toToken.mint],
+                    [toToken.mint, fromToken.mint]
+                ];
+
+                for (const [m1, m2] of orderings) {
+                    const cpmmHits = await connection.getProgramAccounts(
+                        new PublicKey(CPMM_PROGRAM_ID),
+                        {
+                            dataSlice: { offset: 0, length: 0 },
+                            filters: [
+                                { dataSize: 637 },
+                                { memcmp: { offset: 168, bytes: m1 } },
+                                { memcmp: { offset: 200, bytes: m2 } },
+                            ],
+                        }
+                    )
+                    log(`CPMM hits (${m1.slice(0, 4)}… / ${m2.slice(0, 4)}…): ${cpmmHits.length}`)
+
+                    if (cpmmHits.length > 0) {
+                        poolType = "cpmm"
+                        poolId = cpmmHits[0].pubkey.toBase58()
+                        log("✅ CPMM pool found:", poolId)
+                        break
+                    }
+                }
             }
 
             // Legacy AMM v4 scan — state size 752, coinMint @ 400, pcMint @ 432
@@ -363,7 +398,7 @@ export default function SwapCard() {
             if (!poolType) {
                 throw new Error(
                     `No pool found for ${fromToken.symbol}/${toToken.symbol}.\n` +
-                    `Checked CLMM (${CLMM_PROGRAM_ID.slice(0, 8)}…) and AMM v4 (${AMM_V4_PROGRAM_ID.slice(0, 8)}…).`
+                    `Checked CLMM (${CLMM_PROGRAM_ID.slice(0, 8)}…), CPMM (${CPMM_PROGRAM_ID.slice(0, 8)}…) and AMM v4 (${AMM_V4_PROGRAM_ID.slice(0, 8)}…).`
                 )
             }
 
@@ -477,7 +512,50 @@ export default function SwapCard() {
                 log("✅ CLMM swap confirmed! txId:", txId)
                 setTxSig(txId)
 
-                // ── Step 3b: Legacy AMM v4 swap ───────────────────────────
+                // ── Step 3b: CPMM (Standard AMM) swap ─────────────────────────
+            } else if (poolType === "cpmm") {
+                log("── STEP 3b: CPMM swap ──────────────────────────────────────")
+
+                // Fetch live pool info from RPC
+                const cpmmPoolInfo = await raydium.cpmm.getRpcPoolInfo(poolId, true)
+                log("cpmmPoolInfo.mintA :", cpmmPoolInfo.mintA.toString())
+                log("cpmmPoolInfo.mintB :", cpmmPoolInfo.mintB.toString())
+
+                // Determine baseIn: true if input token is baseMint
+                const baseIn = fromToken.mint === cpmmPoolInfo.mintA.toString()
+                log(`Swap direction: ${baseIn ? "base→quote" : "quote→base"}`)
+
+                // Compute swap quote using SDK (FIXED PARAMETERS: use 'pool' instead of 'poolInfo')
+                const swapResult = raydium.cpmm.computeSwapAmount({
+                    pool: cpmmPoolInfo as any,
+                    amountIn: amountIn,
+                    outputMint: new PublicKey(toToken.mint),
+                    slippage: slippageFraction,
+                } as any)
+
+                log("computedAmountOut (raw):", swapResult.amountOut.toString())
+                log("amountOutMin (raw):", swapResult.minAmountOut.toString())
+
+                // Build and execute CPMM swap transaction
+                log("Calling raydium.cpmm.swap()...")
+                const { execute } = await raydium.cpmm.swap({
+                    poolInfo: cpmmPoolInfo as any,
+                    swapResult: swapResult as any,
+                    slippage: slippageFraction,
+                    baseIn: baseIn,
+                    txVersion: TxVersion.V0,
+                    ownerInfo: {
+                        useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL",
+                    },
+                } as any)
+
+                log("Sending CPMM swap transaction...")
+                const result = await execute({ sendAndConfirm: true })
+                const txId = (result as any).txIds?.[0] ?? (result as any).txId
+                log("✅ CPMM swap confirmed! txId:", txId)
+                setTxSig(txId)
+
+                // ── Step 3c: Legacy AMM v4 swap ────────────────────────────
             } else {
                 log("── STEP 3b: Legacy AMM v4 swap ─────────────────────────")
 
