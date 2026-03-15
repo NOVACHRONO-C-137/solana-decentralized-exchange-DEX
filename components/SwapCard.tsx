@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { ArrowDown, ChevronDown, Wallet, Settings, Link2, BarChart3, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWallet, useConnection } from "@solana/wallet-adapter-react"
@@ -106,10 +107,10 @@ function GradientBorderField({
             <div className="flex items-center justify-between px-1">
                 <span className="text-sm font-medium text-muted-foreground">{label}</span>
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Wallet className="h-3.5 w-3.5" />
                         <span>{balance != null ? formatBal(balance) : "0"}</span>
-                    </button>
+                    </span>
                     {!readOnly && balance != null && balance > 0 && (
                         <>
                             <button
@@ -134,11 +135,20 @@ function GradientBorderField({
                     <div className="flex flex-col items-end gap-0.5">
                         <input
                             type="text"
+                            inputMode="decimal"
+                            pattern="^\d*\.?\d*$"
                             value={amount}
                             onChange={(e) => onAmountChange(e.target.value)}
                             placeholder="0.00"
                             readOnly={readOnly}
                             className="w-28 bg-transparent text-right text-xl font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed"
+                            onKeyDown={(e) => {
+                                // Block letters and special chars except digits, dot, backspace, delete, arrows
+                                const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', '.']
+                                if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault()
+                                // Block second dot
+                                if (e.key === '.' && (e.currentTarget.value.includes('.'))) e.preventDefault()
+                            }}
                         />
                         <span className="text-xs text-muted-foreground">~{usdValue}</span>
                     </div>
@@ -218,7 +228,7 @@ const err = (...args: any[]) => console.error("[AeroDEX]", ...args)
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
-export default function SwapCard() {
+function SwapCardInner() {
     const { connected, publicKey, signAllTransactions } = useWallet()
     const { connection } = useConnection()
     const {
@@ -227,15 +237,34 @@ export default function SwapCard() {
         getBalance, refetch: refetchBalances,
     } = useTokenBalances()
 
-    const defaultFrom = DEVNET_TOKENS.find(t => t.symbol === "SOL") || DEVNET_TOKENS[0]
-    const defaultTo = DEVNET_TOKENS.find(t => t.symbol === "PLTR") || DEVNET_TOKENS[1]
+    const searchParams = useSearchParams()
+    const fromSymbol = searchParams.get("from") || "SOL"
+    const toSymbol = searchParams.get("to") || "PLTR"
+    const defaultFrom = DEVNET_TOKENS.find(t => t.symbol === fromSymbol) || DEVNET_TOKENS[0]
+    const defaultTo = DEVNET_TOKENS.find(t => t.symbol === toSymbol) || DEVNET_TOKENS[1]
 
     const [fromAmount, setFromAmount] = useState("")
     const [toAmount, setToAmount] = useState("")
     const [fromToken, setFromToken] = useState<TokenInfo>(defaultFrom)
     const [toToken, setToToken] = useState<TokenInfo>(defaultTo)
+    useEffect(() => {
+        if (discoveredTokens.length === 0) return
+        const allTokens = [...DEVNET_TOKENS, ...discoveredTokens]
+        const urlFrom = searchParams.get("from")
+        const urlTo = searchParams.get("to")
+        if (urlFrom) {
+            const found = allTokens.find(t => t.symbol === urlFrom)
+            if (found) setFromToken(found)
+        }
+        if (urlTo) {
+            const found = allTokens.find(t => t.symbol === urlTo)
+            if (found) setToToken(found)
+        }
+    }, [discoveredTokens])
     const [slippage, setSlippage] = useState("0.5")
     const [slippageOpen, setSlippageOpen] = useState(false)
+    const [fromUsdValue, setFromUsdValue] = useState<string>("$0")
+    const [toUsdValue, setToUsdValue] = useState<string>("$0")
     const [walletModalOpen, setWalletModalOpen] = useState(false)
     const [selectingFor, setSelectingFor] = useState<"from" | "to" | null>(null)
     const [loading, setLoading] = useState(false)
@@ -278,18 +307,48 @@ export default function SwapCard() {
         setToToken(fromToken)
         setFromAmount(toAmount)
         setToAmount(fromAmount)
+        setFromUsdValue(toUsdValue)
+        setToUsdValue(fromUsdValue)
         setTxSig(null)
         setSwapError(null)
     }
 
     const handleFromAmountChange = (val: string) => {
+        // Allow only valid numeric input: digits and at most one decimal point
+        if (val === "") {
+            setFromAmount("")
+            setToAmount("")
+            setTxSig(null)
+            setSwapError(null)
+            return
+        }
+        // Reject anything that is not a valid positive decimal number
+        // Allows: "0.001", "1", "123.456" — Rejects: "abc", "1.2.3", "0...1", "12er"
+        const validPattern = /^\d*\.?\d*$/
+        if (!validPattern.test(val)) return
+        // Reject if it has more than one dot (extra safety)
+        if ((val.match(/\./g) || []).length > 1) return
+
         setFromAmount(val)
         setTxSig(null)
         setSwapError(null)
         const num = Number(val)
         if (!val || isNaN(num) || num <= 0) { setToAmount(""); return }
         const rate = currentPoolPrice ?? (fromToken.symbol === "SOL" ? 50 : 0.02)
-        setToAmount((num * rate).toFixed(6))
+        const toAmt = num * rate
+        setToAmount(toAmt.toFixed(6))
+        // USD estimates: use SOL price ~$150 as base, derive others from pool price
+        const solPrice = 150
+        const fromUsd = fromToken.symbol === "SOL"
+            ? num * solPrice
+            : currentPoolPrice
+                ? num * (solPrice / currentPoolPrice)
+                : 0
+        const toUsd = toAmt > 0 && currentPoolPrice
+            ? fromUsd
+            : 0
+        setFromUsdValue(fromUsd > 0 ? `$${fromUsd.toFixed(2)}` : "$0")
+        setToUsdValue(toUsd > 0 ? `$${toUsd.toFixed(2)}` : "$0")
     }
 
     // ── Core swap ───────────────────────────────────────────────────────
@@ -656,10 +715,7 @@ export default function SwapCard() {
             <div className="w-full max-w-[420px]">
                 {/* Top bar */}
                 <div className="mb-4 flex items-center justify-between">
-                    <button className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <Wallet className="h-4 w-4" />
-                        Buy
-                    </button>
+                    <span className="text-sm font-semibold text-foreground">Swap AIR</span>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setSlippageOpen(true)}
@@ -683,7 +739,7 @@ export default function SwapCard() {
                         label="From"
                         token={fromToken}
                         amount={fromAmount}
-                        usdValue="$0"
+                        usdValue={fromUsdValue}
                         balance={fromBalance}
                         onAmountChange={handleFromAmountChange}
                         onTokenSwitch={() => setSelectingFor("from")}
@@ -709,7 +765,7 @@ export default function SwapCard() {
                         label="To"
                         token={toToken}
                         amount={toAmount}
-                        usdValue="$0"
+                        usdValue={toUsdValue}
                         balance={toBalance}
                         onAmountChange={setToAmount}
                         onTokenSwitch={() => setSelectingFor("to")}
@@ -793,5 +849,13 @@ export default function SwapCard() {
                 discoveredTokens={discoveredTokens}
             />
         </>
+    )
+}
+
+export default function SwapCard() {
+    return (
+        <Suspense fallback={<div className="w-full max-w-[420px] h-64 rounded-3xl bg-card/70 animate-pulse" />}>
+            <SwapCardInner />
+        </Suspense>
     )
 }
