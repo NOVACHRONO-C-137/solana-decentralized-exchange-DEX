@@ -311,6 +311,7 @@ function SwapCardInner() {
         setToUsdValue(fromUsdValue)
         setTxSig(null)
         setSwapError(null)
+        setCurrentPoolPrice(null)
     }
 
     const handleFromAmountChange = (val: string) => {
@@ -842,6 +843,9 @@ function SwapCardInner() {
                     }
                     setFromAmount("")
                     setToAmount("")
+                    setFromUsdValue("$0")
+                    setToUsdValue("$0")
+                    setCurrentPoolPrice(null)
                     setSelectingFor(null)
                 }}
                 balances={balancesMap}
