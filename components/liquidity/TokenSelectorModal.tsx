@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, ExternalLink, Copy, Check, Wallet } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export type TokenInfo = {
     symbol: string;
@@ -27,24 +28,6 @@ export const DEVNET_TOKENS: TokenInfo[] = [
         color: "bg-gradient-to-br from-[#9945FF] to-[#14F195]",
         icon: "◎",
         logoURI: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-    },
-    {
-        symbol: "LHMN",
-        name: "Lockheed Martin",
-        mint: "6BNJtUnoB71BDVKh3g1bGUzU6yNgSig8pyqsUA75qnG5",
-        decimals: 9,
-        color: "bg-purple-500",
-        icon: "✈️",
-        logoURI: "https://img-v1-devnet.raydium.io/icon/6BNJtUnoB71BDVKh3g1bGUzU6yNgSig8pyqsUA75qnG5.png",
-    },
-    {
-        symbol: "PLTR",
-        name: "Palantir",
-        mint: "4DUiEzJG2Z6Seuh1SYRjHnfaHDp86M21brBnDG8W8Wuq",
-        decimals: 9,
-        color: "bg-blue-500",
-        icon: "🔷",
-        logoURI: "https://img-v1-devnet.raydium.io/icon/4DUiEzJG2Z6Seuh1SYRjHnfaHDp86M21brBnDG8W8Wuq.png",
     },
 ];
 
@@ -111,6 +94,7 @@ interface TokenSelectorModalProps {
 export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, balancesLoading, discoveredTokens = [] }: TokenSelectorModalProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+    const { connected } = useWallet();
 
     const handleCopy = (e: React.MouseEvent, address: string) => {
         e.stopPropagation();
@@ -206,7 +190,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                 </div>
 
                 {/* Token List */}
-                <div className="overflow-y-auto flex-1 px-4 pb-4">
+                <div className="overflow-y-auto flex-1 px-4 pb-4 custom-scrollbar-teal">
                     {sorted.length === 0 ? (
                         <p className="text-center text-white/30 text-sm py-8">No tokens found</p>
                     ) : (
@@ -265,8 +249,28 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                     )}
                 </div>
 
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .custom-scrollbar-teal::-webkit-scrollbar {
+                        width: 6px;
+                    }
+                    .custom-scrollbar-teal::-webkit-scrollbar-track {
+                        background: rgba(255, 255, 255, 0.02);
+                        border-radius: 8px;
+                    }
+                    .custom-scrollbar-teal::-webkit-scrollbar-thumb {
+                        background: rgba(20, 241, 149, 0.4);
+                        border-radius: 8px;
+                        box-shadow: 0 0 10px rgba(20, 241, 149, 0.3);
+                    }
+                    .custom-scrollbar-teal::-webkit-scrollbar-thumb:hover {
+                        background: rgba(20, 241, 149, 0.8);
+                        box-shadow: 0 0 15px rgba(20, 241, 149, 0.6);
+                    }
+                ` }} />
+
                 <div className="p-4 shrink-0 bg-black/20 border-t border-white/5">
-                    <p className="text-center text-xs text-white/30">Devnet tokens · Connect wallet to see all your tokens</p>
+                    <p className="text-center text-xs text-white/30">{connected ? "Showing all your wallet tokens" : "Connect wallet to see all your tokens"}</p>
                 </div>
             </DialogContent>
         </Dialog>

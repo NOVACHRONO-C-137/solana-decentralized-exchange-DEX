@@ -150,7 +150,6 @@ function GradientBorderField({
                                 if (e.key === '.' && (e.currentTarget.value.includes('.'))) e.preventDefault()
                             }}
                         />
-                        <span className="text-xs text-muted-foreground">~{usdValue}</span>
                     </div>
                 </div>
             </div>
@@ -239,9 +238,9 @@ function SwapCardInner() {
 
     const searchParams = useSearchParams()
     const fromSymbol = searchParams.get("from") || "SOL"
-    const toSymbol = searchParams.get("to") || "PLTR"
+    const toSymbol = searchParams.get("to") || "SOL"
     const defaultFrom = DEVNET_TOKENS.find(t => t.symbol === fromSymbol) || DEVNET_TOKENS[0]
-    const defaultTo = DEVNET_TOKENS.find(t => t.symbol === toSymbol) || DEVNET_TOKENS[1]
+    const defaultTo = DEVNET_TOKENS.find(t => t.symbol === toSymbol) || DEVNET_TOKENS[0]
 
     const [fromAmount, setFromAmount] = useState("")
     const [toAmount, setToAmount] = useState("")
