@@ -5,7 +5,7 @@ import { ArrowDown, ChevronDown, Wallet, Settings, Link2, BarChart3, Loader2, Ch
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWallet, useConnection } from "@solana/wallet-adapter-react"
 import { PublicKey } from "@solana/web3.js"
-import { Raydium, TxVersion, getPdaTickArrayAddress } from "@raydium-io/raydium-sdk-v2"
+import { Raydium, TxVersion, getPdaTickArrayAddress, CurveCalculator } from "@raydium-io/raydium-sdk-v2"
 import BN from "bn.js"
 import Decimal from "decimal.js"
 import Image from "next/image"
@@ -516,37 +516,50 @@ export default function SwapCard() {
             } else if (poolType === "cpmm") {
                 log("── STEP 3b: CPMM swap ──────────────────────────────────────")
 
-                // Fetch live pool info from RPC
-                const cpmmPoolInfo = await raydium.cpmm.getRpcPoolInfo(poolId, true)
-                log("cpmmPoolInfo.mintA :", cpmmPoolInfo.mintA.toString())
-                log("cpmmPoolInfo.mintB :", cpmmPoolInfo.mintB.toString())
+                // Correct SDK pattern: getPoolInfoFromRpc returns { poolInfo, rpcData }
+                // rpcData has baseReserve, quoteReserve, configInfo already as BN
+                const { poolInfo, rpcData } = await raydium.cpmm.getPoolInfoFromRpc(poolId)
 
-                // Determine baseIn: true if input token is baseMint
-                const baseIn = fromToken.mint === cpmmPoolInfo.mintA.toString()
-                log(`Swap direction: ${baseIn ? "base→quote" : "quote→base"}`)
+                log("poolInfo.mintA       :", poolInfo.mintA.address)
+                log("poolInfo.mintB       :", poolInfo.mintB.address)
+                log("rpcData.baseReserve  :", rpcData.baseReserve.toString())
+                log("rpcData.quoteReserve :", rpcData.quoteReserve.toString())
+                log("rpcData.configInfo.tradeFeeRate:", (rpcData as any).configInfo?.tradeFeeRate?.toString() ?? "default 2500")
 
-                // Compute swap quote using SDK (FIXED PARAMETERS: use 'pool' instead of 'poolInfo')
-                const swapResult = raydium.cpmm.computeSwapAmount({
-                    pool: cpmmPoolInfo as any,
-                    amountIn: amountIn,
-                    outputMint: new PublicKey(toToken.mint),
-                    slippage: slippageFraction,
-                } as any)
+                // baseIn = true → selling mintA, false → selling mintB
+                const baseIn = fromToken.mint === poolInfo.mintA.address
+                log(`Swap direction: ${baseIn ? "A→B (baseIn=true)" : "B→A (baseIn=false)"}`)
 
-                log("computedAmountOut (raw):", swapResult.amountOut.toString())
-                log("amountOutMin (raw):", swapResult.minAmountOut.toString())
+                // Use SDK's CurveCalculator — handles fees internally using configInfo.tradeFeeRate
+                const swapResult = (CurveCalculator as any).swapBaseInput(
+                    baseIn ? rpcData.baseReserve : rpcData.quoteReserve,
+                    baseIn ? rpcData.quoteReserve : rpcData.baseReserve,
+                    new BN((rpcData as any).configInfo?.tradeFeeRate ?? 2500),
+                    amountIn,
+                    new BN(0), // inputTokenFee
+                    new BN((rpcData as any).configInfo?.protocolFeeRate ?? 0),
+                    new BN((rpcData as any).configInfo?.fundFeeRate ?? 0),
+                )
 
-                // Build and execute CPMM swap transaction
+                log("swapResult.outputAmount (hex):", (swapResult as any).outputAmount)
+                log("swapResult.tradeFee (hex)     :", (swapResult as any).tradeFee)
+
+                const outputAmountBN = new BN((swapResult as any).outputAmount, 'hex')
+                const slipBps = Math.floor(slippageFraction * 10000)
+                const minAmountOut = outputAmountBN.muln(10000 - slipBps).divn(10000)
+                log("outputAmount (decimal):", outputAmountBN.toString())
+                log("minAmountOut (raw)    :", minAmountOut.toString())
+
                 log("Calling raydium.cpmm.swap()...")
                 const { execute } = await raydium.cpmm.swap({
-                    poolInfo: cpmmPoolInfo as any,
-                    swapResult: swapResult as any,
-                    slippage: slippageFraction,
-                    baseIn: baseIn,
-                    txVersion: TxVersion.V0,
+                    poolInfo,
+                    baseIn,
+                    swapResult,
+                    inputAmount: amountIn,
                     ownerInfo: {
                         useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL",
                     },
+                    txVersion: TxVersion.V0,
                 } as any)
 
                 log("Sending CPMM swap transaction...")
