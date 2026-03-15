@@ -188,7 +188,7 @@ function SlippageModal({
                             onClick={() => setLocalValue(v)}
                             className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all border ${localValue === v
                                 ? "bg-[var(--neon-teal)]/10 border-[var(--neon-teal)] text-[var(--neon-teal)]"
-                                : "bg-muted border-border text-foreground hover:border-[var(--neon-teal)]/50"
+                                : "bg-white/60 dark:bg-black/40 border border-[#0D9B5F]/30 dark:border-white/10 text-foreground hover:border-[#0D9B5F] dark:hover:border-[var(--neon-teal)]/50"
                                 }`}
                         >
                             {v}%
@@ -200,7 +200,7 @@ function SlippageModal({
                         type="number"
                         value={localValue}
                         onChange={(e) => setLocalValue(e.target.value)}
-                        className="w-full rounded-xl bg-muted border-border py-3 px-4 text-sm text-foreground focus:outline-none focus:border-[var(--neon-teal)]"
+                        className="w-full rounded-xl bg-white/60 dark:bg-black/40 border border-[#0D9B5F]/40 dark:border-white/10 py-3 px-4 text-sm text-foreground focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors"
                         placeholder="0.5"
                         step="0.1"
                     />
