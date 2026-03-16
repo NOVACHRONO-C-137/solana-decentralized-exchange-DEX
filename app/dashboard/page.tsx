@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
+import { DEVNET_PROGRAM_ID, Raydium, TxVersion } from "@raydium-io/raydium-sdk-v2";
+import BN from "bn.js";
 import {
     Copy, Check, Info, ExternalLink, Wallet,
     RefreshCw, Loader2, Droplets, Sprout
@@ -121,6 +122,10 @@ export default function DashboardPage() {
     const [poolsLoading, setPoolsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("All");
 
+    // ── Positions & Claims ────────────────────────────────
+    const [positions, setPositions] = useState<any[]>([]);
+    const [claimingId, setClaimingId] = useState<string | null>(null);
+
     // ── Copy wallet ──────────────────────────────────────
     const [walletCopied, setWalletCopied] = useState(false);
 
@@ -234,6 +239,26 @@ export default function DashboardPage() {
             console.warn("[Dashboard] AMM v4 discovery failed:", e);
         }
 
+        // 4. On-chain Position Discovery (Find pools user deposited into)
+        try {
+            const raydium = await Raydium.load({
+                owner: publicKey,
+                connection,
+                cluster: "devnet",
+                disableFeatureCheck: true,
+                disableLoadToken: true,
+            });
+            const userPositions = await raydium.clmm.getOwnerPositionInfo({
+                programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID,
+            });
+            setPositions(userPositions);
+            userPositions.forEach((pos: any) => {
+                allIds.add(pos.poolId.toString());
+            });
+        } catch (e) {
+            console.warn("[Dashboard] Failed to discover positions:", e);
+        }
+
         const idsArray = Array.from(allIds);
         if (!idsArray.length) { setPoolsLoading(false); setPools([]); return; }
 
@@ -304,6 +329,74 @@ export default function DashboardPage() {
 
     useEffect(() => { loadPools(); }, [loadPools]);
 
+    // ── Load CLMM positions for farming rewards ─────────────
+    const loadPositions = useCallback(async () => {
+        if (!publicKey || !connected) return;
+        try {
+            const raydium = await Raydium.load({
+                owner: publicKey,
+                connection,
+                cluster: "devnet",
+                disableFeatureCheck: true,
+            });
+            const allPositions = await raydium.clmm.getOwnerPositionInfo({
+                programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID,
+            });
+            setPositions(allPositions);
+        } catch (err) {
+            console.warn("Failed to load positions:", err);
+        }
+    }, [publicKey, connected, connection]);
+
+    useEffect(() => { loadPositions(); }, [loadPositions]);
+
+    const handleClaim = async (poolId: string, position: any) => {
+        if (!connected || !publicKey) return;
+        setClaimingId(position.nftMint.toString());
+        try {
+            const raydium = await Raydium.load({
+                owner: publicKey,
+                connection,
+                cluster: "devnet",
+                disableFeatureCheck: true,
+            });
+
+            const { poolInfo, poolKeys } = await raydium.clmm.getPoolInfoFromRpc(poolId);
+
+            // Our Devnet hack to prevent Error 6035 on closed reward vaults
+            const poolInfoAny: any = poolInfo;
+            const hackedPoolInfo = {
+                ...poolInfoAny,
+                rewardInfos: poolInfoAny.rewardInfos.map((r: any) => ({
+                    ...r,
+                    rewardState: r.rewardState === 2 ? 1 : r.rewardState
+                }))
+            };
+
+            const { execute } = await raydium.clmm.decreaseLiquidity({
+                poolInfo: hackedPoolInfo,
+                poolKeys,
+                ownerPosition: position,
+                ownerInfo: {
+                    useSOLBalance: true,
+                    closePosition: false,
+                } as any,
+                liquidity: new BN(0), // 🚨 0 removes no liquidity, just harvests rewards!
+                amountMinA: new BN(0),
+                amountMinB: new BN(0),
+                txVersion: TxVersion.LEGACY,
+            });
+
+            const result = await execute({ sendAndConfirm: true });
+            console.log("✅ Rewards Claimed! Tx:", result);
+            loadPositions(); // Refresh pending amounts
+        } catch (err) {
+            console.error("Failed to claim rewards:", err);
+        } finally {
+            setClaimingId(null);
+        }
+    };
+
     // ── Derived values ────────────────────────────────────
     const solBalance = tokenBalances.get("11111111111111111111111111111111")?.balance
         || tokenBalances.get("So11111111111111111111111111111111111111112")?.balance
@@ -315,11 +408,24 @@ export default function DashboardPage() {
     const tokenList = Array.from(tokenBalances.entries()).map(([mint, tb]) => {
         const token = discoveredTokens.find(t => t.mint === mint);
         const isSol = SOL_MINTS.has(mint);
-        const price = prices[mint] || prices["So11111111111111111111111111111111111111112"] || 0;
+        const symbol = isSol ? "SOL" : (token?.symbol || mint.slice(0, 8));
+
+        // 🚨 FIX: Smart price fallback logic for Devnet
+        let price = prices[mint];
+        if (!price) {
+            if (symbol.includes("USDC") || symbol.includes("USDT")) {
+                price = 1; // Hardcode devnet stablecoins to $1
+            } else if (isSol) {
+                price = prices["So11111111111111111111111111111111111111112"] || 0;
+            } else {
+                price = 0; // Unknown devnet tokens default to $0, NOT the price of SOL
+            }
+        }
+
         const usdVal = tb.balance * price;
         return {
             mint,
-            symbol: isSol ? "SOL" : (token?.symbol || mint.slice(0, 8)),
+            symbol,
             name: isSol ? "Solana" : (token?.name || mint.slice(0, 8)),
             logo: isSol ? SOL_LOGO : token?.logoURI,
             balance: tb.balance,
@@ -345,6 +451,7 @@ export default function DashboardPage() {
         const t = (p.type || "").toLowerCase();
         if (activeTab === "CLMM") return t === "concentrated" || t === "clmm";
         if (activeTab === "Standard") return t === "standard";
+        if (activeTab === "Legacy") return p.type === "Legacy";
         return true;
     });
 
@@ -352,6 +459,7 @@ export default function DashboardPage() {
         All: pools.length,
         CLMM: pools.filter(p => { const t = (p.type || "").toLowerCase(); return t === "concentrated" || t === "clmm"; }).length,
         Standard: pools.filter(p => (p.type || "").toLowerCase() === "standard").length,
+        Legacy: pools.filter(p => p.type === "Legacy").length,
     };
 
     // ── Deposit routing ───────────────────────────────────
@@ -636,7 +744,7 @@ export default function DashboardPage() {
 
                         {/* Tabs */}
                         <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
-                            {(["All", "CLMM", "Standard"] as const).map(tab => (
+                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
                                 <button key={tab} onClick={() => setActiveTab(tab)}
                                     className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${activeTab === tab
                                         ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
@@ -784,14 +892,24 @@ export default function DashboardPage() {
                                 {pools.filter(p => p.rewardDefaultInfos?.length > 0).map((pool, i) => {
                                     const symA = pool.mintA?.symbol || pool.symbolA || "?";
                                     const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                    const poolIdStr = pool.id || pool.poolId;
+                                    const userPosition = positions.find(pos => pos.poolId.toString() === poolIdStr);
+
                                     return pool.rewardDefaultInfos.map((reward: any, j: number) => {
                                         const sym = reward.mint?.symbol || "?";
                                         const logo = reward.mint?.logoURI;
                                         const decimals = reward.mint?.decimals || 6;
                                         const perSec = parseFloat(reward.perSecond || "0");
                                         const perDay = (perSec / Math.pow(10, decimals)) * 86400;
+
+                                        // Get actual pending rewards if the user has an active position in this farm
+                                        const pendingBN = userPosition?.rewardInfos[j]?.pendingReward || new BN(0);
+                                        const pendingHuman = pendingBN.toNumber() / Math.pow(10, decimals);
+                                        const hasPending = pendingHuman > 0;
+                                        const isClaiming = claimingId === userPosition?.nftMint?.toString();
+
                                         return (
-                                            <div key={`${i}-${j}`} className="flex items-center justify-between gap-4">
+                                            <div key={`${i}-${j}`} className="flex items-center justify-between gap-4 border border-border/40 bg-secondary/10 rounded-xl p-3">
                                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                                     <TokenIcon symbol={sym} logo={logo} size={32} />
                                                     <div className="min-w-0">
@@ -805,16 +923,45 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div className="flex items-center gap-3 flex-shrink-0">
                                                     <div className="text-right">
-                                                        <div className="text-sm font-bold text-foreground">
-                                                            ~{formatLargeNumber(perDay)}
-                                                        </div>
-                                                        <div className="text-xs text-[var(--neon-teal)] font-semibold">
-                                                            {sym}/day
-                                                        </div>
+                                                        {userPosition ? (
+                                                            <>
+                                                                <div className="text-sm font-bold text-[var(--neon-teal)]">
+                                                                    {formatLargeNumber(pendingHuman)} {sym}
+                                                                </div>
+                                                                <div className="text-[10px] text-muted-foreground">
+                                                                    Unclaimed
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <div className="text-sm font-bold text-foreground">
+                                                                    ~{formatLargeNumber(perDay)}
+                                                                </div>
+                                                                <div className="text-[10px] text-muted-foreground">
+                                                                    {sym}/day rate
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                    <button className="px-3 py-1.5 rounded-lg bg-[var(--neon-teal)]/15 text-[var(--neon-teal)] text-xs font-semibold hover:bg-[var(--neon-teal)]/25 transition-all border border-[var(--neon-teal)]/20">
-                                                        Claim
-                                                    </button>
+                                                    {userPosition ? (
+                                                        <button
+                                                            onClick={() => handleClaim(poolIdStr, userPosition)}
+                                                            disabled={!hasPending || isClaiming}
+                                                            className={`w-20 py-1.5 rounded-lg text-xs font-semibold transition-all border ${hasPending && !isClaiming
+                                                                ? "bg-[var(--neon-teal)]/15 text-[var(--neon-teal)] border-[var(--neon-teal)]/20 hover:bg-[var(--neon-teal)]/25"
+                                                                : "bg-secondary/30 text-muted-foreground border-transparent cursor-not-allowed"
+                                                                }`}
+                                                        >
+                                                            {isClaiming ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : "Claim"}
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleDeposit(pool)}
+                                                            className="w-20 py-1.5 rounded-lg bg-secondary/40 text-muted-foreground text-xs font-semibold hover:bg-secondary/60 transition-all border border-border/50"
+                                                        >
+                                                            Deposit
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
