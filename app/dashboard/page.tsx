@@ -121,6 +121,9 @@ export default function DashboardPage() {
     const [pools, setPools] = useState<any[]>([]);
     const [poolsLoading, setPoolsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("All");
+    const [createdPoolIds, setCreatedPoolIds] = useState<Set<string>>(new Set());
+    const [mainTab, setMainTab] = useState<"mine" | "other">("mine");
+    const [otherActiveTab, setOtherActiveTab] = useState("All");
 
     // ── Positions & Claims ────────────────────────────────
     const [positions, setPositions] = useState<any[]>([]);
@@ -163,6 +166,7 @@ export default function DashboardPage() {
         if (!publicKey || !connected) return;
         setPoolsLoading(true);
         const allIds = new Set<string>();
+        const createdIds = new Set<string>();
 
         // Show localStorage pools immediately while we fetch
         try {
@@ -187,7 +191,12 @@ export default function DashboardPage() {
             const stored = localStorage.getItem("aeroCustomPools");
             if (stored) {
                 const parsed = JSON.parse(stored);
-                parsed.forEach((p: any) => { if (p.id) allIds.add(p.id); });
+                parsed.forEach((p: any) => {
+                    if (p.id) {
+                        allIds.add(p.id);
+                        createdIds.add(p.id);
+                    }
+                });
             }
         } catch { }
 
@@ -202,7 +211,10 @@ export default function DashboardPage() {
                     ]
                 }
             );
-            accounts.forEach(({ pubkey }) => allIds.add(pubkey.toBase58()));
+            accounts.forEach(({ pubkey }) => {
+                allIds.add(pubkey.toBase58());
+                createdIds.add(pubkey.toBase58());
+            });
         } catch { }
 
         // Add CPMM on-chain discovery (Standard pools are CPMM program, not CLMM)
@@ -216,7 +228,10 @@ export default function DashboardPage() {
                     ]
                 }
             );
-            cpmmAccounts.forEach(({ pubkey }) => allIds.add(pubkey.toBase58()));
+            cpmmAccounts.forEach(({ pubkey }) => {
+                allIds.add(pubkey.toBase58());
+                createdIds.add(pubkey.toBase58());
+            });
             console.log("[Dashboard] CPMM on-chain pools found:", cpmmAccounts.length);
         } catch (e) {
             console.warn("[Dashboard] CPMM discovery failed:", e);
@@ -233,7 +248,10 @@ export default function DashboardPage() {
                     ]
                 }
             );
-            ammAccounts.forEach(({ pubkey }) => allIds.add(pubkey.toBase58()));
+            ammAccounts.forEach(({ pubkey }) => {
+                allIds.add(pubkey.toBase58());
+                createdIds.add(pubkey.toBase58());
+            });
             console.log("[Dashboard] AMM v4 Legacy on-chain pools found:", ammAccounts.length);
         } catch (e) {
             console.warn("[Dashboard] AMM v4 discovery failed:", e);
@@ -258,6 +276,8 @@ export default function DashboardPage() {
         } catch (e) {
             console.warn("[Dashboard] Failed to discover positions:", e);
         }
+
+        setCreatedPoolIds(createdIds);
 
         const idsArray = Array.from(allIds);
         if (!idsArray.length) { setPoolsLoading(false); setPools([]); return; }
@@ -446,7 +466,13 @@ export default function DashboardPage() {
     ];
 
     // Filter pools by tab
-    const filteredPools = pools.filter(p => {
+    const myPools = pools.filter(p => createdPoolIds.has(p.id || p.poolId));
+    const otherPools = pools.filter(p => {
+        const id = p.id || p.poolId;
+        return !createdPoolIds.has(id) && positions.some(pos => pos.poolId.toString() === id);
+    });
+
+    const filteredMyPools = myPools.filter(p => {
         if (activeTab === "All") return true;
         const t = (p.type || "").toLowerCase();
         if (activeTab === "CLMM") return t === "concentrated" || t === "clmm";
@@ -455,11 +481,27 @@ export default function DashboardPage() {
         return true;
     });
 
-    const poolTabCounts = {
-        All: pools.length,
-        CLMM: pools.filter(p => { const t = (p.type || "").toLowerCase(); return t === "concentrated" || t === "clmm"; }).length,
-        Standard: pools.filter(p => (p.type || "").toLowerCase() === "standard").length,
-        Legacy: pools.filter(p => p.type === "Legacy").length,
+    const filteredOtherPools = otherPools.filter(p => {
+        if (otherActiveTab === "All") return true;
+        const t = (p.type || "").toLowerCase();
+        if (otherActiveTab === "CLMM") return t === "concentrated" || t === "clmm";
+        if (otherActiveTab === "Standard") return t === "standard";
+        if (otherActiveTab === "Legacy") return p.type === "Legacy";
+        return true;
+    });
+
+    const myPoolTabCounts = {
+        All: myPools.length,
+        CLMM: myPools.filter(p => { const t = (p.type || "").toLowerCase(); return t === "concentrated" || t === "clmm"; }).length,
+        Standard: myPools.filter(p => (p.type || "").toLowerCase() === "standard").length,
+        Legacy: myPools.filter(p => p.type === "Legacy").length,
+    };
+
+    const otherPoolTabCounts = {
+        All: otherPools.length,
+        CLMM: otherPools.filter(p => { const t = (p.type || "").toLowerCase(); return t === "concentrated" || t === "clmm"; }).length,
+        Standard: otherPools.filter(p => (p.type || "").toLowerCase() === "standard").length,
+        Legacy: otherPools.filter(p => p.type === "Legacy").length,
     };
 
     // ── Deposit routing ───────────────────────────────────
@@ -725,13 +767,29 @@ export default function DashboardPage() {
                     {/* Card 4 — My Pools */}
                     <div className="bg-card border border-border rounded-2xl p-5">
                         <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            <div className="flex items-center gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
+                                <button
+                                    onClick={() => setMainTab("mine")}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "mine"
+                                        ? "bg-card text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
                                     My Pools
-                                </h3>
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]">
-                                    {pools.length}
-                                </span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "mine" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"
+                                        }`}>{myPools.length}</span>
+                                </button>
+                                <button
+                                    onClick={() => setMainTab("other")}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "other"
+                                        ? "bg-card text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
+                                    Other Pools
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "other" ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"
+                                        }`}>{otherPools.length}</span>
+                                </button>
                             </div>
                             <button onClick={loadPools}
                                 className="p-1.5 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
@@ -742,123 +800,251 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        {/* Tabs */}
-                        <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
-                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
-                                <button key={tab} onClick={() => setActiveTab(tab)}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${activeTab === tab
-                                        ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
-                                        : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
-                                        }`}>
-                                    {tab}
-                                    {poolTabCounts[tab] > 0 && (
-                                        <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"}`}>
-                                            {poolTabCounts[tab]}
-                                        </span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Pool list */}
-                        {poolsLoading ? (
-                            <div className="space-y-3">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="border border-border/50 rounded-xl p-4 animate-pulse">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex -space-x-1">
-                                                <div className="w-7 h-7 rounded-full bg-secondary/60" />
-                                                <div className="w-7 h-7 rounded-full bg-secondary/40" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="h-3.5 w-24 bg-secondary/60 rounded mb-2" />
-                                                <div className="h-2.5 w-16 bg-secondary/40 rounded" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : filteredPools.length === 0 ? (
-                            <div className="py-10 text-center">
-                                <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
-                                    <Droplets className="w-6 h-6 text-[var(--neon-teal)]" />
+                        {mainTab === "mine" ? (
+                            <>
+                                {/* Tabs */}
+                                <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
+                                    {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
+                                        <button key={tab} onClick={() => setActiveTab(tab)}
+                                            className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${activeTab === tab
+                                                ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
+                                                : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
+                                                }`}>
+                                            {tab}
+                                            {myPoolTabCounts[tab] > 0 && (
+                                                <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"}`}>
+                                                    {myPoolTabCounts[tab]}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    {activeTab === "All" ? "No pools found for this wallet." : `No ${activeTab} pools found.`}
-                                </p>
-                                <button onClick={() => router.push("/liquidity/create/clmm")}
-                                    className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
-                                    Create your first pool
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredPools.map((pool, i) => {
-                                    const mintA = pool.mintA?.address || pool.mintA || "";
-                                    const mintB = pool.mintB?.address || pool.mintB || "";
-                                    const symA = pool.mintA?.symbol || pool.symbolA || "?";
-                                    const symB = pool.mintB?.symbol || pool.symbolB || "?";
-                                    const logoA = pool.mintA?.logoURI || pool.logoA;
-                                    const logoB = pool.mintB?.logoURI || pool.logoB;
-                                    const poolId = pool.id || pool.poolId || "";
-                                    const fee = pool.feeRate
-                                        ? (pool.feeRate < 1
-                                            ? `${(pool.feeRate * 100).toFixed(2)}%`
-                                            : `${(pool.feeRate / 100).toFixed(2)}%`)
-                                        : pool.fee || "0.25%";
-                                    const type = pool.type || "Concentrated";
 
-                                    return (
-                                        <div key={i}
-                                            className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
-                                            <div className="flex items-center justify-between gap-4 flex-wrap">
-                                                {/* Pool identity */}
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                    <div className="flex -space-x-2 flex-shrink-0">
-                                                        <TokenIcon symbol={symA} logo={logoA} size={28} />
-                                                        <TokenIcon symbol={symB} logo={logoB} size={28} />
+                                {/* Pool list */}
+                                {poolsLoading ? (
+                                    <div className="space-y-3">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="border border-border/50 rounded-xl p-4 animate-pulse">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex -space-x-1">
+                                                        <div className="w-7 h-7 rounded-full bg-secondary/60" />
+                                                        <div className="w-7 h-7 rounded-full bg-secondary/40" />
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
-                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                            <PoolTypeBadge type={type} />
-                                                            <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
+                                                    <div className="flex-1">
+                                                        <div className="h-3.5 w-24 bg-secondary/60 rounded mb-2" />
+                                                        <div className="h-2.5 w-16 bg-secondary/40 rounded" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : filteredMyPools.length === 0 ? (
+                                    <div className="py-10 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
+                                            <Droplets className="w-6 h-6 text-[var(--neon-teal)]" />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            {activeTab === "All" ? "No pools found for this wallet." : `No ${activeTab} pools found.`}
+                                        </p>
+                                        <button onClick={() => router.push("/liquidity/create/clmm")}
+                                            className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
+                                            Create your first pool
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {filteredMyPools.map((pool: any, i: number) => {
+                                            const mintA = pool.mintA?.address || pool.mintA || "";
+                                            const mintB = pool.mintB?.address || pool.mintB || "";
+                                            const symA = pool.mintA?.symbol || pool.symbolA || "?";
+                                            const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                            const logoA = pool.mintA?.logoURI || pool.logoA;
+                                            const logoB = pool.mintB?.logoURI || pool.logoB;
+                                            const poolId = pool.id || pool.poolId || "";
+                                            const fee = pool.feeRate
+                                                ? (pool.feeRate < 1
+                                                    ? `${(pool.feeRate * 100).toFixed(2)}%`
+                                                    : `${(pool.feeRate / 100).toFixed(2)}%`)
+                                                : pool.fee || "0.25%";
+                                            const type = pool.type || "Concentrated";
+
+                                            return (
+                                                <div key={i}
+                                                    className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
+                                                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                        {/* Pool identity */}
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <div className="flex -space-x-2 flex-shrink-0">
+                                                                <TokenIcon symbol={symA} logo={logoA} size={28} />
+                                                                <TokenIcon symbol={symB} logo={logoB} size={28} />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
+                                                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                    <PoolTypeBadge type={type} />
+                                                                    <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Pool ID */}
+                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                            <span className="text-xs text-muted-foreground font-mono">
+                                                                {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
+                                                            </span>
+                                                            {poolId && <CopyButton text={poolId} />}
+                                                            {poolId && (
+                                                                <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
+                                                                    target="_blank" rel="noopener noreferrer"
+                                                                    className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
+                                                                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Action buttons */}
+                                                        <div className="flex gap-2 w-full sm:w-auto">
+                                                            <button onClick={() => handleDeposit(pool)}
+                                                                className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-[var(--neon-teal)]/50 text-[var(--neon-teal)] text-xs font-semibold hover:bg-[var(--neon-teal)]/10 transition-all duration-200">
+                                                                Deposit
+                                                            </button>
+                                                            <button onClick={() => handleWithdraw(pool)}
+                                                                className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
+                                                                Withdraw
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                {/* Pool ID */}
-                                                <div className="flex items-center gap-1 flex-shrink-0">
-                                                    <span className="text-xs text-muted-foreground font-mono">
-                                                        {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
-                                                    </span>
-                                                    {poolId && <CopyButton text={poolId} />}
-                                                    {poolId && (
-                                                        <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
-                                                            target="_blank" rel="noopener noreferrer"
-                                                            className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
-                                                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                                                        </a>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                        {/* Tabs */}
+                                        <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
+                                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
+                                                <button key={tab} onClick={() => setOtherActiveTab(tab)}
+                                                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${otherActiveTab === tab
+                                                        ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
+                                                        : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
+                                                        }`}>
+                                                    {tab}
+                                                    {otherPoolTabCounts[tab] > 0 && (
+                                                        <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${otherActiveTab === tab ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"}`}>
+                                                            {otherPoolTabCounts[tab]}
+                                                        </span>
                                                     )}
-                                                </div>
-
-                                                {/* Action buttons */}
-                                                <div className="flex gap-2 w-full sm:w-auto">
-                                                    <button onClick={() => handleDeposit(pool)}
-                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-[var(--neon-teal)]/50 text-[var(--neon-teal)] text-xs font-semibold hover:bg-[var(--neon-teal)]/10 transition-all duration-200">
-                                                        Deposit
-                                                    </button>
-                                                    <button onClick={() => handleWithdraw(pool)}
-                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
-                                                        Withdraw
-                                                    </button>
-                                                </div>
-                                            </div>
+                                                </button>
+                                            ))}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+
+                                        {otherPools.length === 0 ? (
+                                            <div className="py-10 text-center">
+                                                <p className="text-sm text-muted-foreground">No external pools found with your liquidity.</p>
+                                            </div>
+                                        ) : filteredOtherPools.length === 0 ? (
+                                            <div className="py-10 text-center">
+                                                <p className="text-sm text-muted-foreground">No {otherActiveTab} pools found.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {filteredOtherPools.map((pool: any, i: number) => {
+                                                    const mintA = pool.mintA?.address || pool.mintA || "";
+                                                    const mintB = pool.mintB?.address || pool.mintB || "";
+                                                    const symA = pool.mintA?.symbol || pool.symbolA || "?";
+                                                    const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                                    const logoA = pool.mintA?.logoURI || pool.logoA;
+                                                    const logoB = pool.mintB?.logoURI || pool.logoB;
+                                                    const poolId = pool.id || pool.poolId || "";
+                                                    const fee = pool.feeRate
+                                                        ? (pool.feeRate < 1
+                                                            ? `${(pool.feeRate * 100).toFixed(2)}%`
+                                                            : `${(pool.feeRate / 100).toFixed(2)}%`)
+                                                        : pool.fee || "0.25%";
+                                                    const type = pool.type || "Concentrated";
+                                                    const userPosition = positions.find((pos: any) => pos.poolId.toString() === poolId);
+
+                                                    return (
+                                                        <div key={i}
+                                                            className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
+                                                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                                {/* Pool identity */}
+                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                    <div className="flex -space-x-2 flex-shrink-0">
+                                                                        <TokenIcon symbol={symA} logo={logoA} size={28} />
+                                                                        <TokenIcon symbol={symB} logo={logoB} size={28} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            <PoolTypeBadge type={type} />
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">Deposited</span>
+                                                                            <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Pool ID */}
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    <span className="text-xs text-muted-foreground font-mono">
+                                                                        {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
+                                                                    </span>
+                                                                    {poolId && <CopyButton text={poolId} />}
+                                                                    {poolId && (
+                                                                        <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
+                                                                            target="_blank" rel="noopener noreferrer"
+                                                                            className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
+                                                                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Action buttons */}
+                                                                <div className="flex gap-2 w-full sm:w-auto">
+                                                                    <button onClick={() => handleWithdraw(pool)}
+                                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
+                                                                        Withdraw
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {userPosition && (
+                                                                <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 gap-3 text-xs">
+                                                                    <div>
+                                                                        <span className="text-muted-foreground">Tick Range</span>
+                                                                        <div className="font-semibold text-foreground mt-0.5">
+                                                                            {userPosition.tickLower} → {userPosition.tickUpper}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-muted-foreground">Liquidity</span>
+                                                                        <div className="font-semibold text-[var(--neon-teal)] mt-0.5">
+                                                                            {userPosition.liquidity.toString()}
+                                                                        </div>
+                                                                    </div>
+                                                                    {userPosition.rewardInfos?.some((r: any) => r.pendingReward?.gtn(0)) && (
+                                                                        <div className="col-span-2">
+                                                                            <span className="text-muted-foreground">Pending Rewards</span>
+                                                                            <div className="font-semibold text-yellow-400 mt-0.5">
+                                                                                {userPosition.rewardInfos.map((r: any, idx: number) => (
+                                                                                    <span key={idx} className="mr-2">
+                                                                                        Reward {idx + 1}: {(r.pendingReward?.toNumber() / 1e6).toFixed(4)}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                     </div>
 
                     {/* Card 5 — Farm Rewards */}
