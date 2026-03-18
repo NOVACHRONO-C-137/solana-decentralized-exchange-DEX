@@ -55,50 +55,7 @@ interface PoolData {
     colorB?: string;
 }
 
-// ── Gradient color map for tokens without logos ──────────
-const TOKEN_GRADIENTS: Record<string, string> = {
-    SOL: "from-[#9945FF] to-[#14F195]",
-    USDC: "from-[#2775CA] to-[#2775CA]",
-    USDT: "from-[#26A17B] to-[#26A17B]",
-    JitoSOL: "from-[#10B981] to-[#34D399]",
-    mSOL: "from-[#C94DFF] to-[#7B61FF]",
-    LHMN: "from-[#7C3AED] to-[#A855F7]",
-    PLTR: "from-[#3B82F6] to-[#60A5FA]",
-    RAY: "from-[#6366F1] to-[#818CF8]",
-};
-
-// ── Token icon component ─────────────────────────────────
-function TokenIcon({ logo, symbol, size = 28, className = "" }: { logo?: string; symbol: string; size?: number; className?: string }) {
-    const [imgError, setImgError] = useState(false);
-    const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
-
-    if (logo && !imgError) {
-        return (
-            <div className={`rounded-full overflow-hidden border-2 border-[#0c0d14] bg-[#1a1b2e] ${className}`}
-                style={{ width: size, height: size }}>
-                <Image
-                    src={logo}
-                    alt={symbol}
-                    width={size}
-                    height={size}
-                    className="rounded-full object-cover"
-                    onError={() => setImgError(true)}
-                    unoptimized
-                />
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center border-2 border-[#0c0d14] text-white font-bold ${className}`}
-            style={{ width: size, height: size, fontSize: size * 0.36 }}
-        >
-            {symbol.charAt(0)}
-        </div>
-    );
-}
-
+import TokenIcon from "@/components/liquidity/TokenIcon";
 
 // ── Devnet stablecoin mint addresses → USD price ─────────
 // Add your mock USDC mint here so it's treated as $1.00

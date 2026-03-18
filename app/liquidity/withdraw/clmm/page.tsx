@@ -8,37 +8,7 @@ import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v
 import BN from "bn.js";
 import { ChevronLeft, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { formatLargeNumber } from "@/lib/utils";
-
-// ── Token icon ────────────────────────────────────────────
-function TokenIcon({ symbol, logo, size = 28 }: { symbol: string; logo?: string; size?: number }) {
-    const [err, setErr] = useState(false);
-    const GRADIENTS: Record<string, string> = {
-        SOL: "from-[#9945FF] to-[#14F195]",
-        USDC: "from-[#2775CA] to-[#2775CA]",
-        LHMN: "from-[#7C3AED] to-[#A855F7]",
-        PLTR: "from-[#3B82F6] to-[#60A5FA]",
-        RGR: "from-[#EF4444] to-[#F97316]",
-        BIET: "from-[#F59E0B] to-[#EF4444]",
-    };
-    const grad = GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
-    if (logo && !err) {
-        return (
-            <div className="rounded-full overflow-hidden border border-card flex-shrink-0"
-                style={{ width: size, height: size }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logo} alt={symbol} width={size} height={size}
-                    className="rounded-full object-cover w-full h-full"
-                    onError={() => setErr(true)} />
-            </div>
-        );
-    }
-    return (
-        <div className={`rounded-full bg-gradient-to-br ${grad} flex items-center justify-center font-bold text-black flex-shrink-0 border border-card`}
-            style={{ width: size, height: size, fontSize: size * 0.38 }}>
-            {symbol[0]}
-        </div>
-    );
-}
+import TokenIcon from "@/components/liquidity/TokenIcon";
 
 // ── Position card ─────────────────────────────────────────
 interface PositionInfo {

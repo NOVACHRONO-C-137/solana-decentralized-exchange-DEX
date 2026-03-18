@@ -13,50 +13,8 @@ import { TokenInfo, TokenSelectorModal } from "@/components/liquidity/TokenSelec
 import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { formatLargeNumber } from "@/lib/utils";
-
-// ── Gradient color map for tokens without logos ──────────
-const TOKEN_GRADIENTS: Record<string, string> = {
-    SOL: "from-[#9945FF] to-[#14F195]",
-    USDC: "from-[#2775CA] to-[#2775CA]",
-    USDT: "from-[#26A17B] to-[#26A17B]",
-    JitoSOL: "from-[#10B981] to-[#34D399]",
-    mSOL: "from-[#C94DFF] to-[#7B61FF]",
-    LHMN: "from-[#7C3AED] to-[#A855F7]",
-    PLTR: "from-[#3B82F6] to-[#60A5FA]",
-    RAY: "from-[#6366F1] to-[#818CF8]",
-};
-
-// ── Token icon component ─────────────────────────────────
-function TokenIcon({ logo, symbol, size = 24, className = "" }: { logo?: string; symbol: string; size?: number; className?: string }) {
-    const [imgError, setImgError] = useState(false);
-    const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
-
-    if (logo && !imgError) {
-        return (
-            <div className={`rounded-full overflow-hidden border border-card bg-card ${className}`}
-                style={{ width: size, height: size }}>
-                <Image
-                    src={logo}
-                    alt={symbol}
-                    width={size}
-                    height={size}
-                    className="rounded-full object-cover"
-                    onError={() => setImgError(true)}
-                    unoptimized
-                />
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center border border-card text-foreground font-bold ${className}`}
-            style={{ width: size, height: size, fontSize: size * 0.4 }}
-        >
-            {symbol ? symbol.charAt(0) : "?"}
-        </div>
-    );
-}
+import { TOKEN_GRADIENTS } from "@/lib/tokens";
+import TokenIcon from "@/components/liquidity/TokenIcon";
 
 // ── Discover pool IDs from on-chain CLMM positions ───────
 async function discoverOnChainPoolIds(
