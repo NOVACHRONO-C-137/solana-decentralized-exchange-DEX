@@ -858,7 +858,7 @@ function PositionPageInner() {
         </button>
 
         {/* Header bar */}
-        <div className="bg-card border border-border rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               <TokenLogo token={tokenAInfo} size={32} className="z-10" />
@@ -907,13 +907,13 @@ function PositionPageInner() {
         {/* Main content */}
         <div className="flex flex-col lg:flex-row gap-6">
           {/* LEFT — Price Range Chart */}
-          <div className="flex-1 bg-card border border-border rounded-2xl p-6">
+          <div className="flex-1 bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6">
             <h3 className="text-base font-bold mb-5">Set Price Range</h3>
 
             {/* Chart area */}
             <div
               ref={chartRef}
-              className="relative bg-card border border-border/50 rounded-xl p-4 mb-5 h-64 overflow-hidden select-none"
+              className="relative bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 mb-5 h-64 overflow-hidden select-none"
             >
               <div className="absolute top-3 right-3 flex gap-2 z-20">
                 <button onClick={fetchBalances} className="w-7 h-7 rounded-lg bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 flex items-center justify-center transition-all">
@@ -993,7 +993,7 @@ function PositionPageInner() {
             {/* Min / Max inputs */}
             <div className="flex gap-4 mb-4">
               {/* Min */}
-              <div className="flex-1 bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-3">
+              <div className="flex-1 bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground mb-2">Min Price</p>
                 <div className="flex items-center gap-2">
                   <button
@@ -1021,7 +1021,7 @@ function PositionPageInner() {
               </div>
 
               {/* Max */}
-              <div className="flex-1 bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-3">
+              <div className="flex-1 bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground mb-2">Max Price</p>
                 <div className="flex items-center gap-2">
                   <button
@@ -1119,7 +1119,7 @@ function PositionPageInner() {
           </div>
 
           {/* RIGHT — Deposit Amount */}
-          <div className="w-full lg:w-80 bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+          <div className="w-full lg:w-80 bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">Add Deposit Amount</h3>
               <div className="flex items-center gap-2 relative" ref={slippageRef}>
@@ -1191,7 +1191,7 @@ function PositionPageInner() {
             </div>
 
             {/* Top Token */}
-            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
+            <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
@@ -1248,7 +1248,7 @@ function PositionPageInner() {
             </div>
 
             {/* Bottom Token */}
-            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
+            <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
@@ -1306,7 +1306,7 @@ function PositionPageInner() {
             </div>
 
             {/* Total + Ratio */}
-            <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2">
+            <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Total Deposit</span>
                 <span className="text-sm font-bold">${formatLargeNumber(totalDeposit)}</span>

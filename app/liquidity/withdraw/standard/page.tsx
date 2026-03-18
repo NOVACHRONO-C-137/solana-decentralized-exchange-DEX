@@ -238,7 +238,7 @@ export default function WithdrawStandardPage() {
             </div>
 
             {/* Main Card */}
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-5">
 
                 {loading ? (
                     <div className="flex flex-col items-center py-10 gap-3">
@@ -248,7 +248,7 @@ export default function WithdrawStandardPage() {
                 ) : (
                     <>
                         {/* LP Balance */}
-                        <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3">
+                        <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3">
                             <p className="text-xs text-muted-foreground mb-1">Your LP Token Balance</p>
                             <p className="text-2xl font-bold text-foreground">
                                 {formatLargeNumber(lpBalance)}
@@ -305,7 +305,7 @@ export default function WithdrawStandardPage() {
                         </div>
 
                         {/* Estimated receive */}
-                        <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2">
+                        <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-2">
                             <p className="text-xs text-muted-foreground font-semibold mb-1">Estimated Receive</p>
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">

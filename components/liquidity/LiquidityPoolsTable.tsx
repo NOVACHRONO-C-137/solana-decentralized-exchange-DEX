@@ -22,6 +22,15 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 
+// Compact USD formatter for mobile
+const formatCompactUSD = (valStr: string) => {
+    const num = parseFloat(valStr.replace(/[$,]/g, ''));
+    if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
+    return valStr;
+};
+
 // ── Pool type ─────────────────────────────────────────────
 interface PoolData {
     id: string;
@@ -602,21 +611,21 @@ export default function LiquidityPoolsTable() {
                 {/* Main Table Card */}
                 <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl overflow-hidden">
                     {/* Header */}
-                    <div className="p-6 border-b border-[#0D9B5F]/15 dark:border-border/50 flex justify-between items-center">
+                    <div className="p-4 sm:p-6 border-b border-[#0D9B5F]/15 dark:border-border/50 flex justify-between items-center">
                         <div>
                             <h2 className="text-2xl font-bold">Liquidity Pools</h2>
-                            <p className="text-sm text-muted-foreground text-[var(--neon-teal)]">Provide liquidity, earn yield.</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground text-[var(--neon-teal)]">Provide liquidity, earn yield.</p>
                         </div>
                         <Button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-[#0D9B5F] hover:bg-[#1A7FAB] text-white dark:bg-[var(--neon-teal)] dark:text-black dark:hover:bg-[#0ea5e9] transition-all duration-200 hover:shadow-[0_4px_15px_rgba(26,127,171,0.4)]"
+                            className="h-8 px-3 text-xs sm:h-10 sm:px-4 sm:text-sm bg-[#0D9B5F] hover:bg-[#92cdd4] hover:text-black text-white dark:bg-[var(--neon-teal)] dark:text-black dark:hover:bg-[#7bb2b8] dark:hover:text-black transition-all duration-200 hover:shadow-[0_4px_15px_rgba(146,205,212,0.4)] dark:hover:shadow-[0_4px_15px_rgba(123,178,184,0.4)]"
                         >
-                            <Plus className="mr-2 h-4 w-4" /> Create Pool
+                            <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Create Pool
                         </Button>
                     </div>
 
                     {/* Search + Filter Bar */}
-                    <div className="px-6 pb-4 pt-4 flex flex-col sm:flex-row gap-3">
+                    <div className="px-4 sm:px-6 pb-4 pt-4 flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1">
                             <input
                                 type="text"
@@ -629,7 +638,7 @@ export default function LiquidityPoolsTable() {
                                 <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                             </svg>
                         </div>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
                             {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
                                 <button key={tab} onClick={() => setTypeFilter(tab)}
                                     className={`text-xs font-semibold px-3 py-2 rounded-full transition-all ${typeFilter === tab
@@ -651,20 +660,22 @@ export default function LiquidityPoolsTable() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-[#0D9B5F]/15 dark:border-border/50">
-                                    <th className="px-6 py-4 font-medium">Pool</th>
-                                    <th className="px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("liquidity")}>
-                                        Liquidity <SortArrow field="liquidity" />
+                                    <th className="px-2 sm:px-6 py-4 font-medium">Pool</th>
+                                    <th className="px-2 sm:px-6 py-4 font-medium text-center cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("liquidity")}>
+                                        <div className="flex items-center justify-center gap-1">
+                                            Liquidity <SortArrow field="liquidity" />
+                                        </div>
                                     </th>
-                                    <th className="px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("swaps")}>
+                                    <th className="hidden md:table-cell px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("swaps")}>
                                         Swaps <SortArrow field="swaps" />
                                     </th>
-                                    <th className="px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("fees")}>
+                                    <th className="hidden md:table-cell px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("fees")}>
                                         Fees 24H <SortArrow field="fees" />
                                     </th>
-                                    <th className="px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("apr")}>
+                                    <th className="hidden md:table-cell px-6 py-4 font-medium text-right cursor-pointer hover:text-foreground select-none" onClick={() => toggleSort("apr")}>
                                         APR 24H <SortArrow field="apr" />
                                     </th>
-                                    <th className="px-6 py-4 font-medium text-right">Actions</th>
+                                    <th className="px-2 sm:px-6 py-4 font-medium text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#0D9B5F]/10 dark:divide-border/30">
@@ -690,23 +701,25 @@ export default function LiquidityPoolsTable() {
                                             <tr key={`${pool.id}-${idx}`} className={`hover:bg-[#0D9B5F]/5 dark:hover:bg-secondary/60 dark:hover:bg-white/5 transition-colors group ${myPoolIds.has(pool.id) ? "border-l-2 border-l-[var(--neon-teal)]" : ""}`}>
 
                                                 {/* Pool Name with Overlapping Logos */}
-                                                <td className="px-6 py-4 font-medium">
+                                                <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium">
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <div className="flex items-center gap-3 cursor-pointer group/name">
+                                                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3 cursor-pointer group/name">
                                                                 {/* Overlapping token icons */}
                                                                 <div className="flex items-center -space-x-2">
                                                                     <TokenIcon logo={pool.logoA} symbol={symA} size={28} />
                                                                     <TokenIcon logo={pool.logoB} symbol={symB} size={28} />
                                                                 </div>
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-foreground group-hover/name:text-[var(--neon-teal)] transition-colors font-semibold text-sm">
-                                                                        {pool.name}
-                                                                    </span>
+                                                                    <div className="text-foreground group-hover/name:text-[var(--neon-teal)] transition-colors font-bold text-xs sm:text-sm leading-tight sm:leading-normal mb-1 sm:mb-0">
+                                                                        <span className="block sm:inline">{symA}</span>
+                                                                        <span className="hidden sm:inline"> / </span>
+                                                                        <span className="block sm:inline text-muted-foreground sm:text-foreground">{symB}</span>
+                                                                    </div>
                                                                     <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pool.type === "Standard" ? "bg-blue-500/20 text-blue-400" :
-                                                                                pool.type === "Legacy" ? "bg-orange-500/20 text-orange-400" :
-                                                                                    "bg-violet-500/20 text-violet-400"
+                                                                        <span className={`text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${pool.type === "Standard" ? "bg-blue-500/20 text-blue-400" :
+                                                                            pool.type === "Legacy" ? "bg-orange-500/20 text-orange-400" :
+                                                                                "bg-violet-500/20 text-violet-400"
                                                                             }`}>
                                                                             {pool.type === "Standard" ? "Standard" : pool.type === "Legacy" ? "Legacy" : "CLMM"}
                                                                         </span>
@@ -715,7 +728,7 @@ export default function LiquidityPoolsTable() {
                                                                 </div>
                                                             </div>
                                                         </TooltipTrigger>
-                                                        <TooltipContent side="right" className="bg-popover dark:bg-[#1C202F] border-border dark:border-border/10 p-4 w-80 shadow-xl z-[100] text-popover-foreground dark:text-white rounded-xl">
+                                                        <TooltipContent side="right" className="p-4 w-80 z-[100] bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_4px_30px_rgba(0,0,0,0.1)] text-foreground dark:text-white rounded-xl">
                                                             <div className="flex flex-col gap-3">
                                                                 <div className="flex justify-between items-center text-[12px]">
                                                                     <span className="text-muted-foreground dark:text-foreground/70 font-medium">Pool id:</span>
@@ -727,7 +740,7 @@ export default function LiquidityPoolsTable() {
                                                                         {copiedId === pool.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 opacity-70" />}
                                                                     </button>
                                                                 </div>
-                                                                <div className="h-px bg-border dark:bg-white/10" />
+                                                                <div className="h-px bg-black/[0.06] dark:bg-[rgba(255,255,255,0.08)]" />
                                                                 {/* Token A */}
                                                                 <div className="flex justify-between items-center text-[12px]">
                                                                     <div className="flex items-center gap-2">
@@ -762,16 +775,19 @@ export default function LiquidityPoolsTable() {
                                                 </td>
 
                                                 {/* Liquidity */}
-                                                <td className="px-6 py-4 text-right text-foreground/90 text-sm">{pool.liquidity}</td>
+                                                <td className="px-2 sm:px-6 py-3 sm:py-4 text-center text-foreground/90 text-xs sm:text-sm font-medium">
+                                                    <span className="sm:hidden">{formatCompactUSD(pool.liquidity)}</span>
+                                                    <span className="hidden sm:inline">{pool.liquidity}</span>
+                                                </td>
 
                                                 {/* Swaps */}
-                                                <td className="px-6 py-4 text-right text-foreground/90 text-sm">{poolTxCounts.get(pool.id) ?? "—"} txs</td>
+                                                <td className="hidden md:table-cell px-6 py-4 text-right text-foreground/90 text-sm">{poolTxCounts.get(pool.id) ?? "—"} txs</td>
 
                                                 {/* Fees 24H */}
-                                                <td className="px-6 py-4 text-right text-foreground/90 text-sm">{pool.fees || "$0"}</td>
+                                                <td className="hidden md:table-cell px-6 py-4 text-right text-foreground/90 text-sm">{pool.fees || "$0"}</td>
 
                                                 {/* APR */}
-                                                <td className="px-6 py-4 text-right">
+                                                <td className="hidden md:table-cell px-6 py-4 text-right">
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <button className="text-[var(--neon-teal)] font-semibold border-b border-dotted border-[var(--neon-teal)] cursor-help outline-none text-sm">
@@ -780,7 +796,7 @@ export default function LiquidityPoolsTable() {
                                                         </TooltipTrigger>
                                                         <TooltipContent
                                                             side="top"
-                                                            className="z-[100] bg-popover/95 dark:bg-[#0c0d10]/95 backdrop-blur-xl border border-border/50 dark:border-border p-5 w-64 shadow-xl dark:shadow-[0_0_30px_rgba(0,0,0,0.5)] rounded-xl"
+                                                            className="z-[100] p-5 w-64 rounded-xl bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_4px_30px_rgba(0,0,0,0.1)] text-foreground dark:text-white"
                                                         >
                                                             <div className="flex flex-col gap-4">
                                                                 <div className="flex justify-between items-center text-foreground dark:text-white">
@@ -810,35 +826,32 @@ export default function LiquidityPoolsTable() {
                                                 </td>
 
                                                 {/* Actions */}
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    onClick={() => setSelectedPool(pool.name)}
-                                                                    className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-[var(--neon-teal)]"
-                                                                >
-                                                                    <BarChart2 className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>View pool charts</TooltipContent>
-                                                        </Tooltip>
-
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    onClick={() => {
+                                                <td className="px-2 sm:px-6 py-3 sm:py-4 text-right">
+                                                    <div className="flex flex-col sm:flex-row justify-end items-end sm:items-center gap-2">
+                                                        {/* Row of Utility Icons */}
+                                                        <div className="flex items-center gap-1 sm:gap-2">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button onClick={() => setSelectedPool(pool.name)} className="p-2 rounded-lg hover:bg-[#92cdd4]/10 dark:hover:bg-[#7bb2b8]/10 transition-colors text-muted-foreground hover:text-[#92cdd4] dark:hover:text-[#7bb2b8]">
+                                                                        <BarChart2 className="h-4 w-4" />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="bg-[#92cdd4] dark:bg-[#7bb2b8] text-black border-none font-medium">View charts</TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button onClick={() => {
                                                                         const [tokenA, tokenB] = pool.name.split("-");
                                                                         router.push(`/swap?from=${tokenA}&to=${tokenB}&fromMint=${pool.mintA}&toMint=${pool.mintB}`);
-                                                                    }}
-                                                                    className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-[var(--neon-teal)]"
-                                                                >
-                                                                    <ArrowLeftRight className="h-4 w-4" />
-                                                                </button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Swap</TooltipContent>
-                                                        </Tooltip>
+                                                                    }} className="p-2 rounded-lg hover:bg-[#92cdd4]/10 dark:hover:bg-[#7bb2b8]/10 transition-colors text-muted-foreground hover:text-[#92cdd4] dark:hover:text-[#7bb2b8]">
+                                                                        <ArrowLeftRight className="h-4 w-4" />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="bg-[#92cdd4] dark:bg-[#7bb2b8] text-black border-none font-medium">Swap</TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
 
+                                                        {/* Primary Action Button */}
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
@@ -846,20 +859,23 @@ export default function LiquidityPoolsTable() {
                                                                 const isStandard = pool.type === "Standard";
                                                                 const basePath = isStandard ? "/liquidity/position/standard" : "/liquidity/position/clmm";
 
-                                                                const q = new URLSearchParams({
+                                                                const params: Record<string, string> = {
                                                                     pool: pool.name,
                                                                     fee: pool.fee,
                                                                     poolId: pool.id,
-                                                                    ...(pool.mintA && { mintA: pool.mintA }),
-                                                                    ...(pool.mintB && { mintB: pool.mintB }),
-                                                                    ...(pool.decimalsA != null && { decimalsA: pool.decimalsA.toString() }),
-                                                                    ...(pool.decimalsB != null && { decimalsB: pool.decimalsB.toString() }),
-                                                                    ...(pool.logoA && { logoA: pool.logoA }),
-                                                                    ...(pool.logoB && { logoB: pool.logoB }),
-                                                                });
+                                                                };
+
+                                                                if (pool.mintA) params.mintA = pool.mintA;
+                                                                if (pool.mintB) params.mintB = pool.mintB;
+                                                                if (pool.decimalsA != null) params.decimalsA = pool.decimalsA.toString();
+                                                                if (pool.decimalsB != null) params.decimalsB = pool.decimalsB.toString();
+                                                                if (pool.logoA) params.logoA = pool.logoA;
+                                                                if (pool.logoB) params.logoB = pool.logoB;
+
+                                                                const q = new URLSearchParams(params);
                                                                 router.push(`${basePath}?${q.toString()}`);
                                                             }}
-                                                            className="border-[#0D9B5F]/40 dark:border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10"
+                                                            className="h-8 px-4 text-xs border-[#0D9B5F]/40 dark:border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10 font-bold"
                                                         >
                                                             Deposit
                                                         </Button>

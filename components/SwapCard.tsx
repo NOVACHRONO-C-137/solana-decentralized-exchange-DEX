@@ -73,7 +73,7 @@ function TokenSelector({ token, onSwitch }: { token: TokenInfo; onSwitch?: () =>
             className="flex items-center gap-2 rounded-full bg-black/[0.07] dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.08] dark:border-white/[0.06] px-3 py-2 transition-colors hover:bg-black/[0.18] dark:hover:bg-white/[0.10]"
         >
             <SwapTokenIcon token={token} />
-            <span className="text-lg font-semibold text-foreground">{token.symbol}</span>
+            <span className="text-base sm:text-lg font-semibold text-foreground">{token.symbol}</span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </button>
     )
@@ -141,7 +141,7 @@ function GradientBorderField({
                             onChange={(e) => onAmountChange(e.target.value)}
                             placeholder="0.00"
                             readOnly={readOnly}
-                            className="w-28 bg-transparent text-right text-xl font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed"
+                            className="w-24 sm:w-28 bg-transparent text-right text-lg sm:text-xl font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed"
                             onKeyDown={(e) => {
                                 // Block letters and special chars except digits, dot, backspace, delete, arrows
                                 const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', '.']
@@ -177,11 +177,11 @@ function SlippageModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-popover-foreground sm:max-w-[360px] rounded-2xl p-6 font-sans">
+            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-foreground w-[90vw] max-w-[280px] rounded-2xl p-4 sm:p-5 font-sans">
                 <div className="flex items-center justify-between mb-5">
                     <p className="text-base font-bold text-foreground">Slippage Settings</p>
                 </div>
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div className="grid grid-cols-2 gap-2 mb-4">
                     {["0.1", "0.5", "1.0", "2.0"].map((v) => (
                         <button
                             key={v}
@@ -734,7 +734,7 @@ function SwapCardInner() {
                 </div>
 
                 {/* Card */}
-                <div className="rounded-3xl border border-black/[0.08] dark:border-white/[0.06] bg-[rgba(220,240,232,0.55)] dark:bg-white/[0.02] p-5 shadow-lg shadow-black/[0.03] dark:shadow-black/20 backdrop-blur-md">
+                <div className="rounded-3xl border border-black/[0.08] dark:border-white/[0.06] bg-[rgba(220,240,232,0.55)] dark:bg-white/[0.02] p-4 sm:p-5 shadow-lg shadow-black/[0.03] dark:shadow-black/20 backdrop-blur-md">
                     <GradientBorderField
                         label="From"
                         token={fromToken}

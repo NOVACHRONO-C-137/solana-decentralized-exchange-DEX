@@ -14,11 +14,11 @@ function SwapPageInner() {
 
     return (
         <main className="min-h-screen bg-background text-foreground px-4 py-8 transition-colors">
-            <div className="flex items-start justify-center min-h-screen px-4 py-24 gap-6 max-w-6xl mx-auto w-full relative z-10">
-                <div className="w-full flex-1">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center min-h-screen px-4 pt-28 pb-12 gap-8 lg:gap-6 max-w-6xl mx-auto w-full relative z-10">
+                <div className="w-full max-w-lg lg:max-w-none lg:w-1/2 flex justify-center lg:justify-end">
                     <SwapCard />
                 </div>
-                <div className="w-full flex-1 pt-[72px]">
+                <div className="w-full max-w-lg lg:max-w-none lg:w-1/2 lg:pt-[72px] flex justify-center lg:justify-start">
                     <SwapStatsPanel
                         fromToken={fromToken}
                         toToken={toToken}

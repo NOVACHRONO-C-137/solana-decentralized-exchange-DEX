@@ -14,8 +14,11 @@ const cagliostro = Cagliostro({
 });
 
 export const metadata: Metadata = {
-  title: "Aero DEX",
+  title: "NOVADEX",
   description: "A high-performance Solana DEX",
+  icons: {
+    icon: "/nova-icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -30,13 +30,13 @@ function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) 
             <img
                 src={logoUrl}
                 alt={symbol}
-                className="h-8 w-8 rounded-full border-2 border-background dark:border-[#0c0d10] object-cover"
+                className="h-6 w-6 sm:h-8 sm:w-8 rounded-full border-2 border-background dark:border-[#0c0d10] object-cover"
                 onError={() => setImgError(true)}
             />
         );
     }
     return (
-        <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-sm border-2 border-background dark:border-[#0c0d10]`}>
+        <div className={`h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-sm border-2 border-background dark:border-[#0c0d10]`}>
             {symbol.charAt(0)}
         </div>
     );
@@ -92,7 +92,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] bg-[rgba(235,248,230,0.88)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[4px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.07)] shadow-[0_2px_20px_0_rgba(0,0,0,0.08)] text-foreground dark:text-white [&>button]:text-muted-foreground">
+            <DialogContent className="w-[95vw] sm:max-w-[600px] bg-[rgba(235,248,230,0.88)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[4px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.07)] shadow-[0_2px_20px_0_rgba(0,0,0,0.08)] text-foreground dark:text-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl overflow-hidden [&>button]:text-muted-foreground">
                 <DialogHeader>
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
@@ -109,7 +109,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                                 );
                             })}
                         </div>
-                        <DialogTitle className="text-xl font-bold">
+                        <DialogTitle className="text-lg sm:text-2xl font-bold">
                             {poolName}
                         </DialogTitle>
                     </div>
@@ -132,7 +132,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                 </div>
 
                 {/* The Chart Container */}
-                <div className="h-[320px] w-full mt-6 pr-4">
+                <div className="h-[250px] sm:h-[320px] w-full mt-4 sm:mt-6 pr-2 sm:pr-4">
                     <div className="chart-fade h-full w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData}>
@@ -184,7 +184,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
 
                 <button
                     onClick={onClose}
-                    className="w-full bg-[#2d8f62] hover:bg-[#3aaa76] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-black dark:text-[#14f195] border border-[#2d8f62] dark:border-[rgba(20,241,149,0.25)] py-3 rounded-lg font-bold text-base tracking-wide mt-4 transition-all shadow-[0_2px_12px_rgba(45,143,98,0.35)]"
+                    className="w-full bg-[#2d8f62] hover:bg-[#3aaa76] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-black dark:text-[#14f195] border border-[#2d8f62] dark:border-[rgba(20,241,149,0.25)] py-2 sm:py-3 rounded-lg font-bold text-sm sm:text-base tracking-wide mt-2 sm:mt-4 transition-all shadow-[0_2px_12px_rgba(45,143,98,0.35)]"
                 >
                     Close
                 </button>

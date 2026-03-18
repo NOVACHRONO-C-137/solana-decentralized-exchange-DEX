@@ -139,10 +139,10 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-popover-foreground sm:max-w-[450px] p-0 rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-popover-foreground w-[90vw] max-w-[360px] p-0 rounded-2xl overflow-hidden flex flex-col max-h-[85vh]">
 
                 {/* Header & Search */}
-                <div className="p-6 pb-2 shrink-0">
+                <div className="p-4 pb-2 shrink-0">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-foreground">Select a token</DialogTitle>
                     </DialogHeader>
@@ -188,7 +188,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                 </div>
 
                 {/* Token List */}
-                <div className="overflow-y-auto flex-1 px-4 pb-4 custom-scrollbar-teal">
+                <div className="overflow-y-auto flex-1 px-2 sm:px-4 pb-4 custom-scrollbar-teal">
                     {sorted.length === 0 ? (
                         <p className="text-center text-muted-foreground text-sm py-8">No tokens found</p>
                     ) : (
@@ -201,7 +201,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                                     className="flex justify-between items-center p-3 hover:bg-secondary/60 rounded-xl cursor-pointer transition-colors group"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <TokenLogo token={token} size={36} />
+                                        <TokenLogo token={token} size={32} />
                                         <div className="flex flex-col">
                                             <span className="font-bold text-sm text-foreground">{token.symbol}</span>
                                             <span className="text-xs text-muted-foreground">{token.name}</span>

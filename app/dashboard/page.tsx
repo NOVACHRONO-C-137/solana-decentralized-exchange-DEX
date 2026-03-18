@@ -686,14 +686,14 @@ export default function DashboardPage() {
     const shortAddr = `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+        <div className="container mx-auto px-4 pt-28 pb-8 max-w-[1600px]">
             <div className="flex flex-col gap-6">
 
                 {/* Main grid — left + right columns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                     {/* ── LEFT COLUMN ─────────────────────────── */}
-                    <div className="space-y-5 sticky top-24 self-start">
+                    <div className="space-y-5 md:sticky md:top-28 self-start">
 
                         {/* Card 1 — Wallet Overview */}
                         <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[160px]">

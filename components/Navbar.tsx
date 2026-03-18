@@ -34,33 +34,43 @@ export function Navbar() {
 
     return (
         <>
-            <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-md supports-[backdrop-filter]:bg-background/40">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-6">
+            {/* The outer wrapper positions the island and ignores pointer events so you can click "behind" it */}
+            <div className="fixed top-0 left-0 right-0 z-50 p-4 pointer-events-none">
+
+                {/* The Floating Pill (Header) */}
+                <header className="pointer-events-auto mx-auto flex h-16 max-w-5xl items-center justify-between px-4 lg:px-6 rounded-full border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[12px] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] transition-colors">
+
                     {/* Left — Brand Logo */}
                     <div className="flex items-center gap-2 shrink-0">
                         <div className="flex h-9 w-9 items-center justify-center">
                             <svg
-                                className="h-9 w-9 text-[#0D9B5F] dark:text-[#14F195] transition-colors duration-200"
-                                fill="currentColor"
-                                version="1.1"
+                                className="h-9 w-9 transition-colors duration-200"
+                                viewBox="0 0 1024 1024"
+                                fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 512 512"
-                                enableBackground="new 0 0 512 512"
                             >
+                                <g strokeWidth="0"></g>
+                                <g strokeLinecap="round" strokeLinejoin="round"></g>
                                 <g>
-                                    <path display="inline" d="M489.893,354.61c-1.497-2.021-3.843-4.861-6.504-7.59c-27.663-28.39-48.33-61.907-59.479-99.042 c-0.503-1.732-1.019-3.452-1.472-5.182c-0.479-1.745-0.898-3.524-1.335-5.288c-8.899-37.706-7.814-77.089,2.004-115.486 c0,0,1.493-6.344,1.88-8.964c8.242-48.507-21.633-96.222-70.113-109.215C305.47-9.393,254.819,18.316,238.671,66.11 c-0.669,1.784-2.021,6.288-2.046,6.36c-10.625,37.641-29.076,71.826-55.15,99.8c-29.6,31.094-67.264,53.192-109.473,64.497 C20.573,250.551-9.979,303.506,3.81,354.951c13.794,51.433,66.666,81.978,118.123,68.179c38.404-9.801,77.79-10.907,115.499-1.996 c1.759,0.438,3.522,0.869,5.277,1.344c1.755,0.457,3.493,0.978,5.24,1.472c37.115,11.137,70.674,31.792,99.023,59.484 c3.484,3.484,6.495,5.938,9.307,7.917c38.108,29.044,92.336,26.814,127.089-7.917C518.632,448.177,520.67,392.478,489.893,354.61z M371.823,305.299c-13.498,50.347-65.247,80.234-115.606,66.731c-50.344-13.478-80.227-65.247-66.736-115.599 c13.494-50.35,65.247-80.227,115.591-66.738C355.435,203.189,385.318,254.936,371.823,305.299z" />
+                                    {/* Network lines - adapts to text color */}
+                                    <path d="M625.6 516.8l19.2 81.6 104-38.4 4.8 14.4-110.4 40L560 824l-14.4-6.4 83.2-203.2-169.6-25.6 64 217.6c3.2 8-1.6 17.6-11.2 19.2s-17.6-1.6-19.2-11.2l-68.8-232-153.6-22.4 1.6-16 145.6 22.4-28.8-96-116.8 59.2-14.4-28.8 129.6-65.6L480 217.6 254.4 499.2l-12.8-9.6L480 190.4l9.6 6.4 27.2 11.2-96 227.2 177.6 41.6-64-268.8 16-3.2 67.2 278.4 136 32c8 1.6 14.4 11.2 11.2 19.2-1.6 8-11.2 14.4-19.2 11.2l-120-28.8zM608 512l-185.6-43.2 30.4 102.4 176 25.6L608 512z m-46.4-313.6l12.8-9.6L784 484.8l-12.8 9.6-209.6-296zM768 588.8l12.8 9.6-201.6 240-12.8-9.6 201.6-240z m-278.4 240l-11.2 11.2-232-243.2 11.2-11.2 232 243.2z" className="fill-foreground dark:fill-white/80"></path>
+
+                                    {/* Network nodes - uses AeroDEX brand colors */}
+                                    <path d="M400 448m-64 0a64 64 0 1 0 128 0 64 64 0 1 0-128 0Z" className="fill-[#0D9B5F] dark:fill-[#14F195]"></path>
+                                    <path d="M640 608m-56 0a56 56 0 1 0 112 0 56 56 0 1 0-112 0Z" className="fill-[#0D9B5F] dark:fill-[#14F195]"></path>
+                                    <path d="M208 624c-44.8 0-80-35.2-80-80s35.2-80 80-80 80 35.2 80 80-35.2 80-80 80z m0-32c27.2 0 48-20.8 48-48s-20.8-48-48-48-48 20.8-48 48 20.8 48 48 48zM528 960c-44.8 0-80-35.2-80-80s35.2-80 80-80 80 35.2 80 80-35.2 80-80 80z m0-32c27.2 0 48-20.8 48-48s-20.8-48-48-48-48 20.8-48 48 20.8 48 48 48zM528 224c-44.8 0-80-35.2-80-80s35.2-80 80-80 80 35.2 80 80-35.2 80-80 80z m0-32c27.2 0 48-20.8 48-48s-20.8-48-48-48-48 20.8-48 48 20.8 48 48 48zM816 624c-44.8 0-80-35.2-80-80s35.2-80 80-80 80 35.2 80 80-35.2 80-80 80z m0-32c27.2 0 48-20.8 48-48s-20.8-48-48-48-48 20.8-48 48 20.8 48 48 48z" className="fill-[#0D9B5F] dark:fill-[#14F195]"></path>
                                 </g>
                             </svg>
                         </div>
                         <span
-                            className="text-xl tracking-wide text-[#0a7a4a] dark:text-[#a3ffe3] transition-colors duration-200"
-                            style={{ fontFamily: "var(--font-cagliostro)" }}
+                            className="text-[17px] font-black uppercase tracking-[0.25em] text-foreground transition-colors duration-200"
+                            style={{ fontFeatureSettings: "'tnum' on, 'lnum' on" }}
                         >
-                            AeroDEX
+                            NOVADEX
                         </span>
                     </div>
 
-                    {/* Center — Desktop Navigation */}
+                    {/* Center — Desktop Navigation (Pill Style) */}
                     <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
                         {navLinks.map((link) => {
                             const isActive = pathname === link.href
@@ -68,30 +78,28 @@ export function Navbar() {
                                 <Link
                                     key={link.label}
                                     href={link.href}
-                                    className={`relative px-3.5 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
-                                        ? "text-[var(--neon-teal)] bg-[var(--neon-teal)]/8"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+                                    className={`relative px-5 py-2 text-sm font-bold rounded-full transition-all duration-300 ${isActive
+                                        ? "text-[#050505] bg-[var(--neon-teal)] shadow-[0_0_15px_rgba(20,241,149,0.3)]"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                        }`}
                                 >
                                     {link.label}
-                                    {isActive && (
-                                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full bg-[var(--neon-teal)] shadow-[0_0_8px_var(--neon-teal-glow)]" />
-                                    )}
                                 </Link>
                             )
                         })}
                     </nav>
 
-                    {/* Right */}
+                    {/* Right — Actions */}
                     <div className="flex items-center gap-2.5 shrink-0">
                         {mounted && (
                             <button
                                 onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-secondary/60 dark:hover:bg-white/10 transition-all"
+                                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary/60 dark:hover:bg-white/10 transition-all"
                                 aria-label="Toggle theme"
                             >
                                 {/* Sun/flower — shown in dark mode */}
                                 <span className="hidden dark:inline-flex">
-                                    <svg height="22px" width="22px" viewBox="0 0 511.999 511.999" xmlns="http://www.w3.org/2000/svg">
+                                    <svg height="26px" width="26px" viewBox="0 0 511.999 511.999" xmlns="http://www.w3.org/2000/svg">
                                         <g fill="#14F195" opacity="0.4">
                                             <path d="M172.752,27.264c0,0,36.179,16.549,47.962,48.892c5.194,14.273,4.779,29.225,2.691,41.498c-10.991,2.578-21.504,6.438-31.35,11.418c-9.494-8.073-19.429-19.253-24.622-33.525C155.662,63.191,172.752,27.264,172.752,27.264z" />
                                             <path d="M161.334,99.081c9.771,11.632,14.487,25.842,16.725,38.09c-9.331,6.124-17.894,13.33-25.515,21.441c-11.682-4.313-24.861-11.456-34.632-23.088c-22.145-26.383-18.372-65.995-18.372-65.995S139.189,72.698,161.334,99.081z" />
@@ -112,13 +120,12 @@ export function Navbar() {
                                             <path d="M339.26,27.264c0,0,17.09,35.927,5.307,68.283c-5.206,14.273-15.141,25.465-24.622,33.538c-9.846-4.992-20.347-8.853-31.35-11.431c-2.075-12.273-2.49-27.225,2.704-41.498C303.081,43.813,339.26,27.264,339.26,27.264z" />
                                             <path d="M256,12.576c0,0,28.344,27.917,28.344,62.373c0,15.191-5.521,29.112-11.682,39.926c-5.458-0.654-11.028-0.981-16.662-0.981c-5.634,0-11.204,0.327-16.662,0.981c-6.162-10.815-11.682-24.735-11.682-39.926C227.655,40.493,256,12.576,256,12.576z" />
                                         </g>
-                                        <path style={{ fill: "#0D9B5F" }} d="M256,113.894c5.634,0,11.204,0.327,16.662,0.981c5.407,0.616,10.727,1.559,15.933,2.779c11.003,2.578,21.504,6.438,31.35,11.431c4.841,2.414,9.519,5.131,14.009,8.086c9.331,6.149,17.895,13.33,25.502,21.441c3.71,3.911,7.193,8.061,10.425,12.387c6.64,8.878,12.261,18.548,16.687,28.86c2.138,4.929,3.986,10.022,5.533,15.216c3.169,10.475,5.131,21.478,5.759,32.834c0.163,2.666,0.239,5.37,0.239,8.086c0,2.716-0.075,5.445-0.239,8.111c-0.629,11.343-2.603,22.334-5.759,32.834c-1.547,5.194-3.408,10.274-5.533,15.203c-4.426,10.324-10.06,19.982-16.687,28.873c-3.244,4.313-6.715,8.463-10.425,12.374c-7.608,8.111-16.172,15.317-25.502,21.428c-4.489,2.955-9.167,5.671-14.009,8.098c-9.846,4.992-20.347,8.84-31.35,11.418c-5.206,1.22-10.525,2.163-15.933,2.779c-5.458,0.654-11.028,0.981-16.662,0.981c-5.634,0-11.204-0.327-16.662-0.981c-5.407-0.616-10.727-1.559-15.933-2.779c-10.991-2.578-21.504-6.426-31.35-11.406c-4.829-2.44-9.507-5.156-13.996-8.111c-9.331-6.112-17.894-13.317-25.515-21.428c-3.71-3.911-7.18-8.061-10.425-12.374c-6.627-8.891-12.261-18.548-16.687-28.873c-2.125-4.929-3.986-10.01-5.533-15.191c-3.156-10.5-5.131-21.491-5.759-32.846c-0.163-2.666-0.239-5.395-0.239-8.111c0-2.716,0.075-5.42,0.239-8.086c0.629-11.368,2.603-22.359,5.759-32.846c1.547-5.194,3.408-10.274,5.533-15.203c4.426-10.312,10.048-19.982,16.687-28.86c3.232-4.326,6.715-8.476,10.425-12.387c7.621-8.111,16.184-15.317,25.515-21.441c4.489-2.955,9.167-5.671,13.996-8.098c9.846-4.98,20.359-8.84,31.35-11.418c5.206-1.22,10.525-2.163,15.933-2.779C244.795,114.221,250.366,113.894,256,113.894z" />
                                     </svg>
                                 </span>
 
                                 {/* Moon — shown in light mode */}
                                 <span className="inline-flex dark:hidden">
-                                    <svg viewBox="0 0 1024 1024" width="22px" height="22px" xmlns="http://www.w3.org/2000/svg">
+                                    <svg viewBox="0 0 1024 1024" width="26px" height="26px" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M445.3888 611.09248m-308.47488 0a308.47488 308.47488 0 1 0 616.94976 0 308.47488 308.47488 0 1 0-616.94976 0Z" fill="#0D9B5F" opacity="0.15" />
                                         <path d="M445.39392 927.28832c-174.35648 0-316.19584-141.83936-316.19584-316.19584s141.83936-316.19584 316.19584-316.19584 316.19584 141.83936 316.19584 316.19584-141.83936 316.19584-316.19584 316.19584z m0-616.95488c-165.83168 0-300.75392 134.92224-300.75392 300.75392s134.92224 300.75392 300.75392 300.75392 300.75392-134.92224 300.75392-300.75392-134.92224-300.75392-300.75392-300.75392z" fill="#0a7a4a" />
                                         <path d="M543.0272 328.09472c96.59392 49.50016 137.47712 165.22752 124.61056 280.50432-28.07296 251.58656-325.77024 278.72768-355.61984 268.71808a297.38496 297.38496 0 0 0 136.01792 32.78848c165.00224 0 298.76224-133.76 298.76224-298.76224 0-131.77856-85.36064-243.54816-203.77088-283.24864z" fill="#0D9B5F" opacity="0.5" />
@@ -135,13 +142,13 @@ export function Navbar() {
 
                         {connected ? (
                             <div className="hidden sm:flex items-center gap-2">
-                                <div className="flex items-center gap-2 rounded-lg border border-[var(--neon-teal)]/30 bg-[var(--neon-teal)]/5 px-3 py-2">
+                                <div className="flex items-center gap-2 rounded-full border border-[var(--neon-teal)]/30 bg-[var(--neon-teal)]/5 px-4 py-2">
                                     <div className="w-2 h-2 rounded-full bg-[var(--neon-teal)] animate-pulse" />
                                     <span className="text-sm font-medium text-[var(--neon-teal)]">{shortAddress}</span>
                                 </div>
                                 <button
                                     onClick={disconnect}
-                                    className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                                    className="hidden sm:inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/5 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
                                 >
                                     Disconnect
                                 </button>
@@ -149,26 +156,27 @@ export function Navbar() {
                         ) : (
                             <button
                                 onClick={() => setWalletModalOpen(true)}
-                                className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-[var(--neon-teal)] px-4 py-2 text-sm font-semibold text-[#050505] transition-all hover:shadow-[0_0_20px_var(--neon-teal-glow)] hover:brightness-110 cursor-pointer"
+                                className="hidden sm:inline-flex items-center gap-2 rounded-full bg-[#0D9B5F] hover:bg-[#0a7a4a] text-white dark:bg-[var(--neon-teal)] dark:hover:bg-[#10c97b] dark:text-black px-5 py-2 text-sm font-semibold transition-all hover:shadow-[0_0_15px_rgba(20,241,149,0.3)] hover:scale-105 cursor-pointer"
                             >
                                 <Wallet className="h-4 w-4" />
                                 Connect Wallet
                             </button>
                         )}
 
+                        {/* Mobile Menu Toggle */}
                         <button
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            className="flex md:hidden h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/50 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                            className="flex md:hidden h-10 w-10 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.08] bg-white/50 dark:bg-black/20 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
                             aria-label="Toggle menu"
                         >
-                            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </button>
                     </div>
-                </div>
+                </header>
 
-                {/* Mobile Navigation */}
+                {/* Mobile Navigation Dropdown */}
                 {mobileOpen && (
-                    <div className="md:hidden border-t border-border/40 bg-background/80 backdrop-blur-md">
+                    <div className="pointer-events-auto md:hidden mx-auto mt-2 max-w-5xl rounded-2xl border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] shadow-[0_4px_30px_rgba(0,0,0,0.1)] overflow-hidden transition-colors">
                         <nav className="flex flex-col px-4 py-3 gap-1">
                             {navLinks.map((link) => {
                                 const isActive = pathname === link.href
@@ -177,9 +185,10 @@ export function Navbar() {
                                         key={link.label}
                                         href={link.href}
                                         onClick={() => setMobileOpen(false)}
-                                        className={`px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive
-                                            ? "text-[var(--neon-teal)] bg-[var(--neon-teal)]/8"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+                                        className={`px-4 py-3 text-sm font-bold rounded-xl transition-colors ${isActive
+                                            ? "text-[var(--neon-teal)] bg-[var(--neon-teal)]/10"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                                            }`}
                                     >
                                         {link.label}
                                     </Link>
@@ -188,14 +197,14 @@ export function Navbar() {
                             {connected ? (
                                 <button
                                     onClick={disconnect}
-                                    className="mt-2 sm:hidden flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-sm font-medium text-red-400 transition-all"
+                                    className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400 transition-all"
                                 >
                                     Disconnect {shortAddress}
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => { setMobileOpen(false); setWalletModalOpen(true); }}
-                                    className="mt-2 sm:hidden flex items-center justify-center gap-2 rounded-lg bg-[var(--neon-teal)] px-4 py-2.5 text-sm font-semibold text-[#050505] transition-all"
+                                    className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[#0D9B5F] hover:bg-[#0a7a4a] text-white dark:bg-[var(--neon-teal)] dark:hover:bg-[#10c97b] dark:text-black px-4 py-3 text-sm font-bold transition-all"
                                 >
                                     <Wallet className="h-4 w-4" /> Connect Wallet
                                 </button>
@@ -203,7 +212,7 @@ export function Navbar() {
                         </nav>
                     </div>
                 )}
-            </header>
+            </div>
 
             <ConnectWalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
         </>
