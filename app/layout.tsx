@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
+import DotBackground from "@/components/DotBackground";
 
 const inter = Inter({ subsets: ["latin"] });
 const cagliostro = Cagliostro({
@@ -24,7 +25,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} ${cagliostro.variable} dot-bg bg-background text-foreground antialiased`}>
+      <body className={`${inter.className} ${cagliostro.variable} bg-background text-foreground antialiased`}>
+        <DotBackground />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -32,6 +34,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SolanaWalletProvider>
+            <DotBackground />
             <Navbar />
             {children}
           </SolanaWalletProvider>

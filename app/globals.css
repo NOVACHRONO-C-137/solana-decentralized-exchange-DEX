@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 158 60% 93%;
+    --background: 150 30% 97%;
     --foreground: 158 47% 15%;
     --card: 158 40% 90%;
     --card-foreground: 158 47% 15%;
@@ -44,9 +44,9 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 180 67% 2.4%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 180 50% 3.5%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
@@ -140,19 +140,19 @@
   box-shadow: 0 0 15px rgba(20, 241, 149, 0.6);
 }
 
-.dot-bg::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle, rgba(13, 155, 95, 0.12) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Dialog overlay for PoolChartModal blur effect */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.light .dot-bg::before,
-[class~="light"] .dot-bg::before {
-  background-image: radial-gradient(circle, rgba(13, 155, 95, 0.35) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
+/* Chart tab-switch fade */
+@keyframes chartFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chart-fade {
+  animation: chartFadeIn 0.45s ease-out both;
 }

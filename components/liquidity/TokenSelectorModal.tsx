@@ -139,7 +139,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-popover text-popover-foreground border-border sm:max-w-[450px] p-0 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-popover-foreground sm:max-w-[450px] p-0 rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
 
                 {/* Header & Search */}
                 <div className="p-6 pb-2 shrink-0">
@@ -151,7 +151,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                         <input
                             type="text"
                             placeholder="Search by name, symbol or address"
-                            className="w-full bg-white/60 dark:bg-secondary/50 dark:bg-black/40 border border-[#0D9B5F]/40 dark:border-border rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
+                            className="w-full bg-white/70 dark:bg-[rgba(255,255,255,0.02)] border border-black/[0.08] dark:border-[rgba(255,255,255,0.06)] rounded-xl py-3.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -168,7 +168,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                                     <button
                                         key={token.symbol}
                                         onClick={() => { onSelectToken(token); onClose(); }}
-                                        className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 border-border text-foreground rounded-lg px-3 py-1.5 transition-colors"
+                                        className="flex items-center gap-1.5 bg-black/[0.04] dark:bg-[rgba(20,241,149,0.04)] border border-black/[0.08] dark:border-[rgba(20,241,149,0.1)] text-foreground rounded-lg px-3 py-1.5 transition-colors"
                                     >
                                         <TokenLogo token={token} size={18} />
                                         <span className="text-sm font-medium">{token.symbol}</span>
@@ -267,7 +267,7 @@ export function TokenSelectorModal({ isOpen, onClose, onSelectToken, balances, b
                     }
                 ` }} />
 
-                <div className="p-4 shrink-0 bg-muted/50 border-t border-border">
+                <div className="p-4 shrink-0 bg-[rgba(220,240,232,0.3)] dark:bg-transparent border-t border-black/[0.06] dark:border-[rgba(255,255,255,0.05)]">
                     <p className="text-center text-xs text-muted-foreground">{connected ? "Showing all your wallet tokens" : "Connect wallet to see all your tokens"}</p>
                 </div>
             </DialogContent>

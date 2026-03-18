@@ -588,7 +588,7 @@ export default function LiquidityPoolsTable() {
                 {/* Stats Bar */}
                 <div className="grid grid-cols-3 gap-4 mb-4">
                     {[
-                        { label: "Total TVL", value: `$${totalTVL >= 1e6 ? (totalTVL/1e6).toFixed(2)+"M" : totalTVL >= 1e3 ? (totalTVL/1e3).toFixed(1)+"K" : totalTVL.toFixed(2)}`, color: "text-[var(--neon-teal)]" },
+                        { label: "Total TVL", value: `$${totalTVL >= 1e6 ? (totalTVL / 1e6).toFixed(2) + "M" : totalTVL >= 1e3 ? (totalTVL / 1e3).toFixed(1) + "K" : totalTVL.toFixed(2)}`, color: "text-[var(--neon-teal)]" },
                         { label: "Total Pools", value: pools.length.toString(), color: "text-blue-400" },
                         { label: "Total Swaps", value: totalTxs.toString(), color: "text-violet-400" },
                     ].map((s, i) => (
@@ -626,11 +626,11 @@ export default function LiquidityPoolsTable() {
                                 className="w-full bg-secondary/40 dark:bg-black/30 border border-border rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
                             />
                             <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                             </svg>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                            {(["All","CLMM","Standard","Legacy"] as const).map(tab => (
+                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
                                 <button key={tab} onClick={() => setTypeFilter(tab)}
                                     className={`text-xs font-semibold px-3 py-2 rounded-full transition-all ${typeFilter === tab
                                         ? "bg-[var(--neon-teal)]/15 text-foreground border border-[var(--neon-teal)]/30"
@@ -704,11 +704,10 @@ export default function LiquidityPoolsTable() {
                                                                         {pool.name}
                                                                     </span>
                                                                     <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                                                            pool.type === "Standard" ? "bg-blue-500/20 text-blue-400" :
-                                                                            pool.type === "Legacy" ? "bg-orange-500/20 text-orange-400" :
-                                                                            "bg-violet-500/20 text-violet-400"
-                                                                        }`}>
+                                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pool.type === "Standard" ? "bg-blue-500/20 text-blue-400" :
+                                                                                pool.type === "Legacy" ? "bg-orange-500/20 text-orange-400" :
+                                                                                    "bg-violet-500/20 text-violet-400"
+                                                                            }`}>
                                                                             {pool.type === "Standard" ? "Standard" : pool.type === "Legacy" ? "Legacy" : "CLMM"}
                                                                         </span>
                                                                         · {pool.fee}
@@ -830,7 +829,7 @@ export default function LiquidityPoolsTable() {
                                                                 <button
                                                                     onClick={() => {
                                                                         const [tokenA, tokenB] = pool.name.split("-");
-                                                                        router.push(`/swap?from=${tokenA}&to=${tokenB}`);
+                                                                        router.push(`/swap?from=${tokenA}&to=${tokenB}&fromMint=${pool.mintA}&toMint=${pool.mintB}`);
                                                                     }}
                                                                     className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-[var(--neon-teal)]"
                                                                 >

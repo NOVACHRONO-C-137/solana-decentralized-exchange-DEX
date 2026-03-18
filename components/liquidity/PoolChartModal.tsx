@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Cell } from "recharts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 
 // ── Gradient color map for tokens without logos ──────────
 const TOKEN_GRADIENTS: Record<string, string> = {
@@ -15,6 +16,29 @@ const TOKEN_GRADIENTS: Record<string, string> = {
     PLTR: "from-[#3B82F6] to-[#60A5FA]",
     RAY: "from-[#6366F1] to-[#818CF8]",
 };
+
+// Avatar: shows logo image when available, gradient-letter circle as fallback
+function TokenAvatar({ symbol }: { symbol: string }) {
+    const [imgError, setImgError] = useState(false);
+    const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
+    const logoUrl = DEVNET_TOKENS.find(t => t.symbol === symbol)?.logoURI;
+    if (logoUrl && !imgError) {
+        return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+                src={logoUrl}
+                alt={symbol}
+                className="h-8 w-8 rounded-full border-2 border-background dark:border-[#0c0d10] object-cover"
+                onError={() => setImgError(true)}
+            />
+        );
+    }
+    return (
+        <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-sm border-2 border-background dark:border-[#0c0d10]`}>
+            {symbol.charAt(0)}
+        </div>
+    );
+}
 
 // Simple seeded PRNG to ensure the same pool name always yields the same chart data
 function seededRandom(seed: number) {
@@ -58,21 +82,13 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] bg-background dark:bg-[#0c0d10] border-border dark:border-border/40 text-foreground dark:text-white shadow-2xl backdrop-blur-xl">
+            <DialogContent className="sm:max-w-[600px] bg-[rgba(235,248,230,0.88)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[4px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.07)] shadow-[0_2px_20px_0_rgba(0,0,0,0.08)] text-foreground dark:text-white [&>button]:text-muted-foreground">
                 <DialogHeader>
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
-                            {poolName.split("-").map((symbol, idx) => {
-                                const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
-                                return (
-                                    <div
-                                        key={idx}
-                                        className={`h-8 w-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-sm border-2 border-background dark:border-[#0c0d10]`}
-                                    >
-                                        {symbol.charAt(0)}
-                                    </div>
-                                );
-                            })}
+                            {poolName.split("-").map((symbol, idx) => (
+                                <TokenAvatar key={idx} symbol={symbol} />
+                            ))}
                         </div>
                         <DialogTitle className="text-xl font-bold">
                             {poolName}
@@ -81,16 +97,16 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                 </DialogHeader>
 
                 {/* Raydium-style Tabs */}
-                <div className="flex gap-1 mt-4 bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 w-fit">
+                <div className="flex gap-1 mt-4 bg-black/[0.04] dark:bg-[rgba(255,255,255,0.03)] border border-black/[0.07] dark:border-[rgba(255,255,255,0.07)] rounded-xl p-1 w-fit">
                     <button
                         onClick={() => setActiveTab("volume")}
-                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "volume" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "volume" ? "bg-[rgba(45,122,95,0.12)] dark:bg-[rgba(20,241,149,0.08)] text-[#1a5c45] dark:text-[#14f195] border border-[rgba(45,122,95,0.2)] dark:border-[rgba(20,241,149,0.2)]" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         Volume
                     </button>
                     <button
                         onClick={() => setActiveTab("liquidity")}
-                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "liquidity" ? "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/30" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === "liquidity" ? "bg-[rgba(45,122,95,0.12)] dark:bg-[rgba(20,241,149,0.08)] text-[#1a5c45] dark:text-[#14f195] border border-[rgba(45,122,95,0.2)] dark:border-[rgba(20,241,149,0.2)]" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         Liquidity
                     </button>
@@ -98,6 +114,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
 
                 {/* The Chart Container */}
                 <div className="h-[320px] w-full mt-6 pr-4">
+                    <div key={activeTab} className="chart-fade h-full w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
                             <defs>
@@ -108,14 +125,14 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                             </defs>
                             <XAxis
                                 dataKey="date"
-                                stroke="#4b5563"
+                                stroke="rgba(100,120,110,0.6)"
                                 fontSize={11}
                                 tickLine={false}
                                 axisLine={false}
                                 dy={10}
                             />
                             <YAxis
-                                stroke="#4b5563"
+                                stroke="rgba(100,120,110,0.6)"
                                 fontSize={11}
                                 tickLine={false}
                                 axisLine={false}
@@ -123,7 +140,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                             />
                             <RechartsTooltip
                                 cursor={{ fill: 'hsl(var(--secondary))' }}
-                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }}
+                                contentStyle={{ backgroundColor: 'rgba(2,15,10,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(20,241,149,0.12)', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }}
                                 itemStyle={{ color: activeTab === "volume" ? '#1E7FBF' : '#2dd4bf' }}
                                 formatter={(value: number | undefined) => [`$${(value || 0).toLocaleString()}`, activeTab === "volume" ? "Volume" : "Liquidity"]}
                             />
@@ -135,13 +152,14 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                             />
                         </BarChart>
                     </ResponsiveContainer>
+                    </div>
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground mt-2">Chart data is illustrative. Real on-chain data coming soon.</p>
 
                 <button
                     onClick={onClose}
-                    className="w-full bg-[var(--neon-teal)] text-black py-3 rounded-lg font-bold text-sm mt-4 hover:shadow-[0_0_15px_var(--neon-teal-glow)] transition-all"
+                    className="w-full bg-[#2d8f62] hover:bg-[#3aaa76] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-[#0a1f14] dark:text-[#14f195] border border-[#2d8f62] dark:border-[rgba(20,241,149,0.25)] py-3 rounded-lg font-bold text-base tracking-wide mt-4 transition-all shadow-[0_2px_12px_rgba(45,143,98,0.35)]"
                 >
                     Close
                 </button>

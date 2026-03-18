@@ -70,7 +70,7 @@ function TokenSelector({ token, onSwitch }: { token: TokenInfo; onSwitch?: () =>
     return (
         <button
             onClick={onSwitch}
-            className="flex items-center gap-2 rounded-full bg-secondary/80 dark:bg-secondary/60 px-3 py-2 transition-colors hover:bg-secondary dark:hover:bg-secondary/80"
+            className="flex items-center gap-2 rounded-full bg-black/[0.07] dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.08] dark:border-white/[0.06] px-3 py-2 transition-colors hover:bg-black/[0.18] dark:hover:bg-white/[0.10]"
         >
             <SwapTokenIcon token={token} />
             <span className="text-lg font-semibold text-foreground">{token.symbol}</span>
@@ -130,7 +130,7 @@ function GradientBorderField({
                 </div>
             </div>
             <div className="rounded-2xl border border-[#0D9B5F]/40 dark:border-[#14F195]/20">
-                <div className="flex items-center justify-between rounded-2xl bg-[#edf9f4] dark:bg-card/80 px-4 py-4">
+                <div className="flex items-center justify-between rounded-2xl bg-[rgba(200,235,220,0.5)] dark:bg-white/[0.03] backdrop-blur-sm px-4 py-4">
                     <TokenSelector token={token} onSwitch={onTokenSwitch} />
                     <div className="flex flex-col items-end gap-0.5">
                         <input
@@ -177,7 +177,7 @@ function SlippageModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-popover text-popover-foreground border-border sm:max-w-[360px] rounded-2xl p-6 shadow-2xl font-sans">
+            <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-popover-foreground sm:max-w-[360px] rounded-2xl p-6 font-sans">
                 <div className="flex items-center justify-between mb-5">
                     <p className="text-base font-bold text-foreground">Slippage Settings</p>
                 </div>
@@ -187,8 +187,8 @@ function SlippageModal({
                             key={v}
                             onClick={() => setLocalValue(v)}
                             className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all border ${localValue === v
-                                ? "bg-[var(--neon-teal)]/10 border-[var(--neon-teal)] text-[var(--neon-teal)]"
-                                : "bg-white/60 dark:bg-black/40 border border-[#0D9B5F]/30 dark:border-white/10 text-foreground hover:border-[#0D9B5F] dark:hover:border-[var(--neon-teal)]/50"
+                                ? "border-[#2d7a5f] dark:border-[rgba(20,241,149,0.25)] text-[#1a5c45] dark:text-[rgba(20,241,149,0.9)] bg-[rgba(45,122,95,0.15)] dark:bg-[rgba(20,241,149,0.05)]"
+                                : "border-black/[0.1] dark:border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-[#2d7a5f]/40 dark:hover:border-[rgba(20,241,149,0.15)]"
                                 }`}
                         >
                             {v}%
@@ -200,7 +200,7 @@ function SlippageModal({
                         type="number"
                         value={localValue}
                         onChange={(e) => setLocalValue(e.target.value)}
-                        className="w-full rounded-xl bg-white/60 dark:bg-black/40 border border-[#0D9B5F]/40 dark:border-white/10 py-3 px-4 text-sm text-foreground focus:outline-none focus:border-[#0D9B5F] dark:focus:border-[var(--neon-teal)] transition-colors"
+                        className="flex-1 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[rgba(20,241,149,0.15)]"
                         placeholder="0.5"
                         step="0.1"
                     />
@@ -208,7 +208,7 @@ function SlippageModal({
                 </div>
                 <button
                     onClick={handleSave}
-                    className="w-full rounded-xl bg-[var(--neon-teal)] py-3 text-sm font-bold text-black hover:opacity-90 transition-opacity"
+                    className="w-full bg-[#2d7a5f] hover:bg-[#235f4a] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-white dark:text-[#14f195] border border-[#2d7a5f] dark:border-[rgba(20,241,149,0.25)] font-semibold py-3 rounded-xl transition-colors"
                 >
                     Save
                 </button>
@@ -712,7 +712,7 @@ function SwapCardInner() {
     // ── Render ───────────────────────────────────────────────────────
     return (
         <>
-            <div className="w-full max-w-[420px]">
+            <div className="w-full max-w-lg">
                 {/* Top bar */}
                 <div className="mb-4 flex items-center justify-between">
                     <span className="text-sm font-semibold text-foreground">Swap AIR</span>
@@ -734,7 +734,7 @@ function SwapCardInner() {
                 </div>
 
                 {/* Card */}
-                <div className="rounded-3xl border border-border/60 bg-card/70 dark:bg-white/[0.04] p-5 shadow-lg shadow-black/[0.03] dark:shadow-black/20 backdrop-blur-md">
+                <div className="rounded-3xl border border-black/[0.08] dark:border-white/[0.06] bg-[rgba(220,240,232,0.55)] dark:bg-white/[0.02] p-5 shadow-lg shadow-black/[0.03] dark:shadow-black/20 backdrop-blur-md">
                     <GradientBorderField
                         label="From"
                         token={fromToken}
@@ -857,7 +857,7 @@ function SwapCardInner() {
 
 export default function SwapCard() {
     return (
-        <Suspense fallback={<div className="w-full max-w-[420px] h-64 rounded-3xl bg-card/70 animate-pulse" />}>
+        <Suspense fallback={<div className="w-full max-w-lg h-64 rounded-3xl bg-card/70 animate-pulse" />}>
             <SwapCardInner />
         </Suspense>
     )
