@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Cell } from "recharts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
+import { useTokenBalances } from "@/hooks/useTokenBalances";
+
 
 // ── Gradient color map for tokens without logos ──────────
 const TOKEN_GRADIENTS: Record<string, string> = {
@@ -18,10 +20,10 @@ const TOKEN_GRADIENTS: Record<string, string> = {
 };
 
 // Avatar: shows logo image when available, gradient-letter circle as fallback
-function TokenAvatar({ symbol }: { symbol: string }) {
+function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) {
     const [imgError, setImgError] = useState(false);
     const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
-    const logoUrl = DEVNET_TOKENS.find(t => t.symbol === symbol)?.logoURI;
+
     if (logoUrl && !imgError) {
         return (
             // eslint-disable-next-line @next/next/no-img-element
@@ -75,10 +77,18 @@ function generateMockData(poolName: string, isLiquidity: boolean) {
 export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean, onClose: () => void, poolName: string }) {
     const [activeTab, setActiveTab] = useState<"volume" | "liquidity">("volume")
 
+    // Fetch dynamically discovered tokens
+    const { discoveredTokens } = useTokenBalances();
+
     const chartData = useMemo(() => {
         if (!poolName) return [];
         return generateMockData(poolName, activeTab === "liquidity");
     }, [poolName, activeTab]);
+
+    // Merge static tokens with dynamic tokens
+    const allTokens = useMemo(() => {
+        return [...DEVNET_TOKENS, ...(discoveredTokens || [])];
+    }, [discoveredTokens]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -86,9 +96,18 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                 <DialogHeader>
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
-                            {poolName.split("-").map((symbol, idx) => (
-                                <TokenAvatar key={idx} symbol={symbol} />
-                            ))}
+                            {poolName.split("-").map((symbol, idx) => {
+                                // Look up the specific token in the merged list
+                                const tokenInfo = allTokens.find(t => t.symbol === symbol);
+
+                                return (
+                                    <TokenAvatar
+                                        key={idx}
+                                        symbol={symbol}
+                                        logoUrl={tokenInfo?.logoURI}
+                                    />
+                                );
+                            })}
                         </div>
                         <DialogTitle className="text-xl font-bold">
                             {poolName}
@@ -114,52 +133,58 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
 
                 {/* The Chart Container */}
                 <div className="h-[320px] w-full mt-6 pr-4">
-                    <div key={activeTab} className="chart-fade h-full w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                            <defs>
-                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={activeTab === "volume" ? "#1E7FBF" : "#2dd4bf"} stopOpacity={0.8} />
-                                    <stop offset="100%" stopColor={activeTab === "volume" ? "#1E7FBF" : "#2dd4bf"} stopOpacity={0.2} />
-                                </linearGradient>
-                            </defs>
-                            <XAxis
-                                dataKey="date"
-                                stroke="rgba(100,120,110,0.6)"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                dy={10}
-                            />
-                            <YAxis
-                                stroke="rgba(100,120,110,0.6)"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(value) => `$${value.toLocaleString()}`}
-                            />
-                            <RechartsTooltip
-                                cursor={{ fill: 'hsl(var(--secondary))' }}
-                                contentStyle={{ backgroundColor: 'rgba(2,15,10,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(20,241,149,0.12)', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }}
-                                itemStyle={{ color: activeTab === "volume" ? '#1E7FBF' : '#2dd4bf' }}
-                                formatter={(value: number | undefined) => [`$${(value || 0).toLocaleString()}`, activeTab === "volume" ? "Volume" : "Liquidity"]}
-                            />
-                            <Bar
-                                dataKey="value"
-                                fill="url(#barGradient)"
-                                radius={[4, 4, 0, 0]}
-                                barSize={12}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <div className="chart-fade h-full w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor={activeTab === "volume" ? "#1E7FBF" : "#2dd4bf"} stopOpacity={0.8} />
+                                        <stop offset="100%" stopColor={activeTab === "volume" ? "#1E7FBF" : "#2dd4bf"} stopOpacity={0.2} />
+                                    </linearGradient>
+                                </defs>
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="rgba(100,120,110,0.6)"
+                                    fontSize={11}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    dy={10}
+                                />
+                                <YAxis
+                                    stroke="rgba(100,120,110,0.6)"
+                                    fontSize={11}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                                />
+                                <RechartsTooltip
+                                    cursor={{ fill: 'hsl(var(--secondary))' }}
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--card))',
+                                        backdropFilter: 'blur(8px)',
+                                        border: '1px solid hsl(var(--border))',
+                                        borderRadius: '8px',
+                                        color: 'hsl(var(--foreground))'
+                                    }}
+                                    itemStyle={{ color: activeTab === "volume" ? '#1E7FBF' : '#2dd4bf' }}
+                                    formatter={(value: number | undefined) => [`$${(value || 0).toLocaleString()}`, activeTab === "volume" ? "Volume" : "Liquidity"]}
+                                />
+                                <Bar
+                                    dataKey="value"
+                                    fill="url(#barGradient)"
+                                    radius={[4, 4, 0, 0]}
+                                    barSize={12}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
-                <p className="text-center text-xs text-muted-foreground mt-2">Chart data is illustrative. Real on-chain data coming soon.</p>
+                <p className="text-center text-xs text-muted-foreground mt-2">Devnet • Illustrative data, not indexed via blockchain</p>
 
                 <button
                     onClick={onClose}
-                    className="w-full bg-[#2d8f62] hover:bg-[#3aaa76] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-[#0a1f14] dark:text-[#14f195] border border-[#2d8f62] dark:border-[rgba(20,241,149,0.25)] py-3 rounded-lg font-bold text-base tracking-wide mt-4 transition-all shadow-[0_2px_12px_rgba(45,143,98,0.35)]"
+                    className="w-full bg-[#2d8f62] hover:bg-[#3aaa76] dark:bg-[rgba(20,241,149,0.15)] dark:hover:bg-[rgba(20,241,149,0.25)] text-black dark:text-[#14f195] border border-[#2d8f62] dark:border-[rgba(20,241,149,0.25)] py-3 rounded-lg font-bold text-base tracking-wide mt-4 transition-all shadow-[0_2px_12px_rgba(45,143,98,0.35)]"
                 >
                     Close
                 </button>

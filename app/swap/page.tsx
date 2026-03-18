@@ -13,7 +13,7 @@ function SwapPageInner() {
     const toMint = searchParams.get('toMint') ?? '';
 
     return (
-        <main className="min-h-screen bg-[#0d0e14] text-white px-4 py-8">
+        <main className="min-h-screen bg-background text-foreground px-4 py-8 transition-colors">
             <div className="flex items-start justify-center min-h-screen px-4 py-24 gap-6 max-w-6xl mx-auto w-full relative z-10">
                 <div className="w-full flex-1">
                     <SwapCard />
@@ -34,7 +34,7 @@ function SwapPageInner() {
 export default function SwapPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-[#0d0e14] flex items-center justify-center text-white/40">
+            <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground transition-colors">
                 Loading...
             </div>
         }>

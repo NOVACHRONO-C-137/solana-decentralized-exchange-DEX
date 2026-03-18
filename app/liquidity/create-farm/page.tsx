@@ -315,7 +315,7 @@ export default function CreateFarmPage() {
                 <ChevronLeft className="h-5 w-5 mr-1" /> Back
             </button>
 
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-6">
                 {[
                     { n: 1, label: "Select Pool" },
                     { n: 2, label: "Add Rewards" },
@@ -343,7 +343,7 @@ export default function CreateFarmPage() {
                 ))}
             </div>
 
-            <div className="bg-card border border-border rounded-2xl p-5">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5">
                 <h4 className="flex items-center text-sm font-bold mb-2">
                     <span className="w-4 h-4 rounded-full border border-white/40 text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                     Please Note
@@ -362,7 +362,7 @@ export default function CreateFarmPage() {
         <div className="w-full md:w-2/3">
             <h2 className="text-xl font-bold mb-6">First, select a pool for farm rewards</h2>
 
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-5">
                 <div>
                     <p className="text-sm font-bold mb-3">Select Pool</p>
 
@@ -597,7 +597,7 @@ export default function CreateFarmPage() {
                     const weeklyEstimate = (parseFloat(reward.amount || "0") / durationInt) * 7;
 
                     return (
-                        <div key={reward.id} className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5 relative">
+                        <div key={reward.id} className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-5 relative">
                             <div className="flex justify-between items-center mb-2">
                                 <div>
                                     <h3 className="text-base font-bold">Reward Token {i + 1}</h3>
@@ -1061,7 +1061,7 @@ export default function CreateFarmPage() {
         <div className="w-full md:w-2/3">
             <h2 className="text-xl font-bold mb-6">Review farm details</h2>
 
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-4">
                 <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-sm text-muted-foreground">Pool Type</span>

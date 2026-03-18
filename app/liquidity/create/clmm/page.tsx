@@ -415,7 +415,7 @@ export default function CreatePoolPage() {
             <button onClick={() => router.back()} className="flex items-center text-muted-foreground hover:text-foreground transition-colors w-fit mb-2">
                 <ChevronLeft className="h-5 w-5 mr-1" /> Back
             </button>
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-6">
                 {[
                     { n: 1, label: "Select token & fee tier" },
                     { n: 2, label: "Set initial price & range" },
@@ -438,7 +438,7 @@ export default function CreatePoolPage() {
                     </div>
                 ))}
             </div>
-            <div className="bg-card border border-border rounded-2xl p-5">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5">
                 <h4 className="flex items-center text-sm font-bold mb-2">
                     <span className="w-4 h-4 rounded-full border border-white/40 text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                     Please Note
@@ -473,7 +473,7 @@ export default function CreatePoolPage() {
     const renderStep1 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">First, select tokens & fee tier</h2>
-            <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6">
                 <p className="text-sm font-bold mb-4">Tokens</p>
                 <div className="flex gap-4 mb-6">
                     <div onClick={() => { setActiveSelectionSlot("base"); setIsTokenModalOpen(true); }}
@@ -537,7 +537,7 @@ export default function CreatePoolPage() {
     const renderStep2 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Next, set initial token price & position price range</h2>
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-6">
                 <PairBar onEdit={() => setCurrentStep(1)} />
                 <div>
                     <div className="flex items-center justify-between mb-3">
@@ -644,7 +644,7 @@ export default function CreatePoolPage() {
     const renderStep3 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Last, please enter token deposit amount</h2>
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-4">
                 <PairBar onEdit={() => setCurrentStep(1)} />
                 <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex justify-between items-start">
                     <div className="flex flex-col gap-1">

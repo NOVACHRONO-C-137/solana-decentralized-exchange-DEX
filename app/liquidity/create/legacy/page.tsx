@@ -260,7 +260,7 @@ export default function LegacyPoolPage() {
                         <ChevronLeft className="h-5 w-5 mr-1" /> Back
                     </button>
 
-                    <div className="bg-card border border-border rounded-2xl p-5">
+                    <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5">
                         <h4 className="flex items-center text-sm font-bold mb-2">
                             <span className="w-4 h-4 rounded-full border border-border text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
                             Please Note
@@ -277,7 +277,7 @@ export default function LegacyPoolPage() {
                 <div className="w-full md:w-2/3">
                     <h2 className="text-xl font-bold mb-6">Initialize AMM v4 pool</h2>
 
-                    <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
+                    <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-5">
 
                         {/* Initial Liquidity */}
                         <div>

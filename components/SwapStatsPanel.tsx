@@ -68,11 +68,18 @@ export default function SwapStatsPanel({ fromToken, toToken, fromMint, toMint }:
         }
     }
 
-    function timeAgo(unix: number) {
-        const diff = Math.floor(Date.now() / 1000) - unix;
+    function timeAgo(blockTime: number | null | undefined) {
+        if (!blockTime) return "—";
+        const diff = Math.floor(Date.now() / 1000) - blockTime;
+
         if (diff < 60) return `${diff}s ago`;
         if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-        return `${Math.floor(diff / 3600)}h ago`;
+
+        const hours = Math.floor(diff / 3600);
+        if (hours < 24) return `${hours}h ago`;
+
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
     }
 
     const cardCls = "rounded-2xl bg-[rgba(220,240,232,0.55)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.07] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.07)] p-5";
