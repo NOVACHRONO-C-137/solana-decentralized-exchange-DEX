@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { TOKEN_GRADIENTS } from "@/lib/tokens";
+import { getTokenGradient } from "@/lib/tokens";
 
 interface TokenIconProps {
-    symbol: string;
+    symbol?: string;
     logo?: string;
     size?: number;
     className?: string;
@@ -12,7 +12,7 @@ interface TokenIconProps {
 
 export default function TokenIcon({ symbol, logo, size = 28, className = "" }: TokenIconProps) {
     const [imgError, setImgError] = useState(false);
-    const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
+    const gradient = symbol ? getTokenGradient(symbol) : "from-[#6B7280] to-[#9CA3AF]";
 
     if (logo && !imgError) {
         return (
@@ -23,7 +23,7 @@ export default function TokenIcon({ symbol, logo, size = 28, className = "" }: T
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={logo}
-                    alt={symbol}
+                    alt={symbol || "token"}
                     width={size}
                     height={size}
                     className="rounded-full object-cover w-full h-full"

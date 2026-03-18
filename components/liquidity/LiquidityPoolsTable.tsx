@@ -69,9 +69,9 @@ const DEVNET_STABLECOIN_MINTS: Record<string, number> = {
 // They will ALWAYS show up, regardless of browser/device/deployment.
 // The Raydium API provides live data (liquidity, logos, volume, etc.)
 const HARDCODED_DEVNET_POOL_IDS = [
-    "Ed6FzPjRPmUDkrimShSACrV1wYKYVstjKSADue3vUT8k",  // PLTR-LHMN 0.25% (has 110+110 liquidity)
-    "GXtdBn7V5W2inkw6NLGyS3AXpsZnAezhDUpTT4m9uUQW",  // PLTR-LHMN 0.05%
-    "95isNkxiNLU8xQHFQ4brRc8crGzWvBGeFb9JmKr5WDJF",  // PLTR-LHMN 0.01%
+    "CKaQFacstJqqVkFLLH7TeYgVQeuqB9HPE6nCM9StDEAc",
+    "71Yjqv83w73n92fEsvFncFjMVHFqdUGKcuhsvnbwp8SG",
+    "9Rkr61gpRZakNKiaFEaAsCt1B6y5tPNZFixms7VuVMaT",
 ];
 
 // ── USD Pricing Helpers ───────────────────────────────────

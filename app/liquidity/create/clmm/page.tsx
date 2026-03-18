@@ -5,7 +5,8 @@
 
 
 import { useState } from "react";
-import { ChevronLeft, Check, ChevronDown, Minus, Plus, Pencil, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronDown, Minus, Plus, Pencil, Loader2, CheckCircle2, AlertCircle, Check } from "lucide-react";
+import { StepperSidebar } from "@/components/liquidity/StepperSidebar";
 import { useRouter } from "next/navigation";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
@@ -15,42 +16,7 @@ import BN from "bn.js";
 import { formatLargeNumber } from "@/lib/utils";
 import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
-
-// ── Token Logo Helper ─────────────────────────────────────
-function CLMMTokenLogo({ token, size = 24 }: { token: TokenInfo | null; size?: number }) {
-    const [imgErr, setImgErr] = useState(false);
-    if (!token) return null;
-
-    if (token.logoURI && !imgErr) {
-        return (
-            <div className="rounded-full overflow-hidden shrink-0 border-2 border-card" style={{ width: size, height: size }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={token.logoURI} alt={token.symbol} width={size} height={size}
-                    className="rounded-full object-cover" style={{ width: size, height: size }}
-                    onError={() => setImgErr(true)} />
-            </div>
-        );
-    }
-
-    if (token.symbol === "SOL") {
-        return (
-            <div className="rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195] border-2 border-card flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-                <svg viewBox="0 0 24 24" fill="none" style={{ width: size * 0.55, height: size * 0.55 }}>
-                    <path d="M5.5 17.5L8.5 14.5H18.5L15.5 17.5H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
-                    <path d="M5.5 6.5L8.5 9.5H18.5L15.5 6.5H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
-                    <path d="M5.5 12L8.5 9H18.5L15.5 12H5.5Z" fill="white" stroke="white" strokeWidth="0.5" />
-                </svg>
-            </div>
-        );
-    }
-
-    return (
-        <div className={`rounded-full ${token.color} border-2 border-card flex items-center justify-center font-bold text-white shrink-0`}
-            style={{ width: size, height: size, fontSize: size * 0.35 }}>
-            {token.icon || token.symbol[0]}
-        </div>
-    );
-}
+import TokenIcon from "@/components/liquidity/TokenIcon";
 
 
 
@@ -409,56 +375,13 @@ export default function CreatePoolPage() {
         }
     };
 
-    // ── STEPPER SIDEBAR ──────────────────────────────────────
-    const renderStepper = () => (
-        <div className="w-full md:w-1/3 flex flex-col gap-4">
-            <button onClick={() => router.back()} className="flex items-center text-muted-foreground hover:text-foreground transition-colors w-fit mb-2">
-                <ChevronLeft className="h-5 w-5 mr-1" /> Back
-            </button>
-            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-6">
-                {[
-                    { n: 1, label: "Select token & fee tier" },
-                    { n: 2, label: "Set initial price & range" },
-                    { n: 3, label: "Enter deposit amount" },
-                ].map(({ n, label }, i, arr) => (
-                    <div key={n} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 transition-all
-                ${currentStep > n ? "bg-[var(--neon-teal)] border-[var(--neon-teal)] text-black" :
-                                    currentStep === n ? "border-[var(--neon-teal)] text-[var(--neon-teal)]" :
-                                        "border-border text-muted-foreground"}`}>
-                                {currentStep > n ? <Check className="h-4 w-4" /> : n}
-                            </div>
-                            {i < arr.length - 1 && <div className="w-0.5 h-12 bg-border mt-2" />}
-                        </div>
-                        <div className={`pt-1 ${currentStep < n ? "opacity-40" : ""}`}>
-                            <p className={`text-xs font-medium mb-0.5 ${currentStep >= n ? "text-[var(--neon-teal)]" : "text-muted-foreground"}`}>Step {n}</p>
-                            <p className={`text-sm font-bold ${currentStep === n ? "text-foreground" : "text-muted-foreground"}`}>{label}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5">
-                <h4 className="flex items-center text-sm font-bold mb-2">
-                    <span className="w-4 h-4 rounded-full border border-white/40 text-muted-foreground flex items-center justify-center text-[10px] mr-2">!</span>
-                    Please Note
-                </h4>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    This tool is for advanced users. For detailed instructions, read the guide for{" "}
-                    <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">CLMM</span> or{" "}
-                    <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">Standard</span> pools.
-                </p>
-            </div>
-        </div>
-    );
-
     // ── PAIR BAR ─────────────────────────────────────────────
     const PairBar = ({ onEdit }: { onEdit: () => void }) => (
         <div className="flex items-center justify-between bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 mb-4">
             <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">
-                    <CLMMTokenLogo token={baseToken} size={24} />
-                    <CLMMTokenLogo token={quoteToken} size={24} />
+                    <TokenIcon symbol={baseToken?.symbol} logo={baseToken?.logoURI} size={24} />
+                    <TokenIcon symbol={quoteToken?.symbol} logo={quoteToken?.logoURI} size={24} />
                 </div>
                 <span className="font-bold text-sm">{baseToken?.symbol} / {quoteToken?.symbol}</span>
                 <span className="text-xs bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] border border-[var(--neon-teal)]/20 px-2 py-0.5 rounded-full">Fee {selectedFee.label}</span>
@@ -479,7 +402,7 @@ export default function CreatePoolPage() {
                     <div onClick={() => { setActiveSelectionSlot("base"); setIsTokenModalOpen(true); }}
                         className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${baseToken ? "bg-card border-[var(--neon-teal)]/50" : "bg-secondary/30 dark:bg-black/20 border-border hover:border-[#0D9B5F]/40 dark:hover:border-white/30"}`}>
                         <div className="flex items-center gap-2">
-                            {baseToken && <CLMMTokenLogo token={baseToken} size={24} />}
+                            {baseToken && <TokenIcon symbol={baseToken?.symbol} logo={baseToken?.logoURI} size={24} />}
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-muted-foreground">Base token</span>
                                 <span className={`font-bold text-sm ${baseToken ? "text-foreground" : "text-muted-foreground"}`}>{baseToken?.symbol || "Select"}</span>
@@ -490,7 +413,7 @@ export default function CreatePoolPage() {
                     <div onClick={() => { setActiveSelectionSlot("quote"); setIsTokenModalOpen(true); }}
                         className={`flex-1 border rounded-xl p-4 cursor-pointer transition-all flex justify-between items-center group ${quoteToken ? "bg-card border-[var(--neon-teal)]/50" : "bg-secondary/30 dark:bg-black/20 border-border hover:border-[#0D9B5F]/40 dark:hover:border-white/30"}`}>
                         <div className="flex items-center gap-2">
-                            {quoteToken && <CLMMTokenLogo token={quoteToken} size={24} />}
+                            {quoteToken && <TokenIcon symbol={quoteToken?.symbol} logo={quoteToken?.logoURI} size={24} />}
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-muted-foreground">Quote token</span>
                                 <span className={`font-bold text-sm ${quoteToken ? "text-foreground" : "text-muted-foreground"}`}>{quoteToken?.symbol || "Select"}</span>
@@ -679,7 +602,7 @@ export default function CreatePoolPage() {
                         <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-2">
-                                    <CLMMTokenLogo token={token} size={28} />
+                                    <TokenIcon symbol={token?.symbol} logo={token?.logoURI} size={28} />
                                     <span className="font-bold">{token?.symbol}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -727,8 +650,8 @@ export default function CreatePoolPage() {
                             <span className="text-muted-foreground">/</span>
                             <span>{ratioB}%</span>
                             <div className="flex -space-x-1 ml-1">
-                                <CLMMTokenLogo token={baseToken} size={16} />
-                                <CLMMTokenLogo token={quoteToken} size={16} />
+                                <TokenIcon symbol={baseToken?.symbol} logo={baseToken?.logoURI} size={16} />
+                                <TokenIcon symbol={quoteToken?.symbol} logo={quoteToken?.logoURI} size={16} />
                             </div>
                         </div>
                     </div>
@@ -784,7 +707,15 @@ export default function CreatePoolPage() {
     return (
         <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
-                {renderStepper()}
+                <StepperSidebar
+                    currentStep={currentStep}
+                    steps={[
+                        { n: 1, label: "Select token & fee tier" },
+                        { n: 2, label: "Set initial price & range" },
+                        { n: 3, label: "Enter deposit amount" },
+                    ]}
+                    note={<>This tool is for advanced users. For detailed instructions, read the guide for <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">CLMM</span> or <span className="text-[var(--neon-teal)] cursor-pointer hover:underline">Standard</span> pools.</>}
+                />
                 {currentStep === 1 && renderStep1()}
                 {currentStep === 2 && renderStep2()}
                 {currentStep === 3 && renderStep3()}

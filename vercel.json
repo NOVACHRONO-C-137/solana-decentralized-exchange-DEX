@@ -1,8 +1,0 @@
-{
-    "crons": [
-        {
-            "path": "/api/cronSwap",
-            "schedule": "*/10 * * * *"
-        }
-    ]
-}

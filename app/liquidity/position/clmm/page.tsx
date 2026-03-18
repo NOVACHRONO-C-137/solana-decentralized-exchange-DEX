@@ -26,71 +26,9 @@ import { DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import BN from "bn.js";
 import Decimal from "decimal.js";
+import TokenIcon from "@/components/liquidity/TokenIcon";
 
 const QUICK_RANGES = ["±0.1%", "±0.3%", "±0.5%", "±0.8%", "±1%"];
-
-// ── Token Logo Component ──────────────────────────────────
-function TokenLogo({
-  token,
-  size = 28,
-  className = "",
-}: {
-  token?: { symbol: string; color?: string; icon?: string; logoURI?: string };
-  size?: number;
-  className?: string;
-}) {
-  const [imgError, setImgError] = useState(false);
-  if (!token)
-    return (
-      <div
-        className={`rounded-full bg-gray-600 border-2 border-card shrink-0 ${className}`}
-        style={{ width: size, height: size }}
-      />
-    );
-
-  if (token.logoURI && !imgError) {
-    return (
-      <div
-        className={`rounded-full overflow-hidden border-2 border-card shrink-0 shadow-lg ${className}`}
-        style={{ width: size, height: size }}
-      >
-        <Image
-          src={token.logoURI}
-          alt={token.symbol}
-          width={size}
-          height={size}
-          className="rounded-full object-cover w-full h-full"
-          onError={() => setImgError(true)}
-          unoptimized
-        />
-      </div>
-    );
-  }
-
-  const generateGradient = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue1 = Math.abs(hash % 360);
-    const hue2 = (hue1 + 40) % 360;
-    return `linear-gradient(135deg, hsl(${hue1}, 80%, 65%), hsl(${hue2}, 80%, 45%))`;
-  };
-
-  return (
-    <div
-      className={`rounded-full border-2 border-card flex items-center justify-center font-bold text-foreground shrink-0 shadow-inner ${token.color ? token.color : ""} ${className}`}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.max(10, size * 0.45),
-        background: token.color ? undefined : generateGradient(token.symbol),
-      }}
-    >
-      {token.icon || token.symbol.charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 function PositionPageInner() {
   const router = useRouter();
@@ -861,8 +799,8 @@ function PositionPageInner() {
         <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
-              <TokenLogo token={tokenAInfo} size={32} className="z-10" />
-              <TokenLogo token={tokenBInfo} size={32} />
+              <TokenIcon symbol={tokenAInfo?.symbol} logo={tokenAInfo?.logoURI} size={32} className="z-10" />
+              <TokenIcon symbol={tokenBInfo?.symbol} logo={tokenBInfo?.logoURI} size={32} />
             </div>
             <span className="text-lg font-bold">
               {tokenA} / {tokenB}
@@ -1194,7 +1132,7 @@ function PositionPageInner() {
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <TokenLogo token={topTokenInfo} size={28} className="!border-0" />
+                  <TokenIcon symbol={topTokenInfo?.symbol} logo={topTokenInfo?.logoURI} size={28} className="!border-0" />
                   <span className="font-bold text-sm">{topToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1251,7 +1189,7 @@ function PositionPageInner() {
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <TokenLogo token={bottomTokenInfo} size={28} className="!border-0" />
+                  <TokenIcon symbol={bottomTokenInfo?.symbol} logo={bottomTokenInfo?.logoURI} size={28} className="!border-0" />
                   <span className="font-bold text-sm">{bottomToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1294,17 +1232,6 @@ function PositionPageInner() {
               </p>
             </div>
 
-            {/* Legend */}
-            <div className="absolute right-4 top-10 text-[10px] text-muted-foreground flex flex-col gap-1">
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-px bg-white/60" />
-                <span>Current Price</span>
-              </div>
-              <span className="text-muted-foreground ml-5">
-                {priceToggle === "B" ? `1.0 ${tokenA} = ${poolPrice?.toFixed(4) || "—"} ${tokenB}` : `1.0 ${tokenB} = ${(1 / (poolPrice || 1)).toFixed(4)} ${tokenA}`}
-              </span>
-            </div>
-
             {/* Total + Ratio */}
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex justify-between">
@@ -1318,13 +1245,15 @@ function PositionPageInner() {
                   <span className="text-muted-foreground">/</span>
                   <span>≈{displayRatioB}%</span>
                   <div className="flex -space-x-1 ml-1">
-                    <TokenLogo
-                      token={tokenAInfo}
+                    <TokenIcon
+                      symbol={tokenAInfo?.symbol}
+                      logo={tokenAInfo?.logoURI}
                       size={14}
                       className="!border"
                     />
-                    <TokenLogo
-                      token={tokenBInfo}
+                    <TokenIcon
+                      symbol={tokenBInfo?.symbol}
+                      logo={tokenBInfo?.logoURI}
                       size={14}
                       className="!border"
                     />

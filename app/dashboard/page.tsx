@@ -8,6 +8,7 @@ import { DEVNET_PROGRAM_ID, Raydium, TxVersion } from "@raydium-io/raydium-sdk-v
 import BN from "bn.js";
 import { Wallet } from "lucide-react";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
+import { getTokenColor } from "@/lib/tokens";
 import { NetworkStatsCard } from "@/components/dashboard/NetworkStatsCard";
 import { RecentTransactionsCard } from "@/components/dashboard/RecentTransactionsCard";
 import { WalletCard } from "@/components/dashboard/WalletCard";
@@ -16,19 +17,6 @@ import { TokenHoldingsCard } from "@/components/dashboard/TokenHoldingsCard";
 import { FarmRewardsCard } from "@/components/dashboard/FarmRewardsCard";
 import { PoolsCard } from "@/components/dashboard/PoolsCard";
 
-
-
-function getTokenColor(mint: string): string {
-    let hash = 0;
-    for (let i = 0; i < mint.length; i++) {
-        hash = mint.charCodeAt(i) + ((hash << 5) - hash);
-        hash |= 0;
-    }
-    const hue = Math.abs(hash % 360);
-    const saturation = 55 + Math.abs((hash >> 8) % 20);
-    const lightness = 50 + Math.abs((hash >> 16) % 15);
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-}
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -363,7 +351,7 @@ export default function DashboardPage() {
             balance: tb.balance,
             decimals: tb.decimals,
             usd: usdVal,
-            color: getTokenColor(mint),
+            color: getTokenColor(symbol, mint),
         };
     }).sort((a, b) => b.usd - a.usd);
 
@@ -504,15 +492,16 @@ export default function DashboardPage() {
                         ` }} />
                     </div>
                 </div>
-            </div>
 
-            {/* Bottom full-width row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Network Stats card */}
-                <NetworkStatsCard solPrice={prices["So11111111111111111111111111111111111111112"] || 0} />
+                {/* Bottom full-width row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Network Stats card */}
+                    <NetworkStatsCard solPrice={prices["So11111111111111111111111111111111111111112"] || 0} />
 
-                {/* Recent Transactions card */}
-                <RecentTransactionsCard publicKey={publicKey} />
+                    {/* Recent Transactions card */}
+                    <RecentTransactionsCard publicKey={publicKey} />
+                </div>
+
             </div>
         </div>
     );

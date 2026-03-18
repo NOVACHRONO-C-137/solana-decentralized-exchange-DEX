@@ -5,12 +5,12 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTo
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
-import { TOKEN_GRADIENTS } from "@/lib/tokens";
+import { getTokenGradient } from "@/lib/tokens";
 
 // Avatar: shows logo image when available, gradient-letter circle as fallback
 function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) {
     const [imgError, setImgError] = useState(false);
-    const gradient = TOKEN_GRADIENTS[symbol] || "from-[#6B7280] to-[#9CA3AF]";
+    const gradient = getTokenGradient(symbol);
 
     if (logoUrl && !imgError) {
         return (
