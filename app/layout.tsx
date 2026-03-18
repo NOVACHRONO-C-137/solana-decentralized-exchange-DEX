@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} ${cagliostro.variable} bg-background text-foreground antialiased`}>
+      <body className={`${inter.className} ${cagliostro.variable} dot-bg bg-background text-foreground antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

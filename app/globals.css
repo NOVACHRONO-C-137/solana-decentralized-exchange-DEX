@@ -139,3 +139,20 @@
   background: rgba(20, 241, 149, 0.8);
   box-shadow: 0 0 15px rgba(20, 241, 149, 0.6);
 }
+
+.dot-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(13, 155, 95, 0.12) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.light .dot-bg::before,
+[class~="light"] .dot-bg::before {
+  background-image: radial-gradient(circle, rgba(13, 155, 95, 0.35) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}

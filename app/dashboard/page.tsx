@@ -132,6 +132,7 @@ export default function DashboardPage() {
     const [recentTxns, setRecentTxns] = useState<any[]>([]);
     const [txnsLoading, setTxnsLoading] = useState(false);
     const [networkStats, setNetworkStats] = useState<{ slot: number; tps: number; solPrice: number } | null>(null);
+    const [epochInfo, setEpochInfo] = useState<any>(null);
     const [statsLoading, setStatsLoading] = useState(false);
 
     // ── Positions & Claims ────────────────────────────────
@@ -198,15 +199,17 @@ export default function DashboardPage() {
     const fetchNetworkStats = useCallback(async () => {
         setStatsLoading(true);
         try {
-            const [slot, perfSamples] = await Promise.all([
+            const [slot, perfSamples, epochInfo] = await Promise.all([
                 connection.getSlot(),
                 connection.getRecentPerformanceSamples(1),
+                connection.getEpochInfo(),
             ]);
             const tps = perfSamples[0]
                 ? Math.round(perfSamples[0].numTransactions / perfSamples[0].samplePeriodSecs)
                 : 0;
             const solPrice = Number(prices["So11111111111111111111111111111111111111112"]) || 0;
             setNetworkStats({ slot, tps, solPrice });
+            setEpochInfo(epochInfo);
         } catch { }
         finally { setStatsLoading(false); }
     }, [connection, prices]);
@@ -678,17 +681,17 @@ export default function DashboardPage() {
     const shortAddr = `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
             <div className="flex flex-col gap-6">
 
                 {/* Main grid — left + right columns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                     {/* ── LEFT COLUMN ─────────────────────────── */}
-                    <div className="space-y-5">
+                    <div className="space-y-5 sticky top-24 self-start">
 
                         {/* Card 1 — Wallet Overview */}
-                        <div className="bg-card border border-border rounded-2xl p-5">
+                        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[160px]">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     Wallet
@@ -753,7 +756,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Card 2 — Portfolio Value */}
-                        <div className="bg-card border border-border rounded-2xl p-5">
+                        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[180px]">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     Portfolio Value
@@ -802,7 +805,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Card 3 — Token Holdings */}
-                        <div className="bg-card border border-border rounded-2xl p-5">
+                        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[420px]">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     Token Holdings
@@ -846,7 +849,7 @@ export default function DashboardPage() {
                             ) : tokenList.length === 0 ? (
                                 <p className="text-sm text-muted-foreground text-center py-4">No tokens found</p>
                             ) : (
-                                <div className="overflow-y-auto max-h-[320px] pr-1 custom-scrollbar-teal">
+                                <div className="overflow-y-auto max-h-[320px] min-h-[320px] pr-1 custom-scrollbar-teal">
                                     {filteredTokenList.length === 0 ? (
                                         <p className="text-sm text-muted-foreground text-center py-4">No tokens match your search</p>
                                     ) : (
@@ -881,461 +884,461 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                        {/* ── RIGHT COLUMN ─────────────────────────── */}
-                        <div className="md:col-span-2 space-y-5">
+                    {/* ── RIGHT COLUMN ─────────────────────────── */}
+                    <div className="md:col-span-2 space-y-5 min-h-[900px]">
 
-                            {/* Card 4 — My Pools */}
-                            <div className="bg-card border border-border rounded-2xl p-5">
-                                <div className="flex items-center justify-between mb-5">
-                                    <div className="flex items-center gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
-                                        <button
-                                            onClick={() => setMainTab("mine")}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "mine"
-                                                ? "bg-card text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground"
-                                                }`}
-                                        >
-                                            My Pools
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "mine" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"
-                                                }`}>{myPools.length}</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setMainTab("other")}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "other"
-                                                ? "bg-card text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground"
-                                                }`}
-                                        >
-                                            Other Pools
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "other" ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"
-                                                }`}>{otherPools.length}</span>
-                                        </button>
-                                    </div>
-                                    <button onClick={loadPools}
-                                        className="p-1.5 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
-                                        {poolsLoading
-                                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                                            : <RefreshCw className="w-4 h-4" />
-                                        }
+                        {/* Card 4 — My Pools */}
+                        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[600px]">
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="flex items-center gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
+                                    <button
+                                        onClick={() => setMainTab("mine")}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "mine"
+                                            ? "bg-card text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        My Pools
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "mine" ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"
+                                            }`}>{myPools.length}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setMainTab("other")}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${mainTab === "other"
+                                            ? "bg-card text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Other Pools
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${mainTab === "other" ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"
+                                            }`}>{otherPools.length}</span>
                                     </button>
                                 </div>
-
-                                {mainTab === "mine" ? (
-                                    <>
-                                        {/* Tabs */}
-                                        <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
-                                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
-                                                <button key={tab} onClick={() => setActiveTab(tab)}
-                                                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${activeTab === tab
-                                                        ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
-                                                        : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
-                                                        }`}>
-                                                    {tab}
-                                                    {myPoolTabCounts[tab] > 0 && (
-                                                        <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"}`}>
-                                                            {myPoolTabCounts[tab]}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Search bar */}
-                                        <div className="relative mb-4">
-                                            <input
-                                                type="text"
-                                                placeholder="Search by token or pool address..."
-                                                value={myPoolSearch}
-                                                onChange={e => setMyPoolSearch(e.target.value)}
-                                                className="w-full bg-secondary/40 dark:bg-black/30 border border-border rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
-                                            />
-                                            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                                            </svg>
-                                        </div>
-
-                                        {/* Pool list */}
-                                        {poolsLoading ? (
-                                            <div className="space-y-3">
-                                                {[1, 2, 3].map(i => (
-                                                    <div key={i} className="border border-border/50 rounded-xl p-4 animate-pulse">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex -space-x-1">
-                                                                <div className="w-7 h-7 rounded-full bg-secondary/60" />
-                                                                <div className="w-7 h-7 rounded-full bg-secondary/40" />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <div className="h-3.5 w-24 bg-secondary/60 rounded mb-2" />
-                                                                <div className="h-2.5 w-16 bg-secondary/40 rounded" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : filteredMyPools.length === 0 ? (
-                                            <div className="py-10 text-center">
-                                                <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
-                                                    <Droplets className="w-6 h-6 text-[var(--neon-teal)]" />
-                                                </div>
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    {myPoolSearch.trim()
-                                                        ? "No pools match your search."
-                                                        : activeTab === "All" ? "No pools found for this wallet." : `No ${activeTab} pools found.`}
-                                                </p>
-                                                {!myPoolSearch.trim() && activeTab === "All" && (
-                                                    <button onClick={() => router.push("/liquidity/create/clmm")}
-                                                        className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
-                                                        Create your first pool
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="overflow-y-auto max-h-[420px] pr-1 custom-scrollbar-teal">
-                                                <div className="space-y-3">
-                                                    {filteredMyPools.map((pool: any, i: number) => {
-                                                        const mintA = pool.mintA?.address || pool.mintA || "";
-                                                        const mintB = pool.mintB?.address || pool.mintB || "";
-                                                        const symA = pool.mintA?.symbol || pool.symbolA || "?";
-                                                        const symB = pool.mintB?.symbol || pool.symbolB || "?";
-                                                        const logoA = pool.mintA?.logoURI || pool.logoA;
-                                                        const logoB = pool.mintB?.logoURI || pool.logoB;
-                                                        const poolId = pool.id || pool.poolId || "";
-                                                        const fee = pool.feeRate
-                                                            ? (pool.feeRate < 1
-                                                                ? `${(pool.feeRate * 100).toFixed(2)}%`
-                                                                : `${(pool.feeRate / 100).toFixed(2)}%`)
-                                                            : pool.fee || "0.25%";
-                                                        const type = pool.type || "Concentrated";
-
-                                                        return (
-                                                            <div key={i}
-                                                                className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
-                                                                <div className="flex items-center justify-between gap-4 flex-wrap">
-                                                                    {/* Pool identity */}
-                                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                                        <div className="flex -space-x-2 flex-shrink-0">
-                                                                            <TokenIcon symbol={symA} logo={logoA} size={28} />
-                                                                            <TokenIcon symbol={symB} logo={logoB} size={28} />
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
-                                                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                                                <PoolTypeBadge type={type} />
-                                                                                <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Pool ID */}
-                                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                                        <span className="text-xs text-muted-foreground font-mono">
-                                                                            {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
-                                                                        </span>
-                                                                        {poolId && <CopyButton text={poolId} />}
-                                                                        {poolId && (
-                                                                            <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
-                                                                                target="_blank" rel="noopener noreferrer"
-                                                                                className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
-                                                                                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                                                                            </a>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Action buttons */}
-                                                                    <div className="flex gap-2 w-full sm:w-auto">
-                                                                        <button onClick={() => handleDeposit(pool)}
-                                                                            className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-[var(--neon-teal)]/50 text-[var(--neon-teal)] text-xs font-semibold hover:bg-[var(--neon-teal)]/10 transition-all duration-200">
-                                                                            Deposit
-                                                                        </button>
-                                                                        <button onClick={() => handleWithdraw(pool)}
-                                                                            className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
-                                                                            Withdraw
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        {/* Tabs */}
-                                        <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
-                                            {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
-                                                <button key={tab} onClick={() => setOtherActiveTab(tab)}
-                                                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${otherActiveTab === tab
-                                                        ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
-                                                        : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
-                                                        }`}>
-                                                    {tab}
-                                                    {otherPoolTabCounts[tab] > 0 && (
-                                                        <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${otherActiveTab === tab ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"}`}>
-                                                            {otherPoolTabCounts[tab]}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Search bar */}
-                                        <div className="relative mb-4">
-                                            <input
-                                                type="text"
-                                                placeholder="Search by token or pool address..."
-                                                value={otherPoolSearch}
-                                                onChange={e => setOtherPoolSearch(e.target.value)}
-                                                className="w-full bg-secondary/40 dark:bg-black/30 border border-border rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
-                                            />
-                                            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                                            </svg>
-                                        </div>
-
-                                        {otherPools.length === 0 ? (
-                                            <div className="py-10 text-center">
-                                                <p className="text-sm text-muted-foreground">No external pools found with your liquidity.</p>
-                                            </div>
-                                        ) : filteredOtherPools.length === 0 ? (
-                                            <div className="py-10 text-center">
-                                                <p className="text-sm text-muted-foreground">
-                                                    {otherPoolSearch.trim()
-                                                        ? "No pools match your search."
-                                                        : `No ${otherActiveTab} pools found.`}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="overflow-y-auto max-h-[420px] pr-1 custom-scrollbar-teal">
-                                                <div className="space-y-3">
-                                                    {filteredOtherPools.map((pool: any, i: number) => {
-                                                        const mintA = pool.mintA?.address || pool.mintA || "";
-                                                        const mintB = pool.mintB?.address || pool.mintB || "";
-                                                        const symA = pool.mintA?.symbol || pool.symbolA || "?";
-                                                        const symB = pool.mintB?.symbol || pool.symbolB || "?";
-                                                        const logoA = pool.mintA?.logoURI || pool.logoA;
-                                                        const logoB = pool.mintB?.logoURI || pool.logoB;
-                                                        const poolId = pool.id || pool.poolId || "";
-                                                        const fee = pool.feeRate
-                                                            ? (pool.feeRate < 1
-                                                                ? `${(pool.feeRate * 100).toFixed(2)}%`
-                                                                : `${(pool.feeRate / 100).toFixed(2)}%`)
-                                                            : pool.fee || "0.25%";
-                                                        const type = pool.type || "Concentrated";
-                                                        const userPosition = positions.find((pos: any) => pos.poolId.toString() === poolId);
-
-                                                        return (
-                                                            <div key={i}
-                                                                className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
-                                                                <div className="flex items-center justify-between gap-4 flex-wrap">
-                                                                    {/* Pool identity */}
-                                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                                        <div className="flex -space-x-2 flex-shrink-0">
-                                                                            <TokenIcon symbol={symA} logo={logoA} size={28} />
-                                                                            <TokenIcon symbol={symB} logo={logoB} size={28} />
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
-                                                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                                                <PoolTypeBadge type={type} />
-                                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">Deposited</span>
-                                                                                <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Pool ID */}
-                                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                                        <span className="text-xs text-muted-foreground font-mono">
-                                                                            {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
-                                                                        </span>
-                                                                        {poolId && <CopyButton text={poolId} />}
-                                                                        {poolId && (
-                                                                            <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
-                                                                                target="_blank" rel="noopener noreferrer"
-                                                                                className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
-                                                                                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                                                                            </a>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Action buttons */}
-                                                                    <div className="flex gap-2 w-full sm:w-auto">
-                                                                        <button onClick={() => handleWithdraw(pool)}
-                                                                            className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
-                                                                            Withdraw
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-
-                                                                {userPosition && (
-                                                                    <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 gap-3 text-xs">
-                                                                        <div>
-                                                                            <span className="text-muted-foreground">Tick Range</span>
-                                                                            <div className="font-semibold text-foreground mt-0.5">
-                                                                                {userPosition.tickLower} → {userPosition.tickUpper}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-muted-foreground">Liquidity</span>
-                                                                            <div className="font-semibold text-[var(--neon-teal)] mt-0.5">
-                                                                                {userPosition.liquidity.toString()}
-                                                                            </div>
-                                                                        </div>
-                                                                        {userPosition.rewardInfos?.some((r: any) => r.pendingReward?.gtn(0)) && (
-                                                                            <div className="col-span-2">
-                                                                                <span className="text-muted-foreground">Pending Rewards</span>
-                                                                                <div className="font-semibold text-yellow-400 mt-0.5">
-                                                                                    {userPosition.rewardInfos.map((r: any, idx: number) => (
-                                                                                        <span key={idx} className="mr-2">
-                                                                                            Reward {idx + 1}: {(r.pendingReward?.toNumber() / 1e6).toFixed(4)}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
+                                <button onClick={loadPools}
+                                    className="p-1.5 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
+                                    {poolsLoading
+                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                        : <RefreshCw className="w-4 h-4" />
+                                    }
+                                </button>
                             </div>
 
-                            <style dangerouslySetInnerHTML={{
-                                __html: `
+                            {mainTab === "mine" ? (
+                                <>
+                                    {/* Tabs */}
+                                    <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
+                                        {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
+                                            <button key={tab} onClick={() => setActiveTab(tab)}
+                                                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${activeTab === tab
+                                                    ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
+                                                    : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
+                                                    }`}>
+                                                {tab}
+                                                {myPoolTabCounts[tab] > 0 && (
+                                                    <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab ? "bg-[var(--neon-teal)]/20 text-[var(--neon-teal)]" : "bg-secondary text-muted-foreground"}`}>
+                                                        {myPoolTabCounts[tab]}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Search bar */}
+                                    <div className="relative mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search by token or pool address..."
+                                            value={myPoolSearch}
+                                            onChange={e => setMyPoolSearch(e.target.value)}
+                                            className="w-full bg-secondary/40 dark:bg-black/30 border border-border rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
+                                        />
+                                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                                        </svg>
+                                    </div>
+
+                                    {/* Pool list */}
+                                    {poolsLoading ? (
+                                        <div className="space-y-3">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="border border-border/50 rounded-xl p-4 animate-pulse">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex -space-x-1">
+                                                            <div className="w-7 h-7 rounded-full bg-secondary/60" />
+                                                            <div className="w-7 h-7 rounded-full bg-secondary/40" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className="h-3.5 w-24 bg-secondary/60 rounded mb-2" />
+                                                            <div className="h-2.5 w-16 bg-secondary/40 rounded" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : filteredMyPools.length === 0 ? (
+                                        <div className="py-10 text-center">
+                                            <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
+                                                <Droplets className="w-6 h-6 text-[var(--neon-teal)]" />
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mb-4">
+                                                {myPoolSearch.trim()
+                                                    ? "No pools match your search."
+                                                    : activeTab === "All" ? "No pools found for this wallet." : `No ${activeTab} pools found.`}
+                                            </p>
+                                            {!myPoolSearch.trim() && activeTab === "All" && (
+                                                <button onClick={() => router.push("/liquidity/create/clmm")}
+                                                    className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
+                                                    Create your first pool
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-y-auto max-h-[420px] pr-1 custom-scrollbar-teal">
+                                            <div className="space-y-3">
+                                                {filteredMyPools.map((pool: any, i: number) => {
+                                                    const mintA = pool.mintA?.address || pool.mintA || "";
+                                                    const mintB = pool.mintB?.address || pool.mintB || "";
+                                                    const symA = pool.mintA?.symbol || pool.symbolA || "?";
+                                                    const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                                    const logoA = pool.mintA?.logoURI || pool.logoA;
+                                                    const logoB = pool.mintB?.logoURI || pool.logoB;
+                                                    const poolId = pool.id || pool.poolId || "";
+                                                    const fee = pool.feeRate
+                                                        ? (pool.feeRate < 1
+                                                            ? `${(pool.feeRate * 100).toFixed(2)}%`
+                                                            : `${(pool.feeRate / 100).toFixed(2)}%`)
+                                                        : pool.fee || "0.25%";
+                                                    const type = pool.type || "Concentrated";
+
+                                                    return (
+                                                        <div key={i}
+                                                            className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
+                                                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                                {/* Pool identity */}
+                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                    <div className="flex -space-x-2 flex-shrink-0">
+                                                                        <TokenIcon symbol={symA} logo={logoA} size={28} />
+                                                                        <TokenIcon symbol={symB} logo={logoB} size={28} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            <PoolTypeBadge type={type} />
+                                                                            <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Pool ID */}
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    <span className="text-xs text-muted-foreground font-mono">
+                                                                        {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
+                                                                    </span>
+                                                                    {poolId && <CopyButton text={poolId} />}
+                                                                    {poolId && (
+                                                                        <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
+                                                                            target="_blank" rel="noopener noreferrer"
+                                                                            className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
+                                                                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Action buttons */}
+                                                                <div className="flex gap-2 w-full sm:w-auto">
+                                                                    <button onClick={() => handleDeposit(pool)}
+                                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-[var(--neon-teal)]/50 text-[var(--neon-teal)] text-xs font-semibold hover:bg-[var(--neon-teal)]/10 transition-all duration-200">
+                                                                        Deposit
+                                                                    </button>
+                                                                    <button onClick={() => handleWithdraw(pool)}
+                                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
+                                                                        Withdraw
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Tabs */}
+                                    <div className="flex gap-2 mb-5 pb-5 border-b border-border/50 flex-wrap">
+                                        {(["All", "CLMM", "Standard", "Legacy"] as const).map(tab => (
+                                            <button key={tab} onClick={() => setOtherActiveTab(tab)}
+                                                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${otherActiveTab === tab
+                                                    ? "bg-[#0D9B5F]/15 dark:bg-white/10 text-foreground"
+                                                    : "bg-secondary/50 dark:bg-white/5 text-muted-foreground hover:text-foreground"
+                                                    }`}>
+                                                {tab}
+                                                {otherPoolTabCounts[tab] > 0 && (
+                                                    <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${otherActiveTab === tab ? "bg-violet-500/20 text-violet-400" : "bg-secondary text-muted-foreground"}`}>
+                                                        {otherPoolTabCounts[tab]}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Search bar */}
+                                    <div className="relative mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search by token or pool address..."
+                                            value={otherPoolSearch}
+                                            onChange={e => setOtherPoolSearch(e.target.value)}
+                                            className="w-full bg-secondary/40 dark:bg-black/30 border border-border rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:border-[var(--neon-teal)] transition-colors placeholder:text-muted-foreground text-foreground"
+                                        />
+                                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                                        </svg>
+                                    </div>
+
+                                    {otherPools.length === 0 ? (
+                                        <div className="py-10 text-center">
+                                            <p className="text-sm text-muted-foreground">No external pools found with your liquidity.</p>
+                                        </div>
+                                    ) : filteredOtherPools.length === 0 ? (
+                                        <div className="py-10 text-center">
+                                            <p className="text-sm text-muted-foreground">
+                                                {otherPoolSearch.trim()
+                                                    ? "No pools match your search."
+                                                    : `No ${otherActiveTab} pools found.`}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-y-auto max-h-[420px] pr-1 custom-scrollbar-teal">
+                                            <div className="space-y-3">
+                                                {filteredOtherPools.map((pool: any, i: number) => {
+                                                    const mintA = pool.mintA?.address || pool.mintA || "";
+                                                    const mintB = pool.mintB?.address || pool.mintB || "";
+                                                    const symA = pool.mintA?.symbol || pool.symbolA || "?";
+                                                    const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                                    const logoA = pool.mintA?.logoURI || pool.logoA;
+                                                    const logoB = pool.mintB?.logoURI || pool.logoB;
+                                                    const poolId = pool.id || pool.poolId || "";
+                                                    const fee = pool.feeRate
+                                                        ? (pool.feeRate < 1
+                                                            ? `${(pool.feeRate * 100).toFixed(2)}%`
+                                                            : `${(pool.feeRate / 100).toFixed(2)}%`)
+                                                        : pool.fee || "0.25%";
+                                                    const type = pool.type || "Concentrated";
+                                                    const userPosition = positions.find((pos: any) => pos.poolId.toString() === poolId);
+
+                                                    return (
+                                                        <div key={i}
+                                                            className="border border-border/60 rounded-xl p-4 bg-secondary/10 dark:bg-white/[0.02] hover:bg-secondary/30 dark:hover:bg-white/[0.04] transition-all duration-200">
+                                                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                                {/* Pool identity */}
+                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                    <div className="flex -space-x-2 flex-shrink-0">
+                                                                        <TokenIcon symbol={symA} logo={logoA} size={28} />
+                                                                        <TokenIcon symbol={symB} logo={logoB} size={28} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-bold text-foreground">{symA} / {symB}</div>
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            <PoolTypeBadge type={type} />
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">Deposited</span>
+                                                                            <span className="text-[var(--neon-teal)] text-xs font-semibold">{fee}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Pool ID */}
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    <span className="text-xs text-muted-foreground font-mono">
+                                                                        {poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}
+                                                                    </span>
+                                                                    {poolId && <CopyButton text={poolId} />}
+                                                                    {poolId && (
+                                                                        <a href={`https://solscan.io/account/${poolId}?cluster=devnet`}
+                                                                            target="_blank" rel="noopener noreferrer"
+                                                                            className="p-1 hover:bg-secondary/60 dark:hover:bg-white/10 rounded transition-all">
+                                                                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Action buttons */}
+                                                                <div className="flex gap-2 w-full sm:w-auto">
+                                                                    <button onClick={() => handleWithdraw(pool)}
+                                                                        className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/60 dark:hover:bg-white/5 hover:text-foreground transition-all duration-200">
+                                                                        Withdraw
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {userPosition && (
+                                                                <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 gap-3 text-xs">
+                                                                    <div>
+                                                                        <span className="text-muted-foreground">Tick Range</span>
+                                                                        <div className="font-semibold text-foreground mt-0.5">
+                                                                            {userPosition.tickLower} → {userPosition.tickUpper}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-muted-foreground">Liquidity</span>
+                                                                        <div className="font-semibold text-[var(--neon-teal)] mt-0.5">
+                                                                            {userPosition.liquidity.toString()}
+                                                                        </div>
+                                                                    </div>
+                                                                    {userPosition.rewardInfos?.some((r: any) => r.pendingReward?.gtn(0)) && (
+                                                                        <div className="col-span-2">
+                                                                            <span className="text-muted-foreground">Pending Rewards</span>
+                                                                            <div className="font-semibold text-yellow-400 mt-0.5">
+                                                                                {userPosition.rewardInfos.map((r: any, idx: number) => (
+                                                                                    <span key={idx} className="mr-2">
+                                                                                        Reward {idx + 1}: {(r.pendingReward?.toNumber() / 1e6).toFixed(4)}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <style dangerouslySetInnerHTML={{
+                            __html: `
                         .custom-scrollbar-teal::-webkit-scrollbar { width: 5px; }
                         .custom-scrollbar-teal::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 8px; }
                         .custom-scrollbar-teal::-webkit-scrollbar-thumb { background: rgba(20,241,149,0.35); border-radius: 8px; }
                         .custom-scrollbar-teal::-webkit-scrollbar-thumb:hover { background: rgba(20,241,149,0.7); }
                     ` }} />
 
-                            {/* Card 5 — Farm Rewards */}
-                            <div className="bg-card border border-border rounded-2xl p-5">
-                                <div className="flex items-center justify-between mb-5">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Farm Rewards
-                                        </h3>
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 dark:text-green-400">
-                                            Devnet
-                                        </span>
-                                    </div>
-                                    <Sprout className="w-4 h-4 text-muted-foreground" />
+                        {/* Card 5 — Farm Rewards */}
+                        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[320px]">
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        Farm Rewards
+                                    </h3>
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 dark:text-green-400">
+                                        Devnet
+                                    </span>
                                 </div>
+                                <Sprout className="w-4 h-4 text-muted-foreground" />
+                            </div>
 
-                                {/* Show farms from pools that have reward data */}
-                                {pools.filter(p => p.rewardDefaultInfos?.length > 0).length === 0 ? (
-                                    <div className="py-8 text-center">
-                                        <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
-                                            <Sprout className="w-6 h-6 text-[var(--neon-teal)]" />
-                                        </div>
-                                        <p className="text-sm text-muted-foreground mb-4">No active farms found.</p>
-                                        <button onClick={() => router.push("/liquidity/create-farm")}
-                                            className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
-                                            Create a Farm
-                                        </button>
+                            {/* Show farms from pools that have reward data */}
+                            {pools.filter(p => p.rewardDefaultInfos?.length > 0).length === 0 ? (
+                                <div className="py-8 text-center">
+                                    <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center mx-auto mb-4">
+                                        <Sprout className="w-6 h-6 text-[var(--neon-teal)]" />
                                     </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {pools.filter(p => p.rewardDefaultInfos?.length > 0).map((pool, i) => {
-                                            const symA = pool.mintA?.symbol || pool.symbolA || "?";
-                                            const symB = pool.mintB?.symbol || pool.symbolB || "?";
-                                            const poolIdStr = pool.id || pool.poolId;
-                                            const userPosition = positions.find(pos => pos.poolId.toString() === poolIdStr);
+                                    <p className="text-sm text-muted-foreground mb-4">No active farms found.</p>
+                                    <button onClick={() => router.push("/liquidity/create-farm")}
+                                        className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
+                                        Create a Farm
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {pools.filter(p => p.rewardDefaultInfos?.length > 0).map((pool, i) => {
+                                        const symA = pool.mintA?.symbol || pool.symbolA || "?";
+                                        const symB = pool.mintB?.symbol || pool.symbolB || "?";
+                                        const poolIdStr = pool.id || pool.poolId;
+                                        const userPosition = positions.find(pos => pos.poolId.toString() === poolIdStr);
 
-                                            return pool.rewardDefaultInfos.map((reward: any, j: number) => {
-                                                const sym = reward.mint?.symbol || "?";
-                                                const logo = reward.mint?.logoURI;
-                                                const decimals = reward.mint?.decimals || 6;
-                                                const perSec = parseFloat(reward.perSecond || "0");
-                                                const perDay = (perSec / Math.pow(10, decimals)) * 86400;
+                                        return pool.rewardDefaultInfos.map((reward: any, j: number) => {
+                                            const sym = reward.mint?.symbol || "?";
+                                            const logo = reward.mint?.logoURI;
+                                            const decimals = reward.mint?.decimals || 6;
+                                            const perSec = parseFloat(reward.perSecond || "0");
+                                            const perDay = (perSec / Math.pow(10, decimals)) * 86400;
 
-                                                // Get actual pending rewards if the user has an active position in this farm
-                                                const pendingBN = userPosition?.rewardInfos[j]?.pendingReward || new BN(0);
-                                                const pendingHuman = pendingBN.toNumber() / Math.pow(10, decimals);
-                                                const hasPending = pendingHuman > 0;
-                                                const isClaiming = claimingId === userPosition?.nftMint?.toString();
+                                            // Get actual pending rewards if the user has an active position in this farm
+                                            const pendingBN = userPosition?.rewardInfos[j]?.pendingReward || new BN(0);
+                                            const pendingHuman = pendingBN.toNumber() / Math.pow(10, decimals);
+                                            const hasPending = pendingHuman > 0;
+                                            const isClaiming = claimingId === userPosition?.nftMint?.toString();
 
-                                                return (
-                                                    <div key={`${i}-${j}`} className="flex items-center justify-between gap-4 border border-border/40 bg-secondary/10 rounded-xl p-3">
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <TokenIcon symbol={sym} logo={logo} size={32} />
-                                                            <div className="min-w-0">
-                                                                <div className="text-sm font-semibold text-foreground">
-                                                                    {sym} Rewards
-                                                                </div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    {symA}-{symB} Farm
-                                                                </div>
+                                            return (
+                                                <div key={`${i}-${j}`} className="flex items-center justify-between gap-4 border border-border/40 bg-secondary/10 rounded-xl p-3">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <TokenIcon symbol={sym} logo={logo} size={32} />
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-semibold text-foreground">
+                                                                {sym} Rewards
                                                             </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3 flex-shrink-0">
-                                                            <div className="text-right">
-                                                                {userPosition ? (
-                                                                    <>
-                                                                        <div className="text-sm font-bold text-[var(--neon-teal)]">
-                                                                            {formatLargeNumber(pendingHuman)} {sym}
-                                                                        </div>
-                                                                        <div className="text-[10px] text-muted-foreground">
-                                                                            Unclaimed
-                                                                        </div>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <div className="text-sm font-bold text-foreground">
-                                                                            ~{formatLargeNumber(perDay)}
-                                                                        </div>
-                                                                        <div className="text-[10px] text-muted-foreground">
-                                                                            {sym}/day rate
-                                                                        </div>
-                                                                    </>
-                                                                )}
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {symA}-{symB} Farm
                                                             </div>
-                                                            {userPosition ? (
-                                                                <button
-                                                                    onClick={() => handleClaim(poolIdStr, userPosition)}
-                                                                    disabled={!hasPending || isClaiming}
-                                                                    className={`w-20 py-1.5 rounded-lg text-xs font-semibold transition-all border ${hasPending && !isClaiming
-                                                                        ? "bg-[var(--neon-teal)]/15 text-[var(--neon-teal)] border-[var(--neon-teal)]/20 hover:bg-[var(--neon-teal)]/25"
-                                                                        : "bg-secondary/30 text-muted-foreground border-transparent cursor-not-allowed"
-                                                                        }`}
-                                                                >
-                                                                    {isClaiming ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : "Claim"}
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleDeposit(pool)}
-                                                                    className="w-20 py-1.5 rounded-lg bg-secondary/40 text-muted-foreground text-xs font-semibold hover:bg-secondary/60 transition-all border border-border/50"
-                                                                >
-                                                                    Deposit
-                                                                </button>
-                                                            )}
                                                         </div>
                                                     </div>
-                                                );
-                                            });
-                                        })}
-                                    </div>
-                                )}
-
-                                <div className="text-xs text-muted-foreground/50 mt-4 pt-4 border-t border-border/50">
-                                    Rewards accrue per block · Devnet only
+                                                    <div className="flex items-center gap-3 flex-shrink-0">
+                                                        <div className="text-right">
+                                                            {userPosition ? (
+                                                                <>
+                                                                    <div className="text-sm font-bold text-[var(--neon-teal)]">
+                                                                        {formatLargeNumber(pendingHuman)} {sym}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-muted-foreground">
+                                                                        Unclaimed
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="text-sm font-bold text-foreground">
+                                                                        ~{formatLargeNumber(perDay)}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-muted-foreground">
+                                                                        {sym}/day rate
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        {userPosition ? (
+                                                            <button
+                                                                onClick={() => handleClaim(poolIdStr, userPosition)}
+                                                                disabled={!hasPending || isClaiming}
+                                                                className={`w-20 py-1.5 rounded-lg text-xs font-semibold transition-all border ${hasPending && !isClaiming
+                                                                    ? "bg-[var(--neon-teal)]/15 text-[var(--neon-teal)] border-[var(--neon-teal)]/20 hover:bg-[var(--neon-teal)]/25"
+                                                                    : "bg-secondary/30 text-muted-foreground border-transparent cursor-not-allowed"
+                                                                    }`}
+                                                            >
+                                                                {isClaiming ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : "Claim"}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleDeposit(pool)}
+                                                                className="w-20 py-1.5 rounded-lg bg-secondary/40 text-muted-foreground text-xs font-semibold hover:bg-secondary/60 transition-all border border-border/50"
+                                                            >
+                                                                Deposit
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })}
                                 </div>
+                            )}
+
+                            <div className="text-xs text-muted-foreground/50 mt-4 pt-4 border-t border-border/50">
+                                Rewards accrue per block · Devnet only
                             </div>
                         </div>
+                    </div>
                 </div>
 
 
                 {/* Bottom full-width row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Network Stats card */}
-                    <div className="bg-card border border-border rounded-2xl p-5">
+                    <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[160px]">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Network Stats
@@ -1376,6 +1379,46 @@ export default function DashboardPage() {
                                 </div>
                             ))}
                         </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                            {[
+                                {
+                                    label: "Epoch",
+                                    value: statsLoading || !epochInfo
+                                        ? null
+                                        : `${epochInfo.slotIndex.toLocaleString()} / ${epochInfo.slotsInEpoch.toLocaleString()}`,
+                                    color: "text-[var(--neon-teal)]"
+                                },
+                                {
+                                    label: "Block Time",
+                                    value: statsLoading ? null : "~400ms",
+                                    color: "text-blue-400"
+                                },
+                            ].map((stat, i) => (
+                                <div key={i} className="bg-secondary/30 rounded-xl p-3 text-center">
+                                    <div className="text-[10px] text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">
+                                        {stat.label}
+                                    </div>
+                                    {statsLoading || !stat.value
+                                        ? <div className="h-4 w-20 bg-secondary/60 rounded animate-pulse mx-auto" />
+                                        : <div className={`text-xs font-bold ${stat.color} truncate`}>{stat.value}</div>
+                                    }
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-border/50">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Epoch Progress</span>
+                                <span className="text-[10px] text-muted-foreground dot-pulse">
+                                    {epochInfo ? `${((epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100).toFixed(1)}%` : "—"}
+                                </span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-secondary/50 overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-[var(--neon-teal)] transition-all duration-500"
+                                    style={{ width: epochInfo ? `${(epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100}%` : "0%" }}
+                                />
+                            </div>
+                        </div>
                         <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
                             <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
                             <span className="text-[10px] text-muted-foreground">Solana Devnet</span>
@@ -1383,7 +1426,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Recent Transactions card */}
-                    <div className="bg-card border border-border rounded-2xl p-5">
+                    <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[160px]">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Recent Transactions
