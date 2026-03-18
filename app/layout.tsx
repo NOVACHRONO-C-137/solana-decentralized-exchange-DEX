@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { Navbar } from "@/components/Navbar";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
 import DotBackground from "@/components/DotBackground";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 const cagliostro = Cagliostro({
@@ -39,6 +40,7 @@ export default function RootLayout({
             <DotBackground />
             <Navbar />
             {children}
+            <Toaster />
           </SolanaWalletProvider>
         </ThemeProvider>
       </body>

@@ -16,6 +16,7 @@ import { PortfolioCard } from "@/components/dashboard/PortfolioCard";
 import { TokenHoldingsCard } from "@/components/dashboard/TokenHoldingsCard";
 import { FarmRewardsCard } from "@/components/dashboard/FarmRewardsCard";
 import { PoolsCard } from "@/components/dashboard/PoolsCard";
+import { notify } from "@/lib/toast";
 
 
 export default function DashboardPage() {
@@ -24,22 +25,16 @@ export default function DashboardPage() {
     const { connection } = useConnection();
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
 
-    // ── Prices ───────────────────────────────────────────
     const [prices, setPrices] = useState<Record<string, number>>({});
     const [pricesLoading, setPricesLoading] = useState(false);
 
-    // ── Pools ────────────────────────────────────────────
     const [pools, setPools] = useState<any[]>([]);
     const [poolsLoading, setPoolsLoading] = useState(false);
     const [createdPoolIds, setCreatedPoolIds] = useState<Set<string>>(new Set());
 
-    // ── Transactions & Network ────────────────────────────────
-
-    // ── Positions & Claims ────────────────────────────────
     const [positions, setPositions] = useState<any[]>([]);
     const [claimingId, setClaimingId] = useState<string | null>(null);
 
-    // ── Fetch prices ─────────────────────────────────────
     const fetchPrices = useCallback(async () => {
         if (!tokenBalances.size) return;
         setPricesLoading(true);
@@ -52,8 +47,7 @@ export default function DashboardPage() {
             );
             const json = await res.json();
             if (json.data) setPrices(json.data);
-        } catch (e) {
-            console.warn("Price fetch failed:", e);
+        } catch {
         } finally {
             setPricesLoading(false);
         }
@@ -61,7 +55,6 @@ export default function DashboardPage() {
 
     useEffect(() => { fetchPrices(); }, [fetchPrices]);
 
-    // ── Load pools ────────────────────────────────────────
     const loadPools = useCallback(async () => {
         if (!publicKey || !connected) return;
         setPoolsLoading(true);
@@ -117,7 +110,6 @@ export default function DashboardPage() {
             });
         } catch { }
 
-        // Add CPMM on-chain discovery (Standard pools are CPMM program, not CLMM)
         try {
             const cpmmAccounts = await connection.getProgramAccounts(
                 new PublicKey(DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM),
@@ -132,12 +124,9 @@ export default function DashboardPage() {
                 allIds.add(pubkey.toBase58());
                 createdIds.add(pubkey.toBase58());
             });
-            console.log("[Dashboard] CPMM on-chain pools found:", cpmmAccounts.length);
-        } catch (e) {
-            console.warn("[Dashboard] CPMM discovery failed:", e);
+        } catch {
         }
 
-        // Add AMM v4 Legacy on-chain discovery
         try {
             const ammAccounts = await connection.getProgramAccounts(
                 new PublicKey(DEVNET_PROGRAM_ID.AMM_V4),
@@ -152,12 +141,9 @@ export default function DashboardPage() {
                 allIds.add(pubkey.toBase58());
                 createdIds.add(pubkey.toBase58());
             });
-            console.log("[Dashboard] AMM v4 Legacy on-chain pools found:", ammAccounts.length);
-        } catch (e) {
-            console.warn("[Dashboard] AMM v4 discovery failed:", e);
+        } catch {
         }
 
-        // 4. On-chain Position Discovery (Find pools user deposited into)
         try {
             const raydium = await Raydium.load({
                 owner: publicKey,
@@ -173,8 +159,7 @@ export default function DashboardPage() {
             userPositions.forEach((pos: any) => {
                 allIds.add(pos.poolId.toString());
             });
-        } catch (e) {
-            console.warn("[Dashboard] Failed to discover positions:", e);
+        } catch {
         }
 
         setCreatedPoolIds(createdIds);
@@ -194,7 +179,6 @@ export default function DashboardPage() {
                         if (p.id) localPoolMap.set(p.id, p);
                     }
                 }
-                console.log("[Dashboard] localStorage pool map:", JSON.stringify(Array.from(localPoolMap.values()).map((p: any) => ({ id: p.id?.slice(0, 8), type: p.type }))));
             }
         } catch { }
 
@@ -219,13 +203,9 @@ export default function DashboardPage() {
             if (json.data && Array.isArray(json.data)) {
                 const apiPools = json.data.filter((p: any) => p && p.mintA && p.mintB);
                 const apiIds = new Set(apiPools.map((p: any) => p.id));
-                console.log("[Dashboard] API pool types:", JSON.stringify(apiPools.map((p: any) => ({ id: p.id?.slice(0, 8), type: p.type }))));
-
-                // For pools API missed, use localStorage fallback (normalized)
                 const missingPools: any[] = [];
                 for (const [id, local] of Array.from(localPoolMap.entries())) {
                     if (!apiIds.has(id)) {
-                        console.log("[Dashboard] Pool not in API, using localStorage:", id.slice(0, 8), "type:", local.type);
                         missingPools.push({
                             ...local,
                             mintA: typeof local.mintA === "string"
@@ -240,8 +220,7 @@ export default function DashboardPage() {
 
                 setPools([...apiPools, ...missingPools]);
             }
-        } catch (err) {
-            console.warn("[Dashboard] API failed, keeping localStorage pools:", err);
+        } catch {
         } finally {
             setPoolsLoading(false);
         }
@@ -249,7 +228,6 @@ export default function DashboardPage() {
 
     useEffect(() => { loadPools(); }, [loadPools]);
 
-    // ── Load CLMM positions for farming rewards ─────────────
     const loadPositions = useCallback(async () => {
         if (!publicKey || !connected) return;
         try {
@@ -263,8 +241,7 @@ export default function DashboardPage() {
                 programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID,
             });
             setPositions(allPositions);
-        } catch (err) {
-            console.warn("Failed to load positions:", err);
+        } catch {
         }
     }, [publicKey, connected, connection]);
 
@@ -283,7 +260,6 @@ export default function DashboardPage() {
 
             const { poolInfo, poolKeys } = await raydium.clmm.getPoolInfoFromRpc(poolId);
 
-            // Our Devnet hack to prevent Error 6035 on closed reward vaults
             const poolInfoAny: any = poolInfo;
             const hackedPoolInfo = {
                 ...poolInfoAny,
@@ -307,17 +283,16 @@ export default function DashboardPage() {
                 txVersion: TxVersion.LEGACY,
             });
 
-            const result = await execute({ sendAndConfirm: true });
-            console.log("✅ Rewards Claimed! Tx:", result);
-            loadPositions(); // Refresh pending amounts
+            await execute({ sendAndConfirm: true });
+            notify.success("Transaction confirmed!");
+            loadPositions();
         } catch (err) {
-            console.error("Failed to claim rewards:", err);
+            notify.error((err as any)?.message || "Something failed");
         } finally {
             setClaimingId(null);
         }
     };
 
-    // ── Derived values ────────────────────────────────────
     const solBalance = tokenBalances.get("11111111111111111111111111111111")?.balance
         || tokenBalances.get("So11111111111111111111111111111111111111112")?.balance
         || 0;
@@ -357,7 +332,6 @@ export default function DashboardPage() {
 
     const totalUSD = tokenList.reduce((sum, t) => sum + t.usd, 0);
 
-    // Portfolio ratio bar segments
     const topTokens = tokenList.slice(0, 4);
     const othersUSD = tokenList.slice(4).reduce((s, t) => s + t.usd, 0);
     const segments = [
@@ -365,7 +339,6 @@ export default function DashboardPage() {
         ...(othersUSD > 0 ? [{ symbol: "Other", pct: (othersUSD / totalUSD) * 100, color: "#6B7280" }] : []),
     ];
 
-    // ── Deposit routing ───────────────────────────────────
     const handleDeposit = (pool: any) => {
         const id = pool.id || pool.poolId;
         const mintA = pool.mintA?.address || pool.mintA;
@@ -424,7 +397,6 @@ export default function DashboardPage() {
         router.push(`/liquidity/withdraw/${isStandard ? "standard" : "clmm"}?${q.toString()}`);
     };
 
-    // ── Not connected state ───────────────────────────────
     if (!connected || !publicKey) {
         return (
             <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">

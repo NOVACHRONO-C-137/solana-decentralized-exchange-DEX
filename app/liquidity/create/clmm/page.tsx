@@ -17,6 +17,7 @@ import { formatLargeNumber } from "@/lib/utils";
 import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { notify } from "@/lib/toast";
 
 
 
@@ -117,12 +118,16 @@ export default function CreatePoolPage() {
     // ── Create Pool ──────────────────────────────────────────
     const handleCreatePool = async () => {
         if (!connected || !publicKey) {
-            setTxError("Please connect your wallet first.");
+            const msg = "Please connect your wallet first.";
+            setTxError(msg);
+            notify.error(msg);
             return;
         }
         if (!baseToken || !quoteToken) return;
         if (!depositA && !depositB) {
-            setTxError("Please enter deposit amounts.");
+            const msg = "Please enter deposit amounts.";
+            setTxError(msg);
+            notify.error(msg);
             return;
         }
 
@@ -139,22 +144,12 @@ export default function CreatePoolPage() {
             let lastManualTxId = "";
 
             const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-                console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
                 for (let i = 0; i < txs.length; i++) {
                     const tx = txs[i];
                     if ('serialize' in tx && 'feePayer' in tx) {
                         // Legacy Transaction — send via wallet adapter
-                        console.log("📋 TX", i, "signatures BEFORE wallet sign:",
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (tx as any).signatures?.map((s: any) => ({
-                                pubkey: s.publicKey.toString(),
-                                hasSig: s.signature !== null,
-                            }))
-                        );
                         const sig = await sendTransaction(tx as Transaction, connection);
-                        console.log("✅ TX sent via wallet adapter! Sig:", sig);
-                        const confirmation = await connection.confirmTransaction(sig, "confirmed");
-                        console.log("✅ TX confirmed:", confirmation);
+                        await connection.confirmTransaction(sig, "confirmed");
                         lastManualTxId = sig;
                     }
                 }
@@ -174,7 +169,6 @@ export default function CreatePoolPage() {
             // 2. Fetch available CLMM fee configs and match selected tier
             const configRes = await fetch("https://api-v3-devnet.raydium.io/main/clmm-config")
             const json = await configRes.json()
-            console.log("devnet configs:", JSON.stringify(json, null, 2))
             const configs = json.data
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const matchedConfig = configs.find((c: any) => c.tradeFeeRate === selectedFee.bps)
@@ -230,14 +224,12 @@ export default function CreatePoolPage() {
             } catch (e: any) {
                 if (e?.message === "__TX_SENT_MANUALLY__") {
                     createTxId = lastManualTxId;
-                    console.log("✅ Pool created (manual send):", createTxId);
                 } else {
                     throw e;
                 }
             }
 
             const poolIdStr = extInfo.address.id.toString();
-            console.log("✅ Pool created:", createTxId, "Pool ID:", poolIdStr);
 
             // Save pool to localStorage IMMEDIATELY so it shows in the table
             const newPool = {
@@ -349,8 +341,8 @@ export default function CreatePoolPage() {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
                         if (e?.message === "__TX_SENT_MANUALLY__") {
-                            console.log("✅ Position opened (manual send):", lastManualTxId);
                             setTxSig(lastManualTxId);
+                            notify.success("Transaction confirmed!");
                         } else {
                             throw e;
                         }
@@ -358,18 +350,24 @@ export default function CreatePoolPage() {
 
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } catch (posErr: any) {
-                    console.warn("⚠️ Pool created but adding liquidity failed:", posErr?.message);
                     setTxSig(createTxId);
-                    setTxError(`Pool created! But adding initial liquidity failed: ${posErr?.message}. Add liquidity later from the pool page.`);
+                    notify.success("Transaction confirmed!");
+                    const msg = `Pool created! But adding initial liquidity failed: ${posErr?.message}. Add liquidity later from the pool page.`;
+                    setTxError(msg);
+                    notify.error(msg);
                 }
+            } else if (createTxId) {
+                setTxSig(createTxId);
+                notify.success("Transaction confirmed!");
             }
 
             setDepositA("");
             setDepositB("");
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            console.error(err);
-            setTxError(err?.message || "Pool creation failed. Check console for details.");
+            const msg = err?.message || "Pool creation failed. Check console for details.";
+            setTxError(msg);
+            notify.error(msg);
         } finally {
             setLoading(false);
         }

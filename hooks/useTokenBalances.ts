@@ -109,14 +109,12 @@ async function fetchImageFromMetadataUri(uri: string): Promise<string | undefine
             clearTimeout(timeout);
 
             if (!res.ok) {
-                console.warn(`⚠️ Gateway failed (${res.status}): ${resolvedUri}`);
                 continue;
             }
 
             const contentType = res.headers.get("content-type") || "";
 
             if (contentType.startsWith("image/")) {
-                console.log("🖼️ URI is directly an image:", resolvedUri);
                 return resolvedUri;
             }
 
@@ -134,16 +132,13 @@ async function fetchImageFromMetadataUri(uri: string): Promise<string | undefine
                 imageUrl = `https://ipfs.io/ipfs/${imgCid}`;
             }
 
-            console.log("🖼️ Final image URL:", imageUrl);
             return imageUrl;
 
         } catch (error) {
-            console.warn(`⚠️ Fetch failed for: ${resolvedUri}, trying next...`);
             continue;
         }
     }
 
-    console.warn("❌ All gateways failed for:", uri);
     return undefined;
 }
 // Random gradient colors for discovered tokens
@@ -249,7 +244,6 @@ export function useTokenBalances() {
 
             // 3. Fetch Metaplex metadata for unknown tokens
             if (unknownMints.length > 0) {
-                console.log("🔎 Looking up metadata for", unknownMints.length, "unknown tokens:", unknownMints.map(m => m.mint.slice(0, 8)));
                 const metadataPDAs = unknownMints.map(m => getMetadataPDA(new PublicKey(m.mint)));
                 const metadataAccounts = await connection.getMultipleAccountsInfo(metadataPDAs);
 
@@ -262,7 +256,6 @@ export function useTokenBalances() {
 
                     if (metaAccount?.data) {
                         const metadata = parseMetaplexMetadata(Buffer.from(metaAccount.data));
-                        console.log(`📋 Parsed metadata for ${mint.slice(0, 8)}:`, metadata?.symbol, metadata?.name, "URI:", metadata?.uri?.slice(0, 60));
 
                         if (metadata && metadata.symbol) {
                             // ── FILTER: Skip NFTs / position tokens by name ──
@@ -275,12 +268,10 @@ export function useTokenBalances() {
                             parsedMetas.push({ mint, decimals, ...metadata });
                         }
                     } else {
-                        console.warn(`⚠️ No metadata account found for ${mint.slice(0, 8)}`);
                     }
                 }
 
                 // 4. Fetch actual image URLs from each token's metadata JSON URI
-                console.log("🖼️ Fetching images for", parsedMetas.length, "tokens...");
                 const imagePromises = parsedMetas.map(m => fetchImageFromMetadataUri(m.uri));
                 const images = await Promise.all(imagePromises);
 
@@ -295,7 +286,6 @@ export function useTokenBalances() {
                         icon: meta.symbol.charAt(0).toUpperCase(),
                         logoURI: images[i] || undefined,
                     };
-                    console.log(`✅ Discovered token: ${token.symbol} (${token.name}) logoURI: ${token.logoURI || "NONE"}`);
                     return token;
                 });
 
@@ -304,7 +294,6 @@ export function useTokenBalances() {
                 setDiscoveredTokens([]);
             }
         } catch (err) {
-            console.warn("Failed to fetch token balances:", err);
         } finally {
             setLoading(false);
             setBalances(newBalances);

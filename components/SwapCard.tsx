@@ -13,6 +13,7 @@ import Image from "next/image"
 import { ConnectWalletModal } from "@/components/ConnectWalletModal"
 import { TokenSelectorModal, DEVNET_TOKENS, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
+import { notify } from "@/lib/toast"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants — devnet program IDs
@@ -220,9 +221,7 @@ function SlippageModal({
 // ─────────────────────────────────────────────────────────────────────────────
 // Debug logger — prefix every log with [AeroDEX] so they're easy to filter
 // ─────────────────────────────────────────────────────────────────────────────
-const log = (...args: any[]) => console.log("[AeroDEX]", ...args)
-const warn = (...args: any[]) => console.warn("[AeroDEX]", ...args)
-const err = (...args: any[]) => console.error("[AeroDEX]", ...args)
+const log = (..._args: any[]) => {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
@@ -293,8 +292,7 @@ function SwapCardInner() {
                 } else {
                     setCurrentPoolPrice(null)
                 }
-            } catch (e) {
-                warn("Quote fetch failed:", e)
+            } catch {
             }
         }
         fetchQuote()
@@ -354,10 +352,25 @@ function SwapCardInner() {
     // ── Core swap ───────────────────────────────────────────────────────
     const handleSwap = async () => {
         if (!connected || !publicKey) { setWalletModalOpen(true); return }
-        if (!signAllTransactions) { setSwapError("Wallet does not support signing."); return }
+        if (!signAllTransactions) {
+            const msg = "Wallet does not support signing."
+            setSwapError(msg)
+            notify.error(msg)
+            return
+        }
         const amount = Number(fromAmount)
-        if (!fromAmount || isNaN(amount) || amount <= 0) { setSwapError("Enter a valid amount."); return }
-        if (amount > fromBalance) { setSwapError(`Insufficient ${fromToken.symbol} balance.`); return }
+        if (!fromAmount || isNaN(amount) || amount <= 0) {
+            const msg = "Enter a valid amount."
+            setSwapError(msg)
+            notify.error(msg)
+            return
+        }
+        if (amount > fromBalance) {
+            const msg = `Insufficient ${fromToken.symbol} balance.`
+            setSwapError(msg)
+            notify.error(msg)
+            return
+        }
 
         setLoading(true); setSwapError(null); setTxSig(null)
 
@@ -570,6 +583,7 @@ function SwapCardInner() {
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
                 log("✅ CLMM swap confirmed! txId:", txId)
                 setTxSig(txId)
+                notify.success("Transaction confirmed!")
 
                 // ── Step 3b: CPMM (Standard AMM) swap ─────────────────────────
             } else if (poolType === "cpmm") {
@@ -626,6 +640,7 @@ function SwapCardInner() {
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
                 log("✅ CPMM swap confirmed! txId:", txId)
                 setTxSig(txId)
+                notify.success("Transaction confirmed!")
 
                 // ── Step 3c: Legacy AMM v4 swap ────────────────────────────
             } else {
@@ -673,14 +688,12 @@ function SwapCardInner() {
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
                 log("✅ AMM v4 swap confirmed! txId:", txId)
                 setTxSig(txId)
+                notify.success("Transaction confirmed!")
             }
 
             setTimeout(() => refetchBalances(), 2000)
 
         } catch (e: any) {
-            err("Swap failed:", e)
-
-            // Extract the most useful error string
             let msg: string = e?.message ?? "Swap failed"
 
             // Raydium SDK sometimes wraps the real error inside logs
@@ -692,6 +705,7 @@ function SwapCardInner() {
             // Trim if very long
             if (msg.length > 160) msg = msg.slice(0, 160) + "…"
             setSwapError(msg)
+            notify.error(msg)
         } finally {
             setLoading(false)
         }

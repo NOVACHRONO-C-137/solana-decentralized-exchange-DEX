@@ -11,6 +11,7 @@ import { ChevronLeft, Loader2, CheckCircle2, AlertCircle, Minus, Plus } from "lu
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { formatLargeNumber } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { notify } from "@/lib/toast";
 
 export default function WithdrawStandardPage() {
     const router = useRouter();
@@ -40,7 +41,7 @@ export default function WithdrawStandardPage() {
     const [txLoading, setTxLoading] = useState(false);
     const [txError, setTxError] = useState<string | null>(null);
     const [txSig, setTxSig] = useState<string | null>(null);
-    const [slippage] = useState<number>(1); // 1% default slippage
+    const [slippage] = useState<number>(1);
 
     // ── Load pool info from RPC ───────────────────────────
     const loadPool = useCallback(async () => {
@@ -56,7 +57,6 @@ export default function WithdrawStandardPage() {
                 disableLoadToken: false,
             });
 
-            // On devnet, always use RPC — API doesn't index devnet CPMM pools
             const { poolInfo: info, rpcData: rpc } = await raydium.cpmm.getPoolInfoFromRpc(poolId);
             setPoolInfo(info);
             setRpcData(rpc);
@@ -66,7 +66,6 @@ export default function WithdrawStandardPage() {
             setLpMint(lpMintAddr);
             setLpDecimals(lpDec);
 
-            // Fetch LP token balance
             try {
                 const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, {
                     mint: new PublicKey(lpMintAddr),
@@ -83,8 +82,9 @@ export default function WithdrawStandardPage() {
                 setLpBalance(0);
             }
         } catch (err: any) {
-            console.error("[Withdraw Standard] Failed to load pool:", err);
-            setTxError(err?.message || "Failed to load pool info from chain.");
+            const msg = err?.message || "Failed to load pool info from chain.";
+            setTxError(msg);
+            notify.error(msg);
         } finally {
             setLoading(false);
         }
@@ -112,7 +112,9 @@ export default function WithdrawStandardPage() {
     const handleWithdraw = async () => {
         if (!connected || !publicKey || !poolInfo) return;
         if (lpToWithdraw <= 0) {
-            setTxError("No LP tokens to withdraw.");
+            const msg = "No LP tokens to withdraw.";
+            setTxError(msg);
+            notify.error(msg);
             return;
         }
         setTxLoading(true);
@@ -128,7 +130,6 @@ export default function WithdrawStandardPage() {
                         const sig = await sendTransaction(tx as Transaction, connection);
                         await connection.confirmTransaction(sig, "confirmed");
                         lastTxId = sig;
-                        console.log("[Withdraw] TX confirmed:", sig);
                     }
                 }
                 return [];
@@ -143,7 +144,6 @@ export default function WithdrawStandardPage() {
                 signAllTransactions: wrappedSignAll,
             });
 
-            // Slippage as Percent (1% = new Percent(1, 100))
             const slippagePercent = new Percent(
                 new BN(Math.floor(slippage * 100)),
                 new BN(10000)
@@ -166,11 +166,15 @@ export default function WithdrawStandardPage() {
                 }
             }
 
-            if (lastTxId) setTxSig(lastTxId);
+            if (lastTxId) {
+                setTxSig(lastTxId);
+                notify.success("Transaction confirmed!");
+            }
 
         } catch (err: any) {
-            console.error("[Withdraw Standard]", err);
-            setTxError(err?.message || "Withdrawal failed. Check console.");
+            const msg = err?.message || "Withdrawal failed. Check console.";
+            setTxError(msg);
+            notify.error(msg);
         } finally {
             setTxLoading(false);
         }

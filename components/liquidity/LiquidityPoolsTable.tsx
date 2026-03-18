@@ -215,10 +215,8 @@ async function discoverOnChainPoolIds(
             } catch { /* skip malformed accounts */ }
         }
 
-        console.log(`🔍 Discovered ${poolIds.size} pool IDs from on-chain positions`);
         return Array.from(poolIds);
     } catch (err) {
-        console.warn("⚠️ Failed to discover on-chain pools:", err);
         return [];
     }
 }
@@ -277,10 +275,8 @@ async function discoverCreatedPools(
             ...cpmmAccounts.map(({ pubkey }: any) => pubkey.toBase58())
         ];
 
-        console.log(`🔍 Discovered ${poolIds.length} pools created by wallet`);
         return poolIds;
     } catch (err) {
-        console.warn("⚠️ Failed to discover created pools:", err);
         return [];
     }
 }
@@ -345,7 +341,6 @@ export default function LiquidityPoolsTable() {
                     for (const id of createdPoolIds) allIds.add(id);
                     for (const id of positionPoolIds) allIds.add(id);
                 } catch (err) {
-                    console.warn("⚠️ On-chain pool discovery failed:", err);
                 }
             }
 
@@ -459,7 +454,6 @@ export default function LiquidityPoolsTable() {
                     setPools(fallbackPools);
                 }
             } catch (apiErr) {
-                console.warn("⚠️ Could not fetch pool data from API:", apiErr);
                 const fallbackPools: PoolData[] = idsArray.map(id => {
                     const local = localPoolMap.get(id);
                     return {

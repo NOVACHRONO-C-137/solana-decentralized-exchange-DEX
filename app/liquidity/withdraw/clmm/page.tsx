@@ -9,6 +9,7 @@ import BN from "bn.js";
 import { ChevronLeft, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { formatLargeNumber } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { notify } from "@/lib/toast";
 
 // ── Position card ─────────────────────────────────────────
 interface PositionInfo {
@@ -71,30 +72,9 @@ export default function WithdrawCLMMPage() {
                 programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID,
             });
 
-            console.log("[CLMM Withdraw] All positions:", allPositions.length);
-            console.log("[CLMM Withdraw] Raw all positions:", JSON.stringify(allPositions.map((p: any) => ({
-                nftMint: p.nftMint?.toString(),
-                poolId: p.poolId?.toString(),
-                liquidity: p.liquidity?.toString(),
-                tickLower: p.tickLower,
-                tickUpper: p.tickUpper,
-                tokenFeeAmountA: p.tokenFeeAmountA?.toString(),
-                tokenFeeAmountB: p.tokenFeeAmountB?.toString(),
-            }))));
             const poolPositions = allPositions.filter(
                 (p: any) => p.poolId.toString() === poolId
             );
-            console.log("[CLMM Withdraw] Positions for this pool:", poolPositions.length);
-            console.log("[CLMM Withdraw] Filtered positions for pool", poolId, ":", poolPositions.length);
-            poolPositions.forEach((p: any, i: number) => {
-                console.log(`[CLMM Withdraw] Position ${i}:`, {
-                    nftMint: p.nftMint?.toString(),
-                    liquidity: p.liquidity?.toString(),
-                    isZero: p.liquidity?.isZero(),
-                    tickLower: p.tickLower,
-                    tickUpper: p.tickUpper,
-                });
-            });
 
             const formatted: PositionInfo[] = poolPositions.map((p: any) => ({
                 nftMint: p.nftMint.toString(),
@@ -110,8 +90,9 @@ export default function WithdrawCLMMPage() {
 
             setPositions(formatted);
         } catch (err: any) {
-            console.error("[CLMM Withdraw] Load error:", err);
-            setTxError(err?.message || "Failed to load positions from chain.");
+            const msg = err?.message || "Failed to load positions from chain.";
+            setTxError(msg);
+            notify.error(msg);
         } finally {
             setLoading(false);
         }
@@ -123,16 +104,11 @@ export default function WithdrawCLMMPage() {
     const handleWithdraw = async (position: PositionInfo) => {
         if (!connected || !publicKey || !poolInfo || !poolKeys) return;
         if (position.liquidity.isZero()) {
-            setTxError("This position has no liquidity to withdraw.");
+            const msg = "This position has no liquidity to withdraw.";
+            setTxError(msg);
+            notify.error(msg);
             return;
         }
-
-        console.log("[CLMM Withdraw] Attempting withdraw:", {
-            nftMint: position.nftMint,
-            liquidity: position.liquidity.toString(),
-            isZero: position.liquidity.isZero(),
-            poolId: poolInfo.id,
-        });
 
         setWithdrawingId(position.nftMint);
         setTxError(null);
@@ -142,21 +118,17 @@ export default function WithdrawCLMMPage() {
             let lastTxId = "";
 
             const wrappedSignAll = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-                console.log("[CLMM Withdraw] Intercepting", txs.length, "txs");
                 for (const tx of txs) {
                     if ("version" in tx) {
                         // VersionedTransaction — sign then send raw
-                        console.log("[CLMM Withdraw] Versioned TX — signing with wallet...");
                         if (!signAllTransactions) throw new Error("signAllTransactions not available");
                         const [signed] = await signAllTransactions([tx as VersionedTransaction]);
                         const raw = (signed as VersionedTransaction).serialize();
                         const sig = await connection.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 3 });
-                        console.log("[CLMM Withdraw] Versioned TX sent:", sig);
                         await connection.confirmTransaction(sig, "confirmed");
                         lastTxId = sig;
                     } else {
                         // Legacy
-                        console.log("[CLMM Withdraw] Legacy TX — sending via wallet adapter...");
                         const sig = await sendTransaction(tx as Transaction, connection, {
                             skipPreflight: true,
                             preflightCommitment: "confirmed",
@@ -164,7 +136,6 @@ export default function WithdrawCLMMPage() {
                         });
                         await connection.confirmTransaction(sig, "confirmed");
                         lastTxId = sig;
-                        console.log("[CLMM Withdraw] Legacy TX confirmed:", sig);
                     }
                 }
                 return [];
@@ -203,7 +174,6 @@ export default function WithdrawCLMMPage() {
                 txVersion: TxVersion.LEGACY,
             });
 
-            console.log("[CLMM Withdraw] execute function built successfully, calling execute...");
 
             try {
                 await execute({ sendAndConfirm: true });
@@ -217,17 +187,14 @@ export default function WithdrawCLMMPage() {
 
             if (lastTxId) {
                 setTxSig(lastTxId);
-                // Reload positions after success
+                notify.success("Transaction confirmed!");
                 setTimeout(() => loadPositions(), 2000);
             }
 
         } catch (err: any) {
-            console.error("[CLMM Withdraw] Full error:", err);
-            console.error("[CLMM Withdraw] Error name:", err?.name);
-            console.error("[CLMM Withdraw] Error message:", err?.message);
-            console.error("[CLMM Withdraw] Error logs:", err?.logs);
-            console.error("[CLMM Withdraw] Error code:", err?.code);
-            setTxError(err?.message || "Withdrawal failed. Check console.");
+            const msg = err?.message || "Withdrawal failed. Check console.";
+            setTxError(msg);
+            notify.error(msg);
         } finally {
             setWithdrawingId(null);
         }

@@ -16,6 +16,7 @@ import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { formatLargeNumber } from "@/lib/utils";
 import { TOKEN_GRADIENTS } from "@/lib/tokens";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { notify } from "@/lib/toast";
 
 // ── Discover pool IDs from on-chain CLMM positions ───────
 async function discoverOnChainPoolIds(
@@ -252,7 +253,6 @@ export default function CreateFarmPage() {
                     }
                 }
             } catch (err: any) {
-                console.error("Standard pool fetch error:", err);
                 setStandardPoolError("Failed to verify pool. " + err.message);
             } finally {
                 setStandardPoolLoading(false);
@@ -702,7 +702,9 @@ export default function CreateFarmPage() {
 
     const handleCreateFarm = async () => {
         if (!connected || !publicKey) {
-            setTxError("Please connect your wallet first.");
+            const msg = "Please connect your wallet first.";
+            setTxError(msg);
+            notify.error(msg);
             return;
         }
         setIsCreating(true);
@@ -771,6 +773,7 @@ export default function CreateFarmPage() {
 
                     const { txId } = await execute({ sendAndConfirm: true });
                     setTxSig(txId);
+                    notify.success("Transaction confirmed!");
                     setIsCreating(false);
                     setTimeout(() => router.push("/liquidity"), 2000);
                     return;
@@ -779,7 +782,6 @@ export default function CreateFarmPage() {
                 throw new Error("Unknown pool type. Cannot create farm.");
             }
 
-            console.log("Fetching pool info for", selectedPoolId);
             const poolInfoRaw = await raydium.api.fetchPoolById({ ids: selectedPoolId });
             if (!poolInfoRaw || poolInfoRaw.length === 0) {
                 throw new Error("Pool not found. Check ID or connection.");
@@ -796,16 +798,13 @@ export default function CreateFarmPage() {
                     existingRewardMints = rpcPool.rewardInfos
                         .filter((r: any) => r.tokenMint && r.tokenMint.toString() !== "11111111111111111111111111111111")
                         .map((r: any) => r.tokenMint.toString().toLowerCase());
-                    console.log("On-chain existing rewards:", existingRewardMints);
                 }
             } catch (rpcErr) {
-                console.log("Failed to get RPC pool info, falling back to API:", rpcErr);
                 // Fallback to API data
                 existingRewardMints = (poolInfo.rewardDefaultInfos || []).map(
                     (r: any) => r.mint?.address?.toLowerCase()
                 );
             }
-            console.log("Existing rewards on pool:", existingRewardMints);
 
             let activeTxSig = "";
 
@@ -815,15 +814,15 @@ export default function CreateFarmPage() {
                 const tokenMint = r.token.mint.toLowerCase();
                 const isDuplicate = existingRewardMints.includes(tokenMint);
                 if (isDuplicate) {
-                    console.log(`Skipping ${r.token.symbol} - already exists on pool`);
                 }
                 return !isDuplicate;
             });
 
-            console.log(`Processing ${rewardsToProcess.length} new rewards (filtered from ${rewards.length})`);
 
             if (rewardsToProcess.length === 0) {
-                setTxError("All selected rewards are already added to this pool.");
+                const msg = "All selected rewards are already added to this pool.";
+                setTxError(msg);
+                notify.error(msg);
                 setIsCreating(false);
                 return;
             }
@@ -842,7 +841,6 @@ export default function CreateFarmPage() {
             );
 
             if (isThirdParty) {
-                console.log("Third-party token detected! Forcing SDK to target Slot 2...");
 
                 // Count actual taken slots from on-chain
                 let takenSlots = existingRewardMints.length;
@@ -861,7 +859,6 @@ export default function CreateFarmPage() {
                         isPadding: true
                     });
                 }
-                console.log("Padded rewardDefaultInfos to length:", poolInfo.rewardDefaultInfos.length);
             }
             // ------------------------------------------
 
@@ -918,18 +915,16 @@ export default function CreateFarmPage() {
             }
 
             if (rewardInfos.length === 0) {
-                setTxError("No valid rewards to add to the farm.");
+                const msg = "No valid rewards to add to the farm.";
+                setTxError(msg);
+                notify.error(msg);
                 setIsCreating(false);
                 return;
             }
 
             // Get pool keys for proper transaction construction
-            console.log("Fetching pool keys...");
             const poolKeys = await raydium.clmm.getClmmPoolKeys(selectedPoolId);
-            console.log("Pool keys fetched:", poolKeys ? "Success" : "Failed");
 
-            console.log(`Executing batch initRewards for ${rewardInfos.length} reward(s)`);
-            console.log("Reward infos:", JSON.stringify(rewardInfos, null, 2));
 
             try {
                 // Execute SINGLE transaction with ALL rewards
@@ -943,12 +938,11 @@ export default function CreateFarmPage() {
                     txVersion: TxVersion.LEGACY
                 });
 
-                console.log("Transaction built, executing...");
                 const { txId } = await execute({ sendAndConfirm: true });
                 activeTxSig = txId;
                 setTxSig(txId);
+                notify.success("Transaction confirmed!");
             } catch (execErr: any) {
-                console.error("Execution error:", execErr);
                 throw execErr;
             }
 
@@ -956,9 +950,9 @@ export default function CreateFarmPage() {
             setTimeout(() => router.push("/liquidity"), 2000);
 
         } catch (err: any) {
-            console.error("Farm creation err", err);
-            // If the user rejected the transaction
-            setTxError(err?.message || "Failed to create farm.");
+            const msg = err?.message || "Failed to create farm.";
+            setTxError(msg);
+            notify.error(msg);
             setIsCreating(false);
         }
     };
