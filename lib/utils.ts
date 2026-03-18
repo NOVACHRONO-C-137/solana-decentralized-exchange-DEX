@@ -23,3 +23,13 @@ export function formatLargeNumber(value: number | string, decimals: number = 2):
     maximumFractionDigits: Math.max(decimals, 4),
   });
 }
+
+export function timeAgo(blockTime: number | null | undefined): string {
+  if (!blockTime) return "—";
+  const diff = Math.floor(Date.now() / 1000) - blockTime;
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  const hours = Math.floor(diff / 3600);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}

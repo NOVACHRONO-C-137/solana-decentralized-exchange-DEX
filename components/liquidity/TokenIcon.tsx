@@ -33,7 +33,7 @@ export default function TokenIcon({ symbol, logo, size = 28, className = "" }: T
         );
     }
 
-    if (symbol === "SOL") {
+    if (symbol === "SOL" || symbol?.startsWith("So11111")) {
         return (
             <div
                 className={`rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195] flex items-center justify-center flex-shrink-0 ${className}`}
