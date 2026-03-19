@@ -14,8 +14,8 @@ import { ConnectWalletModal } from "@/components/ConnectWalletModal"
 import { TokenSelectorModal, DEVNET_TOKENS, TokenInfo } from "@/components/liquidity/TokenSelectorModal"
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import { notify } from "@/lib/toast"
-
-// ─────────────────────────────────────────────────────────────────────────────
+import { cleanError } from "@/lib/utils"
+import { logger } from "@/lib/logger"// ─────────────────────────────────────────────────────────────────────────────
 // Constants — devnet program IDs
 // ─────────────────────────────────────────────────────────────────────────────
 const CLMM_PROGRAM_ID = "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
@@ -221,7 +221,6 @@ function SlippageModal({
 // ─────────────────────────────────────────────────────────────────────────────
 // Debug logger — prefix every log with [AeroDEX] so they're easy to filter
 // ─────────────────────────────────────────────────────────────────────────────
-const log = (..._args: any[]) => {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
@@ -379,16 +378,15 @@ function SwapCardInner() {
             // Mints must be sorted the same way the pool was created.
             // We try both orderings for AMM; CLMM always stores sorted mints.
             const sorted = [fromToken.mint, toToken.mint].sort()
-            log("── STEP 1: Pool discovery ──────────────────────────────")
-            log("fromMint:", fromToken.mint)
-            log("toMint  :", toToken.mint)
-            log("sorted  :", sorted)
-
+            logger.log("── STEP 1: Pool discovery ──────────────────────────────")
+            logger.log("fromMint:", fromToken.mint)
+            logger.log("toMint  :", toToken.mint)
+            logger.log("sorted  :", sorted)
             let poolType: "clmm" | "amm" | "cpmm" | null = null
             let poolId = ""
 
             // CLMM scan — state size 1544, mintA @ offset 73, mintB @ offset 105
-            log("Scanning CLMM (dataSize=1544, offsets 73/105)...")
+            logger.log("Scanning CLMM (dataSize=1544, offsets 73/105)...")
             const clmmHits = await connection.getProgramAccounts(
                 new PublicKey(CLMM_PROGRAM_ID),
                 {
@@ -400,17 +398,18 @@ function SwapCardInner() {
                     ],
                 }
             )
-            log(`CLMM hits: ${clmmHits.length}`)
+            logger.log(`CLMM hits: ${clmmHits.length}`)
+
 
             if (clmmHits.length > 0) {
                 poolType = "clmm"
                 poolId = clmmHits[0].pubkey.toBase58()
-                log("✅ CLMM pool found:", poolId)
+                logger.log("✅ CLMM pool found:", poolId)
             }
 
             // ── NEW: CPMM scan — state size 637, mintA @ 168, mintB @ 200
             if (!poolType) {
-                log("Scanning Standard AMM CPMM (dataSize=637, offsets 168/200)...")
+                logger.log("Scanning Standard AMM CPMM (dataSize=637, offsets 168/200)...")
 
                 // Try both orderings because JS string sort might not match Rust byte sort!
                 const orderings = [
@@ -430,12 +429,12 @@ function SwapCardInner() {
                             ],
                         }
                     )
-                    log(`CPMM hits (${m1.slice(0, 4)}… / ${m2.slice(0, 4)}…): ${cpmmHits.length}`)
+                    logger.log(`CPMM hits (${m1.slice(0, 4)}… / ${m2.slice(0, 4)}…): ${cpmmHits.length}`)
 
                     if (cpmmHits.length > 0) {
                         poolType = "cpmm"
                         poolId = cpmmHits[0].pubkey.toBase58()
-                        log("✅ CPMM pool found:", poolId)
+                        logger.log("✅ CPMM pool found:", poolId)
                         break
                     }
                 }
@@ -444,7 +443,7 @@ function SwapCardInner() {
             // Legacy AMM v4 scan — state size 752, coinMint @ 400, pcMint @ 432
             // Try both orderings because creation order isn't guaranteed
             if (!poolType) {
-                log("Scanning Legacy AMM v4 (dataSize=752, offsets 400/432)...")
+                logger.log("Scanning Legacy AMM v4 (dataSize=752, offsets 400/432)...")
                 for (const [m1, m2] of [[sorted[0], sorted[1]], [sorted[1], sorted[0]]]) {
                     const ammHits = await connection.getProgramAccounts(
                         new PublicKey(AMM_V4_PROGRAM_ID),
@@ -457,11 +456,11 @@ function SwapCardInner() {
                             ],
                         }
                     )
-                    log(`AMM hits (${m1.slice(0, 8)}… / ${m2.slice(0, 8)}…): ${ammHits.length}`)
+                    logger.log(`AMM hits (${m1.slice(0, 8)}… / ${m2.slice(0, 8)}…): ${ammHits.length}`)
                     if (ammHits.length > 0) {
                         poolType = "amm"
                         poolId = ammHits[0].pubkey.toBase58()
-                        log("✅ AMM v4 pool found:", poolId)
+                        logger.log("✅ AMM v4 pool found:", poolId)
                         break
                     }
                 }
@@ -475,7 +474,7 @@ function SwapCardInner() {
             }
 
             // ── Step 2: init SDK ──────────────────────────────────────
-            log("── STEP 2: Init Raydium SDK ────────────────────────────")
+            logger.log("── STEP 2: Init Raydium SDK ────────────────────────────")
             const raydium = await Raydium.load({
                 owner: publicKey,
                 connection,
@@ -484,7 +483,7 @@ function SwapCardInner() {
                 disableLoadToken: false,
                 signAllTransactions,
             })
-            log("✅ SDK ready")
+            logger.log("✅ SDK ready")
 
             const slippageFraction = parseFloat(slippage) / 100
             const amountIn = new BN(
@@ -492,23 +491,23 @@ function SwapCardInner() {
                     .mul(new Decimal(10).pow(fromToken.decimals))
                     .toFixed(0)
             )
-            log("amountIn (raw lamports):", amountIn.toString())
-            log("slippage:", (slippageFraction * 100).toFixed(2) + "%")
+            logger.log("amountIn (raw lamports):", amountIn.toString())
+            logger.log("slippage:", (slippageFraction * 100).toFixed(2) + "%")
 
             // ── Step 3a: CLMM swap ────────────────────────────────────
             if (poolType === "clmm") {
-                log("── STEP 3a: CLMM swap ──────────────────────────────────")
+                logger.log("── STEP 3a: CLMM swap ──────────────────────────────────")
 
                 const clmmData = await raydium.clmm.getPoolInfoFromRpc(poolId)
                 const { poolInfo: _poolInfo, poolKeys, tickData } = clmmData
                 const poolInfo = _poolInfo as any
 
-                log("poolInfo.mintA      :", poolInfo.mintA.address)
-                log("poolInfo.mintB      :", poolInfo.mintB.address)
-                log("poolInfo.tickCurrent:", poolInfo.tickCurrent)
-                log("poolInfo.tickSpacing:", poolInfo.tickSpacing)
-                log("poolInfo.currentPrice:", poolInfo.currentPrice?.toString())
-                log("poolInfo.observationId:", (poolInfo as any).observationId)
+                logger.log("poolInfo.mintA      :", poolInfo.mintA.address)
+                logger.log("poolInfo.mintB      :", poolInfo.mintB.address)
+                logger.log("poolInfo.tickCurrent:", poolInfo.tickCurrent)
+                logger.log("poolInfo.tickSpacing:", poolInfo.tickSpacing)
+                logger.log("poolInfo.currentPrice:", poolInfo.currentPrice?.toString())
+                logger.log("poolInfo.observationId:", (poolInfo as any).observationId)
 
                 // Swap direction: a2b = selling mintA for mintB (price decreases)
                 const a2b = fromToken.mint === poolInfo.mintA.address
@@ -516,25 +515,25 @@ function SwapCardInner() {
                 const ticksPerArr = tickSpacing * 60          // ticks per array
                 const curTick = poolInfo.tickCurrent
 
-                log(`Swap direction: ${a2b ? "A→B (a2b)" : "B→A (b2a)"}`)
-                log(`ticksPerArray: ${ticksPerArr}`)
+                logger.log(`Swap direction: ${a2b ? "A→B (a2b)" : "B→A (b2a)"}`)
+                logger.log(`ticksPerArray: ${ticksPerArr}`)
 
                 // Anchor to the tick array that contains the current tick
                 const anchorStart = Math.floor(curTick / ticksPerArr) * ticksPerArr
-                log("anchorStart:", anchorStart)
+                logger.log("anchorStart:", anchorStart)
 
                 // 3 consecutive arrays in the direction of travel
                 const neededIndexes: number[] = a2b
                     ? [anchorStart, anchorStart - ticksPerArr, anchorStart - ticksPerArr * 2]
                     : [anchorStart, anchorStart + ticksPerArr, anchorStart + ticksPerArr * 2]
 
-                log("neededTickArrayIndexes:", neededIndexes)
+                logger.log("neededTickArrayIndexes:", neededIndexes)
 
                 // Map of initialized arrays from tickData (keyed by pool ID → tick index → {address})
                 const poolTickMap: Record<number, { address: PublicKey }> =
                     (tickData as any)[poolId] ?? {}
                 const initIndexes = Object.keys(poolTickMap).map(Number)
-                log("initializedTickArrayIndexes:", initIndexes)
+                logger.log("initializedTickArrayIndexes:", initIndexes)
 
                 const clmmProgram = new PublicKey(CLMM_PROGRAM_ID)
                 const poolPubkey = new PublicKey(poolId)
@@ -542,12 +541,12 @@ function SwapCardInner() {
                 const remainingAccounts = neededIndexes.map(idx => {
                     const entry = poolTickMap[idx]
                     if (entry?.address) {
-                        log(`  tick[${idx}] → initialized: ${(entry.address as PublicKey).toBase58()}`)
+                        logger.log(`  tick[${idx}] → initialized: ${(entry.address as PublicKey).toBase58()}`)
                         return entry.address as PublicKey
                     }
                     // Not initialized — compute PDA; on-chain will skip uninitialised arrays
                     const { publicKey: pda } = getPdaTickArrayAddress(clmmProgram, poolPubkey, idx)
-                    log(`  tick[${idx}] → PDA (uninit): ${pda.toBase58()}`)
+                    logger.log(`  tick[${idx}] → PDA (uninit): ${pda.toBase58()}`)
                     return pda
                 })
 
@@ -560,10 +559,10 @@ function SwapCardInner() {
                         .mul(new Decimal(10).pow(toToken.decimals))
                         .toFixed(0)
                 )
-                log("estimated output :", estOut.toFixed(6), toToken.symbol)
-                log("amountOutMin (raw):", amountOutMin.toString())
+                logger.log("estimated output :", estOut.toFixed(6), toToken.symbol)
+                logger.log("amountOutMin (raw):", amountOutMin.toString())
 
-                log("Calling raydium.clmm.swap()...")
+                logger.log("Calling raydium.clmm.swap()...")
                 const { execute } = await raydium.clmm.swap({
                     poolInfo,
                     poolKeys,
@@ -578,30 +577,30 @@ function SwapCardInner() {
                     txVersion: TxVersion.V0,
                 } as any)
 
-                log("Sending CLMM swap transaction...")
+                logger.log("Sending CLMM swap transaction...")
                 const result = await execute({ sendAndConfirm: true })
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
-                log("✅ CLMM swap confirmed! txId:", txId)
+                logger.log("✅ CLMM swap confirmed! txId:", txId)
                 setTxSig(txId)
                 notify.success("Transaction confirmed!")
 
                 // ── Step 3b: CPMM (Standard AMM) swap ─────────────────────────
             } else if (poolType === "cpmm") {
-                log("── STEP 3b: CPMM swap ──────────────────────────────────────")
+                logger.log("── STEP 3b: CPMM swap ──────────────────────────────────────")
 
                 // Correct SDK pattern: getPoolInfoFromRpc returns { poolInfo, rpcData }
                 // rpcData has baseReserve, quoteReserve, configInfo already as BN
                 const { poolInfo, rpcData } = await raydium.cpmm.getPoolInfoFromRpc(poolId)
 
-                log("poolInfo.mintA       :", poolInfo.mintA.address)
-                log("poolInfo.mintB       :", poolInfo.mintB.address)
-                log("rpcData.baseReserve  :", rpcData.baseReserve.toString())
-                log("rpcData.quoteReserve :", rpcData.quoteReserve.toString())
-                log("rpcData.configInfo.tradeFeeRate:", (rpcData as any).configInfo?.tradeFeeRate?.toString() ?? "default 2500")
+                logger.log("poolInfo.mintA       :", poolInfo.mintA.address)
+                logger.log("poolInfo.mintB       :", poolInfo.mintB.address)
+                logger.log("rpcData.baseReserve  :", rpcData.baseReserve.toString())
+                logger.log("rpcData.quoteReserve :", rpcData.quoteReserve.toString())
+                logger.log("rpcData.configInfo.tradeFeeRate:", (rpcData as any).configInfo?.tradeFeeRate?.toString() ?? "default 2500")
 
                 // baseIn = true → selling mintA, false → selling mintB
                 const baseIn = fromToken.mint === poolInfo.mintA.address
-                log(`Swap direction: ${baseIn ? "A→B (baseIn=true)" : "B→A (baseIn=false)"}`)
+                logger.log(`Swap direction: ${baseIn ? "A→B (baseIn=true)" : "B→A (baseIn=false)"}`)
 
                 // Use SDK's CurveCalculator — handles fees internally using configInfo.tradeFeeRate
                 const swapResult = (CurveCalculator as any).swapBaseInput(
@@ -614,16 +613,16 @@ function SwapCardInner() {
                     new BN((rpcData as any).configInfo?.fundFeeRate ?? 0),
                 )
 
-                log("swapResult.outputAmount (hex):", (swapResult as any).outputAmount)
-                log("swapResult.tradeFee (hex)     :", (swapResult as any).tradeFee)
+                logger.log("swapResult.outputAmount (hex):", (swapResult as any).outputAmount)
+                logger.log("swapResult.tradeFee (hex)     :", (swapResult as any).tradeFee)
 
                 const outputAmountBN = new BN((swapResult as any).outputAmount, 'hex')
                 const slipBps = Math.floor(slippageFraction * 10000)
                 const minAmountOut = outputAmountBN.muln(10000 - slipBps).divn(10000)
-                log("outputAmount (decimal):", outputAmountBN.toString())
-                log("minAmountOut (raw)    :", minAmountOut.toString())
+                logger.log("outputAmount (decimal):", outputAmountBN.toString())
+                logger.log("minAmountOut (raw)    :", minAmountOut.toString())
 
-                log("Calling raydium.cpmm.swap()...")
+                logger.log("Calling raydium.cpmm.swap()...")
                 const { execute } = await raydium.cpmm.swap({
                     poolInfo,
                     baseIn,
@@ -635,27 +634,27 @@ function SwapCardInner() {
                     txVersion: TxVersion.V0,
                 } as any)
 
-                log("Sending CPMM swap transaction...")
+                logger.log("Sending CPMM swap transaction...")
                 const result = await execute({ sendAndConfirm: true })
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
-                log("✅ CPMM swap confirmed! txId:", txId)
+                logger.log("✅ CPMM swap confirmed! txId:", txId)
                 setTxSig(txId)
                 notify.success("Transaction confirmed!")
 
                 // ── Step 3c: Legacy AMM v4 swap ────────────────────────────
             } else {
-                log("── STEP 3b: Legacy AMM v4 swap ─────────────────────────")
+                logger.log("── STEP 3b: Legacy AMM v4 swap ─────────────────────────")
 
                 const { poolInfo: _ammInfo, poolKeys } = await raydium.liquidity.getPoolInfoFromRpc({ poolId })
                 const poolInfo = _ammInfo as any
 
-                log("poolInfo.baseMint  :", poolInfo.baseMint.address)
-                log("poolInfo.quoteMint :", poolInfo.quoteMint.address)
-                log("poolInfo.baseReserve  :", poolInfo.baseReserve.toString())
-                log("poolInfo.quoteReserve :", poolInfo.quoteReserve.toString())
+                logger.log("poolInfo.baseMint  :", poolInfo.baseMint.address)
+                logger.log("poolInfo.quoteMint :", poolInfo.quoteMint.address)
+                logger.log("poolInfo.baseReserve  :", poolInfo.baseReserve.toString())
+                logger.log("poolInfo.quoteReserve :", poolInfo.quoteReserve.toString())
 
                 const baseIn = fromToken.mint === poolInfo.baseMint.address
-                log(`Swap direction: ${baseIn ? "base→quote" : "quote→base"}`)
+                logger.log(`Swap direction: ${baseIn ? "base→quote" : "quote→base"}`)
 
                 const reserveIn = baseIn ? poolInfo.baseReserve : poolInfo.quoteReserve
                 const reserveOut = baseIn ? poolInfo.quoteReserve : poolInfo.baseReserve
@@ -665,11 +664,11 @@ function SwapCardInner() {
                 const slipBps = Math.floor(slippageFraction * 10000)
                 const amountOutMin = estOutBN.muln(10000 - slipBps).divn(10000)
 
-                log("estOut (raw BN)    :", estOutBN.toString())
-                log("slipBps            :", slipBps)
-                log("amountOutMin (raw) :", amountOutMin.toString())
+                logger.log("estOut (raw BN)    :", estOutBN.toString())
+                logger.log("slipBps            :", slipBps)
+                logger.log("amountOutMin (raw) :", amountOutMin.toString())
 
-                log("Calling raydium.liquidity.swap()...")
+                logger.log("Calling raydium.liquidity.swap()...")
                 const { execute } = await raydium.liquidity.swap({
                     poolInfo,
                     poolKeys,
@@ -683,10 +682,10 @@ function SwapCardInner() {
                     },
                 } as any)
 
-                log("Sending AMM v4 swap transaction...")
+                logger.log("Sending AMM v4 swap transaction...")
                 const result = await execute({ sendAndConfirm: true })
                 const txId = (result as any).txIds?.[0] ?? (result as any).txId
-                log("✅ AMM v4 swap confirmed! txId:", txId)
+                logger.log("✅ AMM v4 swap confirmed! txId:", txId)
                 setTxSig(txId)
                 notify.success("Transaction confirmed!")
             }

@@ -172,26 +172,7 @@ export default function DashboardPage() {
             if (p.id) localPoolMap.set(p.id, p);
         }
 
-        // Show localStorage immediately (reuse normalized data from earlier)
-        if (customPools.length > 0 && pools.length === 0) {
-            const normalized = customPools.map((p: any) => ({
-                ...p,
-                mintA: typeof p.mintA === "string"
-                    ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
-                    : p.mintA,
-                mintB: typeof p.mintB === "string"
-                    ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
-                    : p.mintB,
-            }));
-            setPools(normalized);
-        }
 
-        // Also use customPools for the localPoolMap if empty
-        if (localPoolMap.size === 0) {
-            for (const p of customPools) {
-                if (p.id) localPoolMap.set(p.id, p);
-            }
-        }
 
         try {
             const res = await fetch(
@@ -454,13 +435,6 @@ export default function DashboardPage() {
                             onDeposit={handleDeposit}
                         />
 
-                        <style dangerouslySetInnerHTML={{
-                            __html: `
-                            .custom-scrollbar-teal::-webkit-scrollbar { width: 5px; }
-                            .custom-scrollbar-teal::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 8px; }
-                            .custom-scrollbar-teal::-webkit-scrollbar-thumb { background: rgba(20,241,149,0.35); border-radius: 8px; }
-                            .custom-scrollbar-teal::-webkit-scrollbar-thumb:hover { background: rgba(20,241,149,0.7); }
-                        ` }} />
                     </div>
                 </div>
 

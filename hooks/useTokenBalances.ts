@@ -267,7 +267,6 @@ export function useTokenBalances() {
 
                             parsedMetas.push({ mint, decimals, ...metadata });
                         }
-                    } else {
                     }
                 }
 

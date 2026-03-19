@@ -9,12 +9,10 @@ import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID, ApiV3PoolInfoConcentratedItem, ApiV3PoolInfoStandardItem } from "@raydium-io/raydium-sdk-v2";
 import BN from "bn.js";
 import Decimal from "decimal.js";
-import Image from "next/image";
 import { TokenInfo, TokenSelectorModal } from "@/components/liquidity/TokenSelectorModal";
 import { DateTimePicker } from "@/components/liquidity/DateTimePicker";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { formatLargeNumber } from "@/lib/utils";
-import { TOKEN_GRADIENTS } from "@/lib/tokens";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
 import { discoverOnChainPoolIds, discoverCreatedPools } from "@/lib/pool-discovery";
@@ -759,17 +757,12 @@ export default function CreateFarmPage() {
                 );
             }
 
-            let activeTxSig = "";
 
             // Filter out rewards that are already on the pool
             let rewardsToProcess = [...rewards].filter((r) => {
                 if (!r.token) return false;
-                const tokenMint = r.token.mint.toLowerCase();
-                const isDuplicate = existingRewardMints.includes(tokenMint);
-                if (isDuplicate) {
-                }
-                return !isDuplicate;
-            });
+                const tokenMi                const tokenMint = r.token.mint.toLowerCase();
+                return !existingRewardMints.includes(tokenMint); });
 
 
             if (rewardsToProcess.length === 0) {
@@ -892,7 +885,6 @@ export default function CreateFarmPage() {
                 });
 
                 const { txId } = await execute({ sendAndConfirm: true });
-                activeTxSig = txId;
                 setTxSig(txId);
                 notify.success("Transaction confirmed!");
             } catch (execErr: any) {

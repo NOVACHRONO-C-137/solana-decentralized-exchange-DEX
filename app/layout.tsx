@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
 import DotBackground from "@/components/DotBackground";
 import { Toaster } from "@/components/ui/toaster";
-
+import AppLoader from "@/components/AppLoader";
 const inter = Inter({ subsets: ["latin"] });
 const cagliostro = Cagliostro({
   weight: "400",
@@ -37,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SolanaWalletProvider>
+            <AppLoader />
             <DotBackground />
             <Navbar />
             {children}
