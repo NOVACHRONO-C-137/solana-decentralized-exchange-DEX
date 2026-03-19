@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatLargeNumber } from "@/lib/utils";
+import { formatLargeNumber, glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 
 interface TokenItem {
@@ -28,7 +28,7 @@ export function TokenHoldingsCard({ tokenList, balancesLoading }: TokenHoldingsC
     });
 
     return (
-        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[420px]">
+        <div className={`${glassCard} p-5 min-h-[420px]`}>
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Token Holdings</h3>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]">{tokenList.length}</span>

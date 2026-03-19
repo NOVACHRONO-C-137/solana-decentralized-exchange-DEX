@@ -17,54 +17,7 @@ import { formatLargeNumber } from "@/lib/utils";
 import { TOKEN_GRADIENTS } from "@/lib/tokens";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
-
-// ── Discover pool IDs from on-chain CLMM positions ───────
-async function discoverOnChainPoolIds(
-    connection: any,
-    walletPubkey: PublicKey
-): Promise<string[]> {
-    try {
-        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
-        const accounts = await connection.getProgramAccounts(
-            new PublicKey(CLMM_PROGRAM),
-            { filters: [{ dataSize: 188 }] }
-        );
-        const poolIds = new Set<string>();
-        for (const { account } of accounts) {
-            try {
-                const poolIdBytes = account.data.subarray(40, 72);
-                const poolId = new PublicKey(poolIdBytes).toBase58();
-                poolIds.add(poolId);
-            } catch { }
-        }
-        return Array.from(poolIds);
-    } catch (err) {
-        return [];
-    }
-}
-
-// ── Discover pool IDs by scanning PoolState accounts ──────
-async function discoverCreatedPools(
-    connection: any,
-    walletPubkey: PublicKey
-): Promise<string[]> {
-    try {
-        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
-        const clmmPromise = connection.getProgramAccounts(
-            new PublicKey(CLMM_PROGRAM),
-            {
-                filters: [
-                    { dataSize: 1544 },
-                    { memcmp: { offset: 41, bytes: walletPubkey.toBase58() } }
-                ]
-            }
-        );
-        const clmmAccounts = await clmmPromise.catch(() => []);
-        return clmmAccounts.map(({ pubkey }: any) => pubkey.toBase58());
-    } catch (err) {
-        return [];
-    }
-}
+import { discoverOnChainPoolIds, discoverCreatedPools } from "@/lib/pool-discovery";
 
 
 export default function CreateFarmPage() {

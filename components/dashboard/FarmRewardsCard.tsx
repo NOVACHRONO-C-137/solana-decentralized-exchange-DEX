@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Sprout, Loader2 } from "lucide-react";
-import { formatLargeNumber } from "@/lib/utils";
+import { formatLargeNumber, glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import BN from "bn.js";
 
@@ -19,7 +19,7 @@ export function FarmRewardsCard({ pools, positions, claimingId, onClaim, onDepos
     const farmPools = pools.filter(p => p.rewardDefaultInfos?.length > 0);
 
     return (
-        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[320px]">
+        <div className={`${glassCard} p-5 min-h-[320px]`}>
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Farm Rewards</h3>

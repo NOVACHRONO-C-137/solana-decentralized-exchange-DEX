@@ -271,9 +271,14 @@ export function useTokenBalances() {
                     }
                 }
 
-                // 4. Fetch actual image URLs from each token's metadata JSON URI
-                const imagePromises = parsedMetas.map(m => fetchImageFromMetadataUri(m.uri));
-                const images = await Promise.all(imagePromises);
+                // 4. Fetch actual image URLs from each token's metadata JSON URI (with concurrency limiting)
+                const images: (string | undefined)[] = [];
+                const chunkSize = 4;
+                for (let i = 0; i < parsedMetas.length; i += chunkSize) {
+                    const chunk = parsedMetas.slice(i, i + chunkSize);
+                    const results = await Promise.all(chunk.map(m => fetchImageFromMetadataUri(m.uri)));
+                    images.push(...results);
+                }
 
                 const newTokens: TokenInfo[] = parsedMetas.map((meta, i) => {
                     const colorIdx = i % DISCOVERED_COLORS.length;

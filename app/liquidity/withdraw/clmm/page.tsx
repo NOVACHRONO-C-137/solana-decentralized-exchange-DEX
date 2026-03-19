@@ -7,7 +7,7 @@ import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import { Raydium, TxVersion, DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 import BN from "bn.js";
 import { ChevronLeft, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
-import { formatLargeNumber } from "@/lib/utils";
+import { formatLargeNumber, glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
 
@@ -101,7 +101,7 @@ export default function WithdrawCLMMPage() {
     useEffect(() => { loadPositions(); }, [loadPositions]);
 
     // ── Withdraw a position ───────────────────────────────
-    const handleWithdraw = async (position: PositionInfo) => {
+    const handleWithdraw = async (position: PositionInfo, closePosition = false) => {
         if (!connected || !publicKey || !poolInfo || !poolKeys) return;
         if (position.liquidity.isZero()) {
             const msg = "This position has no liquidity to withdraw.";
@@ -166,7 +166,7 @@ export default function WithdrawCLMMPage() {
                 ownerPosition: position.raw,
                 ownerInfo: {
                     useSOLBalance: true,
-                    closePosition: false, // never collect rewards on close — causes error 6035 on finished farms
+                    closePosition, // never collect rewards on close — causes error 6035 on finished farms
                 } as any,
                 liquidity: position.liquidity,
                 amountMinA: new BN(0), // 0 = accept any amount (max slippage)
@@ -276,12 +276,12 @@ export default function WithdrawCLMMPage() {
 
             {/* Loading */}
             {loading ? (
-                <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-10 flex flex-col items-center gap-3">
+                <div className={`${glassCard} p-10 flex flex-col items-center gap-3`}>
                     <Loader2 className="h-8 w-8 animate-spin text-[var(--neon-teal)]" />
                     <p className="text-sm text-muted-foreground">Loading your positions from chain...</p>
                 </div>
             ) : positions.length === 0 ? (
-                <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-10 flex flex-col items-center gap-4 text-center">
+                <div className={`${glassCard} p-10 flex flex-col items-center gap-4 text-center`}>
                     <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center">
                         <TokenIcon symbol={symbolA} logo={logoA} size={28} />
                     </div>
@@ -302,7 +302,7 @@ export default function WithdrawCLMMPage() {
                         You have <span className="text-foreground font-semibold">{positions.length}</span> open position{positions.length > 1 ? "s" : ""} in this pool.
                     </p>
                     {positions.map((pos, i) => (
-                        <div key={pos.nftMint} className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 flex flex-col gap-4">
+                        <div key={pos.nftMint} className={`${glassCard} p-5 flex flex-col gap-4`}>
                             {/* Position header */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -364,7 +364,7 @@ export default function WithdrawCLMMPage() {
                             {/* Actions */}
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => handleWithdraw(pos)}
+                                    onClick={() => handleWithdraw(pos, false)}
                                     disabled={!!withdrawingId || pos.liquidity.isZero()}
                                     className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
                                         ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
@@ -374,26 +374,28 @@ export default function WithdrawCLMMPage() {
                                     {withdrawingId === pos.nftMint ? (
                                         <><Loader2 className="h-4 w-4 animate-spin" /> Withdrawing...</>
                                     ) : (
-                                        "Withdraw Liquidity"
+                                        "Withdraw"
                                     )}
                                 </button>
+
                                 <button
-                                    onClick={() => handleWithdraw(pos)}
+                                    onClick={() => handleWithdraw(pos, true)}
                                     disabled={!!withdrawingId || pos.liquidity.isZero()}
-                                    className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${pos.liquidity.isZero()
-                                        ? "bg-secondary/30 text-muted-foreground cursor-not-allowed opacity-50"
-                                        : "bg-[var(--neon-teal)] text-black hover:opacity-90 cursor-pointer"
+                                    className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
+                                        ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
+                                        : "border-red-400/50 text-red-400 hover:bg-red-400/10 cursor-pointer"
                                         }`}
                                 >
                                     {withdrawingId === pos.nftMint ? (
-                                        <><Loader2 className="h-4 w-4 animate-spin" /> Withdrawing...</>
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Closing...</>
                                     ) : (
-                                        "Withdraw Liquidity"
+                                        "Close Position"
                                     )}
                                 </button>
                             </div>
                             <p className="text-xs text-muted-foreground text-center">
-                                Withdrawing will return your tokens to your wallet. The position NFT will remain in your wallet.
+                                <span className="text-[var(--neon-teal)]">Withdraw</span> removes liquidity but keeps the position open.{" "}
+                                <span className="text-red-400">Close Position</span> burns the NFT and reclaims rent SOL — use when done permanently.
                             </p>
                         </div>
                     ))}

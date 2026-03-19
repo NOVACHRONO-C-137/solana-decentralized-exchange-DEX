@@ -12,6 +12,7 @@ import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import BN from "bn.js";
 import Decimal from "decimal.js";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { SlippageSettings } from "@/components/liquidity/SlippageSettings";
 
 function PositionPageInner() {
   const router = useRouter();
@@ -309,19 +310,12 @@ function PositionPageInner() {
                   <div className="mb-4 flex items-center gap-2">
                     <p className="text-sm font-bold">Max Slippage</p>
                   </div>
-                  <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 mb-4">
-                    {(["Auto", "Custom"] as const).map((tab) => (
-                      <button key={tab} onClick={() => setSlippageTab(tab)} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab ? "bg-secondary dark:bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}>
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                  {slippageTab === "Custom" && (
-                    <div className="relative">
-                      <input type="number" value={customSlippage} onChange={(e) => setCustomSlippage(e.target.value)} className="w-full bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground outline-none" placeholder="0.0" />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">%</span>
-                    </div>
-                  )}
+                  <SlippageSettings
+                    tab={slippageTab}
+                    value={customSlippage}
+                    onTabChange={setSlippageTab}
+                    onValueChange={setCustomSlippage}
+                  />
                 </div>
               )}
             </div>

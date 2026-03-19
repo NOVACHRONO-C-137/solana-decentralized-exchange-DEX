@@ -61,38 +61,36 @@ export default function DashboardPage() {
         const allIds = new Set<string>();
         const createdIds = new Set<string>();
 
+        // Read localStorage ONCE at the start
+        let customPools: any[] = [];
+        try {
+            const stored = localStorage.getItem("aeroCustomPools");
+            if (stored) {
+                customPools = JSON.parse(stored);
+            }
+        } catch { }
+
         // Show localStorage pools immediately while we fetch
-        try {
-            const stored = localStorage.getItem("aeroCustomPools");
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                const normalized = parsed.map((p: any) => ({
-                    ...p,
-                    mintA: typeof p.mintA === "string"
-                        ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
-                        : p.mintA,
-                    mintB: typeof p.mintB === "string"
-                        ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
-                        : p.mintB,
-                }));
-                setPools(normalized); // show immediately, API will enrich later
-            }
-        } catch { }
+        if (customPools.length > 0) {
+            const normalized = customPools.map((p: any) => ({
+                ...p,
+                mintA: typeof p.mintA === "string"
+                    ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
+                    : p.mintA,
+                mintB: typeof p.mintB === "string"
+                    ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
+                    : p.mintB,
+            }));
+            setPools(normalized); // show immediately, API will enrich later
+        }
 
-        // 1. From localStorage
-        try {
-            const stored = localStorage.getItem("aeroCustomPools");
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                parsed.forEach((p: any) => {
-                    if (p.id) {
-                        allIds.add(p.id);
-                        createdIds.add(p.id);
-                    }
-                });
+        // 1. From localStorage (reuse the already-parsed data)
+        customPools.forEach((p: any) => {
+            if (p.id) {
+                allIds.add(p.id);
+                createdIds.add(p.id);
             }
-        } catch { }
-
+        });
         // 2. On-chain CLMM discovery
         try {
             const accounts = await connection.getProgramAccounts(
@@ -168,31 +166,32 @@ export default function DashboardPage() {
         if (!idsArray.length) { setPoolsLoading(false); setPools([]); return; }
 
         // 3. Fetch metadata from API, then merge with localStorage for any missing pools
-        // Build localStorage map for fallback
+        // Build localStorage map for fallback (reuse already-parsed customPools)
         const localPoolMap = new Map<string, any>();
-        try {
-            const stored = localStorage.getItem("aeroCustomPools");
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) {
-                    for (const p of parsed) {
-                        if (p.id) localPoolMap.set(p.id, p);
-                    }
-                }
-            }
-        } catch { }
+        for (const p of customPools) {
+            if (p.id) localPoolMap.set(p.id, p);
+        }
 
-        // Show localStorage immediately
-        const immediateLocal = Array.from(localPoolMap.values()).map((p: any) => ({
-            ...p,
-            mintA: typeof p.mintA === "string"
-                ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
-                : p.mintA,
-            mintB: typeof p.mintB === "string"
-                ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
-                : p.mintB,
-        }));
-        if (immediateLocal.length > 0) setPools(immediateLocal);
+        // Show localStorage immediately (reuse normalized data from earlier)
+        if (customPools.length > 0 && pools.length === 0) {
+            const normalized = customPools.map((p: any) => ({
+                ...p,
+                mintA: typeof p.mintA === "string"
+                    ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
+                    : p.mintA,
+                mintB: typeof p.mintB === "string"
+                    ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
+                    : p.mintB,
+            }));
+            setPools(normalized);
+        }
+
+        // Also use customPools for the localPoolMap if empty
+        if (localPoolMap.size === 0) {
+            for (const p of customPools) {
+                if (p.id) localPoolMap.set(p.id, p);
+            }
+        }
 
         try {
             const res = await fetch(

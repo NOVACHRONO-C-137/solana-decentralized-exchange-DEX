@@ -6,6 +6,7 @@ import { RefreshCw, Loader2, Droplets, ExternalLink } from "lucide-react";
 import { CopyButton } from "@/components/dashboard/CopyButton";
 import { PoolTypeBadge } from "@/components/dashboard/PoolTypeBadge";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { glassCard } from "@/lib/utils";
 
 interface PoolsCardProps {
     pools: any[];
@@ -81,7 +82,7 @@ export function PoolsCard({
     const TABS: TabType[] = ["All", "CLMM", "Standard", "Legacy"];
 
     return (
-        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[600px]">
+        <div className={`${glassCard} p-5 min-h-[600px]`}>
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
                     <button

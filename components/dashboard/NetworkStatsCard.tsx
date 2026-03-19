@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { RefreshCw, Loader2 } from "lucide-react";
+import { glassCard } from "@/lib/utils";
 
 interface NetworkStatsCardProps {
     solPrice: number;
@@ -47,7 +48,7 @@ export function NetworkStatsCard({ solPrice }: NetworkStatsCardProps) {
     const epochPct = epochInfo ? (epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100 : 0;
 
     return (
-        <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-5 min-h-[160px]">
+        <div className={`${glassCard} p-5 min-h-[160px]`}>
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Network Stats</h3>
                 <button onClick={fetchNetworkStats} className="p-1 hover:bg-secondary/60 rounded-lg transition-all text-muted-foreground hover:text-foreground">

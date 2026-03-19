@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useRef } from "react";
+import { SlippageSettings } from "@/components/liquidity/SlippageSettings";
 import { formatLargeNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -1073,49 +1074,13 @@ function PositionPageInner() {
                   <div className="absolute top-full right-0 mt-2 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50">
                     <div className="mb-4 flex items-center gap-2">
                       <p className="text-sm font-bold">Max Slippage</p>
-                      <div className="group relative">
-                        <span className="text-muted-foreground text-xs cursor-pointer hover:text-foreground">ⓘ</span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-xs text-foreground/70 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-center pointer-events-none z-50">
-                          The maximum price difference you are willing to accept.
-                        </div>
-                      </div>
                     </div>
-
-                    <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl p-1 mb-4">
-                      {(["Auto", "Custom"] as const).map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setSlippageTab(tab)}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${slippageTab === tab
-                            ? "bg-secondary dark:bg-[#0D9B5F]/15 text-foreground dark:bg-white/10 dark:text-white"
-                            : "text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
-                    {slippageTab === "Custom" && (
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={customSlippage}
-                          onChange={(e) => setCustomSlippage(e.target.value)}
-                          className="w-full bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground outline-none focus:border-[var(--neon-teal)]/50 transition-all placeholder:text-muted-foreground/30"
-                          placeholder="0.0"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">%</span>
-                      </div>
-                    )}
-
-                    {(parseFloat(customSlippage) > 5 || slippageTab === "Auto") && (
-                      <p className="text-[10px] text-yellow-500/80 mt-3 text-center">
-                        {slippageTab === "Auto"
-                          ? "Auto is set to 2.5% for Devnet pairs."
-                          : "High slippage tolerance. Your transaction might be front-run."}
-                      </p>
-                    )}
+                    <SlippageSettings
+                      tab={slippageTab}
+                      value={customSlippage}
+                      onTabChange={setSlippageTab}
+                      onValueChange={setCustomSlippage}
+                    />
                   </div>
                 )}
 

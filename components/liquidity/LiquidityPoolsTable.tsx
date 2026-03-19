@@ -21,6 +21,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { DEVNET_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
+import { discoverOnChainPoolIds, discoverCreatedPools } from "@/lib/pool-discovery";
+import { glassCard } from "@/lib/utils";
 
 // Compact USD formatter for mobile
 const formatCompactUSD = (valStr: string) => {
@@ -184,104 +186,9 @@ function apiPoolToPoolData(live: any, priceA: number, priceB: number): PoolData 
     };
 }
 
-// ── Discover pool IDs from on-chain CLMM positions ───────
-async function discoverOnChainPoolIds(
-    connection: any,
-    walletPubkey: PublicKey
-): Promise<string[]> {
-    try {
-        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+// Functions moved to lib/pool-discovery.ts
 
-        // Fetch all PersonalPosition accounts (size = 188 bytes) owned by the wallet
-        // PersonalPosition layout: discriminator(8) + nftMint(32) + poolId(32) + ...
-        // The poolId is at offset 40 (bytes 40-72)
-        const accounts = await connection.getProgramAccounts(
-            new PublicKey(CLMM_PROGRAM),
-            {
-                filters: [
-                    { dataSize: 188 },  // PersonalPosition account size
-                ]
-            }
-        );
-
-        // Extract unique pool IDs from position accounts
-        // PersonalPosition layout: discriminator(8) + nftMint(32) + poolId(32) + ...
-        const poolIds = new Set<string>();
-        for (const { account } of accounts) {
-            try {
-                const poolIdBytes = account.data.subarray(40, 72);
-                const poolId = new PublicKey(poolIdBytes).toBase58();
-                poolIds.add(poolId);
-            } catch { /* skip malformed accounts */ }
-        }
-
-        return Array.from(poolIds);
-    } catch (err) {
-        return [];
-    }
-}
-
-// ── Discover pool IDs by scanning PoolState accounts ──────
-// PoolState accounts have a creator field we can match
-async function discoverCreatedPools(
-    connection: any,
-    walletPubkey: PublicKey
-): Promise<string[]> {
-    try {
-        const CLMM_PROGRAM = DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
-        const CPMM_PROGRAM = DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM;
-
-        // PoolState accounts are 1544 bytes. The owner/creator is at offset 73.
-        // Layout: discriminator(8) + bump(1) + ammConfig(32) + creator(32) + ...
-        // So creator starts at offset 41
-        const clmmPromise = connection.getProgramAccounts(
-            new PublicKey(CLMM_PROGRAM),
-            {
-                filters: [
-                    { dataSize: 1544 },  // PoolState account size
-                    {
-                        memcmp: {
-                            offset: 41,  // creator field offset
-                            bytes: walletPubkey.toBase58(),
-                        }
-                    }
-                ]
-            }
-        );
-
-        // CPMM pool size is 637 bytes. poolCreator is at offset 40.
-        const cpmmPromise = connection.getProgramAccounts(
-            new PublicKey(CPMM_PROGRAM),
-            {
-                filters: [
-                    { dataSize: 637 },  // Cpmm Pool info size
-                    {
-                        memcmp: {
-                            offset: 40,  // poolCreator field offset
-                            bytes: walletPubkey.toBase58(),
-                        }
-                    }
-                ]
-            }
-        );
-
-        const [clmmAccounts, cpmmAccounts] = await Promise.all([
-            clmmPromise.catch(() => []),
-            cpmmPromise.catch(() => [])
-        ]);
-
-        const poolIds = [
-            ...clmmAccounts.map(({ pubkey }: any) => pubkey.toBase58()),
-            ...cpmmAccounts.map(({ pubkey }: any) => pubkey.toBase58())
-        ];
-
-        return poolIds;
-    } catch (err) {
-        return [];
-    }
-}
-
-// ── Fetch transaction count for a pool ───────────────────────
+// ── Fetch transaction count for a pool (with concurrency limiting) ──
 async function fetchPoolTxCount(poolId: string, connection: any): Promise<number> {
     try {
         const signatures = await connection.getSignaturesForAddress(new PublicKey(poolId), { limit: 100 });
@@ -289,6 +196,18 @@ async function fetchPoolTxCount(poolId: string, connection: any): Promise<number
     } catch {
         return 0;
     }
+}
+
+// Concurrency-limited batch fetcher for transaction counts
+async function fetchAllTxCounts(pools: PoolData[], connection: any): Promise<number[]> {
+    const chunkSize = 3;
+    const results: number[] = [];
+    for (let i = 0; i < pools.length; i += chunkSize) {
+        const chunk = pools.slice(i, i + chunkSize);
+        const counts = await Promise.all(chunk.map(p => fetchPoolTxCount(p.id, connection)));
+        results.push(...counts);
+    }
+    return results;
 }
 
 export default function LiquidityPoolsTable() {
@@ -421,11 +340,9 @@ export default function LiquidityPoolsTable() {
 
                     setPools(livePools);
 
-                    // Fetch transaction counts for each pool
+                    // Fetch transaction counts for each pool (with concurrency limiting)
                     if (connection) {
-                        const txCounts = await Promise.all(
-                            livePools.map(pool => fetchPoolTxCount(pool.id, connection))
-                        );
+                        const txCounts = await fetchAllTxCounts(livePools, connection);
                         const countsMap = new Map<string, number>();
                         livePools.forEach((pool, idx) => {
                             countsMap.set(pool.id, txCounts[idx]);
@@ -560,7 +477,7 @@ export default function LiquidityPoolsTable() {
                 </div>
 
                 {/* Main Table Card */}
-                <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl overflow-hidden">
+                <div className={`${glassCard} overflow-hidden`}>
                     {/* Header */}
                     <div className="p-4 sm:p-6 border-b border-[#0D9B5F]/15 dark:border-border/50 flex justify-between items-center">
                         <div>
