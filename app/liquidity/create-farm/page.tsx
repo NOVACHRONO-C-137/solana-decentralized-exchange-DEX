@@ -761,8 +761,9 @@ export default function CreateFarmPage() {
             // Filter out rewards that are already on the pool
             let rewardsToProcess = [...rewards].filter((r) => {
                 if (!r.token) return false;
-                const tokenMi                const tokenMint = r.token.mint.toLowerCase();
-                return !existingRewardMints.includes(tokenMint); });
+                const tokenMint = r.token.mint.toLowerCase();
+                return !existingRewardMints.includes(tokenMint);
+            });
 
 
             if (rewardsToProcess.length === 0) {

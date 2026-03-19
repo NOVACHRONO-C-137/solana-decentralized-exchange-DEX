@@ -12,11 +12,16 @@ function SwapPageInner() {
     const fromMint = searchParams.get('fromMint') ?? '';
     const toMint = searchParams.get('toMint') ?? '';
 
+    // When coming from a pool link both mints are in the URL — the user already
+    // chose their pair by clicking the pool row. Lock the token selectors so
+    // they can't accidentally switch to a different token.
+    const lockedTokens = !!(fromMint && toMint);
+
     return (
         <main className="min-h-screen bg-background text-foreground px-4 py-8 transition-colors">
             <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center min-h-screen px-4 pt-28 pb-12 gap-8 lg:gap-6 max-w-6xl mx-auto w-full relative z-10">
                 <div className="w-full max-w-lg lg:max-w-none lg:w-1/2 flex justify-center lg:justify-end">
-                    <SwapCard />
+                    <SwapCard lockedTokens={lockedTokens} />
                 </div>
                 <div className="w-full max-w-lg lg:max-w-none lg:w-1/2 lg:pt-[72px] flex justify-center lg:justify-start">
                     <SwapStatsPanel
