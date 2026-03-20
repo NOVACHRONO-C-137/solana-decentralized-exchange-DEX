@@ -34,21 +34,21 @@ export default function StandardPoolPage() {
 
     const [feeTierOpen, setFeeTierOpen] = useState<boolean>(false);
     const [feeTiers, setFeeTiers] = useState<any[]>([]);
-    const [selectedFee, setSelectedFee] = useState<any>(null); // full config object
+    const [selectedFee, setSelectedFee] = useState<any>(null);
 
     const [startTime, setStartTime] = useState<"now" | "custom">("now");
     const [customStartTime, setCustomStartTime] = useState<Date>(() => {
         const d = new Date();
-        d.setMinutes(d.getMinutes() + 10); // default to 10 mins from now
+        d.setMinutes(d.getMinutes() + 10);
         return d;
     });
 
-    // NEW STATE: Loading flow
+
     const [isCreating, setIsCreating] = useState(false);
     const [txError, setTxError] = useState<string | null>(null);
     const [txSig, setTxSig] = useState<string | null>(null);
 
-    // Fetch CPMM configs on mount
+
     useEffect(() => {
         const fetchConfigs = async () => {
             try {

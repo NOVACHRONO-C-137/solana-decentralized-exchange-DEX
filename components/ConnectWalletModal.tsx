@@ -90,8 +90,6 @@ export function ConnectWalletModal({ isOpen, onClose }: { isOpen: boolean; onClo
 
                 </div>
 
-                {/* The "New here?" and MoonPay sections have been removed. */}
-
             </DialogContent>
         </Dialog>
     );

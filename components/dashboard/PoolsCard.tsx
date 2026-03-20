@@ -59,7 +59,7 @@ export function PoolsCard({
     const [activeTab, setActiveTab] = useState<TabType>("All");
     const [poolSearch, setPoolSearch] = useState("");
 
-    // The parent strictly curates positionPoolIds for this specific wallet now
+
     const positionPools = pools.filter((p) => positionPoolIds.has(p.id || p.poolId));
     const filteredPools = positionPools.filter((p) => matchesType(p, activeTab) && matchesSearch(p, poolSearch));
 
@@ -83,7 +83,7 @@ export function PoolsCard({
             </div>
 
             <div className="flex flex-col gap-3 mb-5">
-                {/* Filters: 2x2 grid on mobile, single row on sm+ */}
+                {/* Filters */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-row gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
                     {tabs.map((tab) => (
                         <button
@@ -98,7 +98,7 @@ export function PoolsCard({
                         </button>
                     ))}
                 </div>
-                {/* Search + refresh: full width on mobile */}
+                {/* Search */}
                 <div className="flex items-center gap-2">
                     <input
                         type="text"

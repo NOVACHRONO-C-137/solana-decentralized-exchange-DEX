@@ -22,7 +22,6 @@ export function MarketTrendsCard() {
             const days = timeframe === "1D" ? 1 : timeframe === "7D" ? 7 : 30;
 
             try {
-                // Fetch from CoinGecko
                 const res = await fetch(`https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=${days}`);
                 if (!res.ok) throw new Error("Rate limited");
 
@@ -47,7 +46,6 @@ export function MarketTrendsCard() {
                     });
                 }
             } catch (err) {
-                // Fallback realistic dummy data if API rate limits us
                 if (isMounted) {
                     let price = 145.20;
                     const points = days === 1 ? 24 : days === 7 ? 168 : 30;

@@ -1,5 +1,3 @@
-//components/liquidity/LiquidityPoolsTable.tsx
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -23,9 +21,7 @@ import { discoverOnChainPoolIds, discoverCreatedPools } from "@/lib/pool-discove
 import { glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
+
 interface PoolData {
     id: string;
     name: string;
@@ -47,9 +43,7 @@ interface PoolData {
     symbolB?: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+
 const formatCompactUSD = (valStr: string) => {
     const num = parseFloat(valStr.replace(/[$,]/g, ''));
     if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
@@ -176,26 +170,7 @@ async function searchPoolsByMint(mint: string): Promise<PoolData[]> {
     } catch { return []; }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// On-chain fallback: read pool account data directly to extract mintA/mintB.
-// Used when the Raydium API doesn't know about the pool (e.g. newly created pools).
-//
-// CLMM PoolState layout (1544 bytes):
-//   offset 8:  bump (1)
-//   offset 9:  ammConfig (32)
-//   offset 41: creator (32)
-//   offset 73: mintA (32)  ← 
-//   offset 105: mintB (32) ←
-//
-// CPMM PoolState layout (637 bytes):
-//   offset 8:  configId (32)
-//   offset 40: poolCreator (32)
-//   offset 72: token0Vault (32)
-//   offset 104: token1Vault (32)
-//   offset 136: lpMint (32)
-//   offset 168: token0Mint (32) ←
-//   offset 200: token1Mint (32) ←
-// ─────────────────────────────────────────────────────────────────────────────
+
 async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolData | null> {
     try {
         const info = await connection.getAccountInfo(new PublicKey(poolId));
@@ -296,9 +271,7 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
     } catch (err) { return null; }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main component
-// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LiquidityPoolsTable() {
     const [selectedPool, setSelectedPool] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -427,27 +400,24 @@ export default function LiquidityPoolsTable() {
         loadPools();
     }, [publicKey, connected, connection]);
 
-    // ── Unified search effect ──────────────────────────────────────────────
-    // Single effect handles both pool-address and mint-address searches.
-    // Order: RPC first (for pool addresses), API enrichment (for TVL/APR), mint search last.
+
     useEffect(() => {
-        // search
+
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
         const q = search.trim();
-        // search
-        // search
+
         if (!isValidPubkey(q)) {
-            // search
+
             setPoolSearchResult(null);
             setMintSearchResults([]);
             setSearchLoading(false);
             return;
         }
 
-        // If it's already in the table, show it as the search result
+
         const existingPool = pools.find(p => p.id === q);
-        // search
+
         if (existingPool) {
             setPoolSearchResult(existingPool);
             setMintSearchResults([]);
@@ -459,30 +429,25 @@ export default function LiquidityPoolsTable() {
         setPoolSearchResult(null);
         setMintSearchResults([]);
 
-        // search
+
 
         searchDebounceRef.current = setTimeout(async () => {
-            // search
 
-            // Step 1: Try RPC first - lookup pool on-chain to get mint addresses
-            // search
             let onChainResult: PoolData | null = null;
             if (connection) {
                 onChainResult = await lookupPoolOnChain(q, connection);
             }
-            // search
 
-            // Step 2: If RPC found a pool, try to enrich with API data (TVL, APR, fees)
             if (onChainResult) {
-                // search
+
                 try {
                     const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${q}`);
                     const json = await res.json();
-                    // search
+
                     if (res.ok) {
                         const live = json?.data?.[0];
                         if (live?.mintA && live?.mintB) {
-                            // API succeeded - enrich with TVL, APR, fees
+
                             const feeRate = live.feeRate || 0;
                             const enriched: PoolData = {
                                 ...onChainResult,

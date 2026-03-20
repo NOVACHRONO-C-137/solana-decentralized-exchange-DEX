@@ -12,9 +12,7 @@ function SwapPageInner() {
     const fromMint = searchParams.get('fromMint') ?? '';
     const toMint = searchParams.get('toMint') ?? '';
 
-    // When coming from a pool link both mints are in the URL — the user already
-    // chose their pair by clicking the pool row. Lock the token selectors so
-    // they can't accidentally switch to a different token.
+
     const lockedTokens = !!(fromMint && toMint);
 
     return (

@@ -110,16 +110,14 @@ function PositionPageInner() {
   const [tokenAInfo, setTokenAInfo] = useState<any>(initialAInfo);
   const [tokenBInfo, setTokenBInfo] = useState<any>(initialBInfo);
 
-  // --- NEW: Chart Interaction & Balance State ---
+
   const chartRef = useRef<HTMLDivElement>(null);
   const [draggingHandle, setDraggingHandle] = useState<"min" | "max" | null>(null);
 
-  // --- NEW: Balance State ---
   const [balanceA, setBalanceA] = useState<number>(0);
   const [balanceB, setBalanceB] = useState<number>(0);
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
 
-  // --- NEW: Fetch Balances function ---
   const fetchBalances = async () => {
     if (!publicKey || !connection || !tokenAInfo?.mint || !tokenBInfo?.mint) return;
     setIsFetchingBalances(true);
@@ -219,7 +217,7 @@ function PositionPageInner() {
       }
     };
     fetchPoolData();
-  }, [poolId]); // Only run once on mount or when poolId changes
+  }, [poolId]);
 
   function calculateCLMMRatio(
     currentPrice: number,
@@ -236,7 +234,7 @@ function PositionPageInner() {
     const amountA = (sqrtPb - sqrtPc) / (sqrtPc * sqrtPb);
     const amountB = sqrtPc - sqrtPa;
 
-    // Normalize to USD value for fair comparison
+
     const valueA = amountA * currentPrice;
     const valueB = amountB;
     const total = valueA + valueB;
@@ -268,7 +266,7 @@ function PositionPageInner() {
     }));
   }
 
-  // Auto-calculate paired token when one side is typed
+
   const handleDepositAChange = (val: string) => {
     setDepositA(val);
     if (poolPrice && val && parseFloat(val) > 0) {
@@ -307,23 +305,23 @@ function PositionPageInner() {
     }
   };
 
-  // --- NEW: Handle Max/50% Clicks ---
+
   const handleSetPercentage = (percent: number, isTopInput: boolean) => {
-    // Figure out which token we are interacting with based on inversion
+
     const isTokenA = isInverted ? !isTopInput : isTopInput;
     const maxBalance = isTokenA ? balanceA : balanceB;
     const tokenSymbol = isTokenA ? tokenAInfo.symbol : tokenBInfo.symbol;
 
     let usableBalance = maxBalance;
 
-    // Safety check: If it's SOL, leave 0.02 SOL for transaction fees!
+
     if (tokenSymbol === "SOL" && percent === 1) {
       usableBalance = Math.max(0, usableBalance - 0.02);
     }
 
     const calculatedAmount = (usableBalance * percent).toFixed(6);
 
-    // Use your existing handlers so the *other* input auto-calculates!
+
     if (isTopInput) {
       isInverted ? handleDepositBChange(calculatedAmount) : handleDepositAChange(calculatedAmount);
     } else {
@@ -331,8 +329,8 @@ function PositionPageInner() {
     }
   };
 
-  // Recalculate deposit ratio when price range changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   useEffect(() => {
     if (depositA && parseFloat(depositA) > 0) {
       handleDepositAChange(depositA);
@@ -341,20 +339,17 @@ function PositionPageInner() {
     }
   }, [minPrice, maxPrice]);
 
-  // Fix quick range buttons to actually update min/max
+
   const applyQuickRange = (rangeStr: string) => {
     setActiveRange(rangeStr);
     if (!poolPrice) return;
     const pct = parseFloat(rangeStr.replace("±", "").replace("%", "")) / 100;
 
-    // Calculate new min and max in TokenA-centric terms (the underlying value)
+
     let newMin = poolPrice * (1 - pct);
     let newMax = poolPrice * (1 + pct);
 
-    // If we're displaying inverted prices, we still anchor around the base pool price
-    // But the visually "minus" percentage is on the inverted scale.
-    // So 1/poolPrice * (1 - pct) = invertedMin
-    // In terms of base scale: max = 1 / invertedMin = poolPrice / (1 - pct)
+
     if (priceToggle === "A") {
       const invertedPrice = 1 / poolPrice;
       const displayMin = invertedPrice * (1 - pct);
@@ -590,9 +585,7 @@ function PositionPageInner() {
         tickUpper = Math.floor(443636 / tickSpacing) * tickSpacing;
       }
 
-      // ---- REAL LIFE CLMM ASYMMETRIC DEPOSIT LOGIC ----
 
-      // 1. Map UI Inputs to MintA and MintB
       const valA = parseFloat(depositA || "0");
       const valB = parseFloat(depositB || "0");
       const valMintA = isTokenAMintA ? valA : valB;
@@ -609,11 +602,10 @@ function PositionPageInner() {
           .toFixed(0),
       );
 
-      // 2. Fetch current pool price (1 MintA = X MintB)
+
       const currentPrice = poolInfo.price || 1;
 
-      // 3. Determine the Bottleneck (Which token is limiting the deposit?)
-      // We calculate how much MintB is required to perfectly pair with our MintA
+
       const requiredMintB = valMintA * currentPrice;
 
       let baseTokenStr: "MintA" | "MintB";
@@ -714,7 +706,6 @@ function PositionPageInner() {
     }
   };
 
-  // --- NEW: Drag Interaction Engine ---
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (!draggingHandle || !chartRef.current || bars.length === 0) return;

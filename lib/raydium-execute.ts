@@ -1,10 +1,5 @@
 import { Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
 
-/**
- * Shared Raydium transaction executor.
- * Signs all txs via wallet's signAllTransactions, sends manually,
- * then returns signed txs back to SDK so it doesn't crash on serialize.
- */
 export async function createWrappedSignAll(
     connection: Connection,
     signAllTransactions: (<T extends Transaction | VersionedTransaction>(txs: T[]) => Promise<T[]>) | undefined,
@@ -12,7 +7,7 @@ export async function createWrappedSignAll(
 ) {
     return async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
         if (!signAllTransactions) throw new Error("Wallet does not support signAllTransactions");
-        // signing
+
 
         const signedTxs = await signAllTransactions(txs);
         for (const tx of signedTxs) {
@@ -31,11 +26,11 @@ export async function createWrappedSignAll(
                 onSig(sig);
             } catch { }
         }
-        return signedTxs; // return signed so SDK doesn't crash
+        return signedTxs;
     };
 }
 
-/** Converts a slippage percentage (e.g. 2.5) to integer basis points (250) */
+
 export function slippageToBps(pct: number): number {
     return Math.round(pct * 100);
 }

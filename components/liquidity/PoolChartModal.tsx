@@ -7,7 +7,7 @@ import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { getTokenGradient } from "@/lib/tokens";
 
-// Avatar: shows logo image when available, gradient-letter circle as fallback
+
 function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) {
     const [imgError, setImgError] = useState(false);
     const gradient = getTokenGradient(symbol);
@@ -30,14 +30,14 @@ function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) 
     );
 }
 
-// Simple seeded PRNG to ensure the same pool name always yields the same chart data
+
 function seededRandom(seed: number) {
     const x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
 }
 
 function generateMockData(poolName: string, isLiquidity: boolean) {
-    // Generate a seed from the poolName string
+
     let seed = 0;
     for (let i = 0; i < poolName.length; i++) {
         seed += poolName.charCodeAt(i) * (i + 1);
@@ -46,13 +46,13 @@ function generateMockData(poolName: string, isLiquidity: boolean) {
     const data = [];
     const baseAmount = isLiquidity ? 1000000 : 300000;
 
-    // Generate 10 data points mimicking the last 20 days
+
     for (let i = 0; i < 10; i++) {
         const date = new Date();
-        date.setDate(date.getDate() - (20 - i * 2)); // 2 days interval
+        date.setDate(date.getDate() - (20 - i * 2));
 
         const randomFactor = seededRandom(seed + i + (isLiquidity ? 100 : 0));
-        const variance = baseAmount * 0.4 * (randomFactor - 0.5); // +/- 20% variance
+        const variance = baseAmount * 0.4 * (randomFactor - 0.5);
 
         data.push({
             date: `${date.getMonth() + 1}/${date.getDate().toString().padStart(2, '0')}`,

@@ -32,7 +32,7 @@ export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePi
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Sync hours/mins when value prop changes externally (though rare here)
+
     useEffect(() => {
         setHours(value.getUTCHours());
         setMinutes(value.getUTCMinutes());
@@ -54,9 +54,8 @@ export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePi
             onChange(dateToValidate);
         } else {
             const now = new Date();
-            // If the selected time is in the past, automatically snap it to "now + 1 minute"
             if (dateToValidate < now) {
-                const snappedDate = new Date(now.getTime() + 60000); // add 1 minute
+                const snappedDate = new Date(now.getTime() + 60000);
                 onChange(snappedDate);
                 setHours(snappedDate.getUTCHours());
                 setMinutes(snappedDate.getUTCMinutes());

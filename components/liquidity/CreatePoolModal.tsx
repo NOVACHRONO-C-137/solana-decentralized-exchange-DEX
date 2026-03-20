@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const router = useRouter();
-    // Tracks which pool type is selected
+
     const [poolType, setPoolType] = useState<"concentrated" | "standard" | "legacy">("concentrated");
 
     return (

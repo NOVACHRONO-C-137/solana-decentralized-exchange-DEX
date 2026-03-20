@@ -13,7 +13,7 @@ export default function AppLoader() {
   const dotsRef = useRef<Dot[]>([]);
   const animRef = useRef<number>(0);
 
-  // Fade out after 2800ms to allow the dots to be seen briefly
+
   useEffect(() => {
     const t = setTimeout(() => setVisible(false), 2800);
     return () => clearTimeout(t);
@@ -65,24 +65,23 @@ export default function AppLoader() {
         const dy = d.baseY - centerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Quantum Wave Logic: 
-        // Displacement is calculated based on distance from center + elapsed time
+
         const wave = Math.sin(dist * WAVE_FREQUENCY - time * 0.005) * WAVE_AMPLITUDE;
 
-        // Focal pull: slight inward/outward breathing based on time
+
         const breathe = Math.sin(time * 0.002) * 5;
         const angle = Math.atan2(dy, dx);
 
-        // Update positions
+
         d.x = d.baseX + Math.cos(angle) * (wave + breathe);
         d.y = d.baseY + Math.sin(angle) * (wave + breathe);
 
-        // Appearance
+
         const proximityToCenter = Math.max(0, 1 - dist / 300);
         const finalOpacity = Math.min(0.8, d.opacity + (proximityToCenter * 0.5));
         const finalRadius = d.radius + (proximityToCenter * 1.5);
 
-        // Draw dots with a subtle teal glow
+
         ctx.beginPath();
         ctx.arc(d.x, d.y, finalRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(20, 241, 149, ${finalOpacity})`;
@@ -103,9 +102,6 @@ export default function AppLoader() {
     window.addEventListener('resize', resize);
     resize();
 
-    // 🚨 FORCED INITIAL PAINT:
-    // This ensures the dots appear instantly with the loader 
-    // instead of waiting for the first animation frame.
     draw(0);
 
     animRef.current = requestAnimationFrame(draw);

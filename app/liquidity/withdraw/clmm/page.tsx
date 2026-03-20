@@ -151,8 +151,7 @@ export default function WithdrawCLMMPage() {
                 signAllTransactions: wrappedSignAll,
             });
 
-            // 🚨 FIX THE RAYDIUM SDK BUG:
-            // Trick the SDK into passing the required accounts by forcing ended rewards (2) back to active (1)
+
             const hackedPoolInfo = {
                 ...poolInfo,
                 rewardInfos: poolInfo.rewardInfos.map((r: any) => ({
@@ -162,15 +161,15 @@ export default function WithdrawCLMMPage() {
             };
 
             const { execute } = await raydium.clmm.decreaseLiquidity({
-                poolInfo: hackedPoolInfo, // <-- Pass the hacked state here instead of poolInfo
+                poolInfo: hackedPoolInfo,
                 poolKeys,
                 ownerPosition: position.raw,
                 ownerInfo: {
                     useSOLBalance: true,
-                    closePosition, // never collect rewards on close — causes error 6035 on finished farms
+                    closePosition,
                 } as any,
                 liquidity: position.liquidity,
-                amountMinA: new BN(0), // 0 = accept any amount (max slippage)
+                amountMinA: new BN(0),
                 amountMinB: new BN(0),
                 txVersion: TxVersion.LEGACY,
             });
@@ -201,7 +200,7 @@ export default function WithdrawCLMMPage() {
         }
     };
 
-    // ── Format tick range as price ────────────────────────
+
     const formatTick = (tick: number) => {
         const price = Math.pow(1.0001, tick);
         return price < 0.0001
@@ -213,7 +212,7 @@ export default function WithdrawCLMMPage() {
                     : price.toFixed(4);
     };
 
-    // ── UI ────────────────────────────────────────────────
+
     if (!connected || !publicKey) {
         return (
             <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
