@@ -421,9 +421,6 @@ export default function CreateFarmPage() {
 
     const renderStep3 = () => (
         <div className="w-full md:w-2/3">
-            <button onClick={() => setCurrentStep(2)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
-                <ArrowLeft className="w-4 h-4" /> Back
-            </button>
             <h2 className="text-xl font-bold mb-6">Review & Submit</h2>
 
             <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] rounded-2xl p-6 shadow-[0_2px_16px_0_rgba(0,0,0,0.06)]">
@@ -469,14 +466,23 @@ export default function CreateFarmPage() {
                     </div>
                 )}
 
-                <button
-                    onClick={handleCreateFarm}
-                    disabled={isCreating}
-                    className="w-full mt-6 py-3 rounded-xl font-bold bg-[var(--neon-teal)] text-black hover:bg-[#0D9B5F] transition-all disabled:opacity-50 flex justify-center items-center gap-2"
-                >
-                    {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {isCreating ? "Initializing Farm on Blockchain..." : "Confirm & Create Farm"}
-                </button>
+                <div className="flex gap-3 mt-6">
+                    <button
+                        onClick={() => setCurrentStep(2)}
+                        disabled={isCreating}
+                        className={`flex-1 border border-border text-muted-foreground font-bold py-4 rounded-xl transition-all ${isCreating ? "opacity-50 cursor-not-allowed" : "hover:text-foreground"}`}
+                    >
+                        Back
+                    </button>
+                    <button
+                        onClick={handleCreateFarm}
+                        disabled={isCreating}
+                        className={`flex-1 flex justify-center items-center bg-[var(--neon-teal)] text-black font-bold py-4 rounded-xl transition-all ${isCreating ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
+                    >
+                        {isCreating && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+                        {isCreating ? "Creating..." : "Confirm & Create Farm"}
+                    </button>
+                </div>
             </div>
         </div>
     );
