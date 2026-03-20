@@ -156,7 +156,7 @@ export default function CreateFarmPage() {
                 const r = rewardsToProcess[i];
                 if (!r.token) continue;
 
-                const durationSeconds = parseInt(r.durationDays || "7") * 24 * 60 * 60;
+                const durationSeconds = (parseInt(r.durationDays || "7") * 24 * 60 * 60) + 1;
                 const rewardAmountRaw = new Decimal(r.amount || "0").mul(10 ** r.token.decimals);
 
                 // The crucial .floor() fix to prevent fractional revert bugs
