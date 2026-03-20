@@ -6,7 +6,7 @@ import { ArrowDown, ChevronDown, Wallet, Settings, Link2, BarChart3, Loader2, Ch
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWallet, useConnection } from "@solana/wallet-adapter-react"
 import { PublicKey } from "@solana/web3.js"
-import { Raydium, TxVersion, getPdaTickArrayAddress, CurveCalculator } from "@raydium-io/raydium-sdk-v2"
+import { Raydium, TxVersion, getPdaTickArrayAddress, CurveCalculator, PoolUtils } from "@raydium-io/raydium-sdk-v2"
 import BN from "bn.js"
 import Decimal from "decimal.js"
 import Image from "next/image"
@@ -393,37 +393,59 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
             if (poolType === "clmm") {
                 const { poolInfo: _pi, poolKeys, tickData } = await raydium.clmm.getPoolInfoFromRpc(poolId)
                 const poolInfo = _pi as any
+                const slippageFraction = parseFloat(slippage) / 100
+                const poolTickArray = (tickData as any)[poolId]
                 const a2b = fromToken.mint === poolInfo.mintA.address
-                const ticksPerArr = poolInfo.tickSpacing * 60
-                const anchorStart = Math.floor(poolInfo.tickCurrent / ticksPerArr) * ticksPerArr
-                const neededIndexes = a2b
-                    ? [anchorStart, anchorStart - ticksPerArr, anchorStart - ticksPerArr * 2]
-                    : [anchorStart, anchorStart + ticksPerArr, anchorStart + ticksPerArr * 2]
-                const poolTickMap: Record<number, { address: PublicKey }> = (tickData as any)[poolId] ?? {}
-                const clmmProg = new PublicKey(CLMM_PROGRAM_ID)
-                const poolPk = new PublicKey(poolId)
-                const remainingAccounts = neededIndexes.map(idx => {
-                    const entry = poolTickMap[idx]
-                    if (entry?.address) return entry.address as PublicKey
-                    return getPdaTickArrayAddress(clmmProg, poolPk, idx).publicKey
-                })
 
-                // Use pool's currentPrice which is already decimal-adjusted
-                const rawPrice = parseFloat(poolInfo.currentPrice?.toString() ?? "1") || 1
-                const estOut = a2b ? amount * rawPrice : amount / rawPrice
-                const amountOutMin = new BN(
-                    new Decimal(Math.max(0, estOut * (1 - slippageFraction)))
-                        .mul(new Decimal(10).pow(toDecimals)) // use chain-fetched decimals
-                        .toFixed(0)
-                )
-                logger.log(`CLMM swap — a2b:${a2b}, estOut:${estOut.toFixed(6)}, amountOutMin:${amountOutMin.toString()}`)
+                let minAmountOut;
+                let remainingAccounts;
+
+                try {
+                    // 🚨 CRITICAL BUG FIX FOR RAYDIUM SDK 🚨
+                    // The SDK's 'getFirstInitializedTickArray' function expects 'id' and 'programId' to be PublicKey objects.
+                    // However, the API returns them as plain strings. When the SDK tries to generate PDA addresses,
+                    // it calls '.toBuffer()' on the string, causing the "e.toBuffer is not a function" crash!
+                    // We fix this by injecting properly casted PublicKeys into a cloned poolInfo just for the computation.
+                    const safeComputePoolInfo = {
+                        ...poolInfo,
+                        id: new PublicKey(poolInfo.id),
+                        programId: new PublicKey(poolInfo.programId),
+                    };
+
+                    const computeRes = await PoolUtils.computeAmountOutFormat({
+                        poolInfo: safeComputePoolInfo,
+                        tickArrayCache: poolTickArray,
+                        amountIn,
+                        tokenOut: poolInfo[a2b ? 'mintB' : 'mintA'],
+                        slippage: slippageFraction,
+                        epochInfo: await connection.getEpochInfo(),
+                    });
+
+                    minAmountOut = computeRes.minAmountOut;
+                    remainingAccounts = computeRes.remainingAccounts;
+                } catch (computeErr: any) {
+                    logger.log("CLMM Compute error:", computeErr);
+                    throw new Error("Simulation failed: " + (computeErr.message || "Price impact too high for pool depth."));
+                }
+
+                // Safely extract the raw output amount based on SDK version structure
+                const outMinRaw = (minAmountOut as any)?.amount?.raw ?? (minAmountOut as any)?.raw ?? minAmountOut
+                const amountOutMin = new BN(outMinRaw.toString())
+
+                logger.log(`CLMM SDK compute — amountOutMin: ${amountOutMin.toString()}`)
 
                 const { execute } = await raydium.clmm.swap({
-                    poolInfo, poolKeys, inputMint: new PublicKey(fromToken.mint),
-                    amountIn, amountOutMin, observationId: (poolInfo as any).observationId,
-                    remainingAccounts, txVersion: TxVersion.V0,
+                    poolInfo,
+                    poolKeys,
+                    inputMint: new PublicKey(fromToken.mint),
+                    amountIn,
+                    amountOutMin,
+                    observationId: poolInfo.observationId,
+                    remainingAccounts, // The perfectly resolved accounts from computeRes
+                    txVersion: TxVersion.V0,
                     ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
                 } as any)
+
                 const result = await execute({ sendAndConfirm: true })
                 setTxSig((result as any).txIds?.[0] ?? (result as any).txId)
                 notify.success("Transaction confirmed!")

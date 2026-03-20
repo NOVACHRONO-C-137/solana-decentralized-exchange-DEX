@@ -91,8 +91,14 @@ export default function WithdrawCLMMPage() {
             setPositions(formatted);
         } catch (err: any) {
             const msg = err?.message || "Failed to load positions from chain.";
+
+            if (msg.includes("429") || msg.toLowerCase().includes("too many requests") || msg.includes("rate limit")) {
+                notify.error("RPC Rate Limited while loading positions. Try refreshing.");
+            } else {
+                notify.error(msg);
+            }
+
             setTxError(msg);
-            notify.error(msg);
         } finally {
             setLoading(false);
         }
@@ -193,8 +199,15 @@ export default function WithdrawCLMMPage() {
 
         } catch (err: any) {
             const msg = err?.message || "Withdrawal failed. Check console.";
+
+            // Intercept rate limit errors for a cleaner toast
+            if (msg.includes("429") || msg.toLowerCase().includes("too many requests") || msg.includes("rate limit")) {
+                notify.error("RPC Rate Limited. Please try again in a few seconds.");
+            } else {
+                notify.error(msg);
+            }
+
             setTxError(msg);
-            notify.error(msg);
         } finally {
             setWithdrawingId(null);
         }
@@ -250,14 +263,6 @@ export default function WithdrawCLMMPage() {
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                 </button>
             </div>
-
-            {/* Tx Error */}
-            {txError && (
-                <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 mb-4">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    {txError}
-                </div>
-            )}
 
             {/* Tx Success */}
             {txSig && (

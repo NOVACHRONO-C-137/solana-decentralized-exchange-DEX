@@ -35,7 +35,7 @@ export function Navbar() {
     return (
         <>
             {/* The outer wrapper positions the island and ignores pointer events so you can click "behind" it */}
-            <div className="fixed top-0 left-0 right-0 z-50 p-4 pointer-events-none">
+            <div className="fixed top-0 left-0 right-0 z-50 p-6 pointer-events-none">
 
                 {/* The Floating Pill (Header) */}
                 <header className="pointer-events-auto mx-auto flex h-16 max-w-5xl items-center justify-between px-4 lg:px-6 rounded-full border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[12px] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] transition-colors">

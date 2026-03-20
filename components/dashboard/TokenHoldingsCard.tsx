@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatLargeNumber, glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
+import { RefreshCw, Loader2 } from "lucide-react";
 
 interface TokenItem {
     mint: string;
@@ -16,9 +17,10 @@ interface TokenItem {
 interface TokenHoldingsCardProps {
     tokenList: TokenItem[];
     balancesLoading: boolean;
+    onRefresh: () => void;
 }
 
-export function TokenHoldingsCard({ tokenList, balancesLoading }: TokenHoldingsCardProps) {
+export function TokenHoldingsCard({ tokenList, balancesLoading, onRefresh }: TokenHoldingsCardProps) {
     const [tokenSearch, setTokenSearch] = useState("");
 
     const filtered = tokenList.filter(token => {
@@ -30,8 +32,13 @@ export function TokenHoldingsCard({ tokenList, balancesLoading }: TokenHoldingsC
     return (
         <div className={`${glassCard} p-5 min-h-[420px]`}>
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Token Holdings</h3>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]">{tokenList.length}</span>
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Token Holdings</h3>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]">{tokenList.length}</span>
+                </div>
+                <button onClick={onRefresh} className="p-1.5 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
+                    {balancesLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                </button>
             </div>
             {tokenList.length > 4 && (
                 <div className="relative mb-3">

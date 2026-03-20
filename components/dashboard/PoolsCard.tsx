@@ -59,6 +59,7 @@ export function PoolsCard({
     const [activeTab, setActiveTab] = useState<TabType>("All");
     const [poolSearch, setPoolSearch] = useState("");
 
+    // The parent strictly curates positionPoolIds for this specific wallet now
     const positionPools = pools.filter((p) => positionPoolIds.has(p.id || p.poolId));
     const filteredPools = positionPools.filter((p) => matchesType(p, activeTab) && matchesSearch(p, poolSearch));
 
@@ -73,6 +74,14 @@ export function PoolsCard({
 
     return (
         <div className={`${glassCard} p-5 min-h-[600px]`}>
+            {/* Card Header */}
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Positions</h3>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 text-[var(--neon-teal)]">Devnet</span>
+                </div>
+            </div>
+
             <div className="flex flex-col gap-3 mb-5">
                 {/* Filters: 2x2 grid on mobile, single row on sm+ */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-row gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
@@ -109,7 +118,7 @@ export function PoolsCard({
                 loading={poolsLoading}
                 onDeposit={onDeposit}
                 onWithdraw={onWithdraw}
-                hasAnyPools={positionPools.length > 0}
+                hasAnyPools={pools.length > 0}
             />
 
             <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar-teal::-webkit-scrollbar{width:5px}.custom-scrollbar-teal::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:8px}.custom-scrollbar-teal::-webkit-scrollbar-thumb{background:rgba(20,241,149,0.35);border-radius:8px}.custom-scrollbar-teal::-webkit-scrollbar-thumb:hover{background:rgba(20,241,149,0.7)}` }} />

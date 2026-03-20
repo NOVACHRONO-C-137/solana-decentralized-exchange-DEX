@@ -670,7 +670,7 @@ export default function CreatePoolPage() {
 
     // ── MAIN ─────────────────────────────────────────────────
     return (
-        <main className="container mx-auto px-4 py-12 flex flex-col items-center min-h-screen text-foreground">
+        <main className="container mx-auto px-4 pt-24 pb-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
                 <StepperSidebar
                     currentStep={currentStep}

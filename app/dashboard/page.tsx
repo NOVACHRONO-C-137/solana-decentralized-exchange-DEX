@@ -14,9 +14,10 @@ import { RecentTransactionsCard } from "@/components/dashboard/RecentTransaction
 import { WalletCard } from "@/components/dashboard/WalletCard";
 import { PortfolioCard } from "@/components/dashboard/PortfolioCard";
 import { TokenHoldingsCard } from "@/components/dashboard/TokenHoldingsCard";
-import { FarmRewardsCard } from "@/components/dashboard/FarmRewardsCard";
 import { PoolsCard } from "@/components/dashboard/PoolsCard";
+import { MarketTrendsCard } from "@/components/dashboard/MarketTrendsCard";
 import { notify } from "@/lib/toast";
+import { discoverOnChainPoolIds, discoverCreatedPools } from "@/lib/pool-discovery";
 
 function normalizePoolType(type?: string): string {
     const t = (type || "").toLowerCase();
@@ -44,7 +45,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const { publicKey, connected } = useWallet();
     const { connection } = useConnection();
-    const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
+    const { balances: tokenBalances, discoveredTokens, loading: balancesLoading, refetch } = useTokenBalances();
 
     const [prices, setPrices] = useState<Record<string, number>>({});
     const [pricesLoading, setPricesLoading] = useState(false);
@@ -54,7 +55,6 @@ export default function DashboardPage() {
     const [positionPoolIds, setPositionPoolIds] = useState<Set<string>>(new Set());
 
     const [positions, setPositions] = useState<any[]>([]);
-    const [claimingId, setClaimingId] = useState<string | null>(null);
 
     const fetchPrices = useCallback(async () => {
         if (!tokenBalances.size) return;
@@ -82,30 +82,66 @@ export default function DashboardPage() {
         const positionIds = new Set<string>();
         const allIds = new Set<string>();
 
-        // Read localStorage
+        // 1. Always include the global hardcoded pools so the dashboard fetches their metadata
+        // and subsequently checks if you hold their LP tokens
+        const HARDCODED_DEVNET_POOL_IDS = [
+            "CKaQFacstJqqVkFLLH7TeYgVQeuqB9HPE6nCM9StDEAc",
+            "71Yjqv83w73n92fEsvFncFjMVHFqdUGKcuhsvnbwp8SG",
+            "9Rkr61gpRZakNKiaFEaAsCt1B6y5tPNZFixms7VuVMaT",
+        ];
+        HARDCODED_DEVNET_POOL_IDS.forEach(id => allIds.add(id));
+
+        // 2. Discover via on-chain helpers (Finds LP tokens and created pools)
+        try {
+            const [createdIds, depositedIds] = await Promise.all([
+                discoverCreatedPools(connection, publicKey),
+                discoverOnChainPoolIds(connection, publicKey)
+            ]);
+            createdIds.forEach(id => {
+                allIds.add(id);
+                positionIds.add(id);
+            });
+            depositedIds.forEach(id => {
+                allIds.add(id);
+                positionIds.add(id);
+            });
+            console.log("[loadPools] On-chain discovery found:", allIds.size, "pools");
+        } catch (e) {
+            console.log("[loadPools] Discovery error", e);
+        }
+
+        // 2. Read localStorage as backup
         let customPools: any[] = [];
         try {
             const stored = localStorage.getItem("aeroCustomPools");
-            if (stored) customPools = JSON.parse(stored);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // STRICT WALLET CHECK
+                customPools = parsed.filter((p: any) => p.creator === publicKey.toBase58());
+            }
         } catch { }
 
-        // Show localStorage pools immediately while we fetch
         if (customPools.length > 0) {
             setPools(customPools.map((p: any) => normalizeStoredPool(p)));
         }
 
-        customPools.forEach((p: any) => { if (p.id) allIds.add(p.id); });
+        customPools.forEach((p: any) => {
+            if (p.id) {
+                allIds.add(p.id);
+                positionIds.add(p.id);
+            }
+        });
 
-        // CLMM positions via SDK
+        // 3. CLMM positions via SDK
         try {
             const raydium = await Raydium.load({ owner: publicKey, connection, cluster: "devnet", disableFeatureCheck: true, disableLoadToken: true });
             const userPositions = await raydium.clmm.getOwnerPositionInfo({ programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID });
             setPositions(userPositions);
             userPositions.forEach((pos: any) => {
-                const id = pos.poolId.toString();
-                positionIds.add(id);
-                allIds.add(id);
+                positionIds.add(pos.poolId.toString());
+                allIds.add(pos.poolId.toString());
             });
+            console.log("[loadPools] CLMM positions found:", userPositions.length);
         } catch { }
 
         // ── Step 2: Standard/CPMM positions via direct pool account read ──
@@ -156,43 +192,45 @@ export default function DashboardPage() {
             console.warn("[loadPools] Step2 outer error:", e);
         }
 
-        // Fetch pool metadata for all known IDs
+        // Fetch pool metadata
         if (allIds.size > 0) {
             try {
+                console.log("[loadPools] Fetching API metadata for IDs:", Array.from(allIds));
                 const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${Array.from(allIds).join(",")}`);
                 const json = await res.json();
                 const apiPools = (json.data || [])
-                    .filter((p: any) => p?.mintA && p?.mintB)
+                    .filter((p: any) => p && p.id)
                     .map((p: any) => ({ ...p, type: normalizePoolType(p.type) }));
-                // apiPools loaded
 
-                // Check LP token balance for standard/legacy pools
-                for (const pool of apiPools) {
+                console.log("[loadPools] API returned valid pools:", apiPools.length);
+
+                const mergedPools = new Map<string, any>();
+                customPools.map((p: any) => normalizeStoredPool(p)).forEach((pool: any) => mergedPools.set(pool.id || pool.poolId, pool));
+                apiPools.forEach((pool: any) => {
+                    if (pool.mintA && pool.mintB) mergedPools.set(pool.id || pool.poolId, pool);
+                });
+
+                const finalPools = Array.from(mergedPools.values());
+
+                // Standard LP check
+                for (const pool of finalPools) {
                     if ((pool.type === "Standard" || pool.type === "Legacy") && pool.lpMint?.address) {
-                        // checking LP mint
                         try {
                             const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(pool.lpMint.address) });
-                            // LP accounts
                             const hasLp = accounts.value.some((a: any) => a.account.data.parsed.info.tokenAmount.uiAmount > 0);
                             if (hasLp) {
-                                positionIds.add(pool.id);
-                                allIds.add(pool.id);
+                                console.log(`[loadPools] Found LP balance for pool: ${pool.id}`);
+                                positionIds.add(pool.id || pool.poolId);
+                                allIds.add(pool.id || pool.poolId);
                             }
                         } catch { }
                     }
                 }
-                const mergedPools = new Map<string, any>();
 
-                customPools
-                    .map((p: any) => normalizeStoredPool(p))
-                    .forEach((pool: any) => mergedPools.set(pool.id || pool.poolId, pool));
-
-                apiPools.forEach((pool: any) => {
-                    mergedPools.set(pool.id || pool.poolId, pool);
-                });
-
-                setPools(Array.from(mergedPools.values()));
-            } catch { }
+                setPools(finalPools);
+            } catch (e) {
+                console.log("[loadPools] API fetch error:", e);
+            }
         }
 
         setPositionPoolIds(positionIds);
@@ -221,51 +259,7 @@ export default function DashboardPage() {
 
     useEffect(() => { loadPositions(); }, [loadPositions]);
 
-    const handleClaim = async (poolId: string, position: any) => {
-        if (!connected || !publicKey) return;
-        setClaimingId(position.nftMint.toString());
-        try {
-            const raydium = await Raydium.load({
-                owner: publicKey,
-                connection,
-                cluster: "devnet",
-                disableFeatureCheck: true,
-            });
 
-            const { poolInfo, poolKeys } = await raydium.clmm.getPoolInfoFromRpc(poolId);
-
-            const poolInfoAny: any = poolInfo;
-            const hackedPoolInfo = {
-                ...poolInfoAny,
-                rewardInfos: poolInfoAny.rewardInfos.map((r: any) => ({
-                    ...r,
-                    rewardState: r.rewardState === 2 ? 1 : r.rewardState
-                }))
-            };
-
-            const { execute } = await raydium.clmm.decreaseLiquidity({
-                poolInfo: hackedPoolInfo,
-                poolKeys,
-                ownerPosition: position,
-                ownerInfo: {
-                    useSOLBalance: true,
-                    closePosition: false,
-                } as any,
-                liquidity: new BN(0), // 🚨 0 removes no liquidity, just harvests rewards!
-                amountMinA: new BN(0),
-                amountMinB: new BN(0),
-                txVersion: TxVersion.LEGACY,
-            });
-
-            await execute({ sendAndConfirm: true });
-            notify.success("Transaction confirmed!");
-            loadPositions();
-        } catch (err) {
-            notify.error((err as any)?.message || "Something failed");
-        } finally {
-            setClaimingId(null);
-        }
-    };
 
     const solBalance = tokenBalances.get("11111111111111111111111111111111")?.balance
         || tokenBalances.get("So11111111111111111111111111111111111111112")?.balance
@@ -365,6 +359,7 @@ export default function DashboardPage() {
             symbolA: symA,
             symbolB: symB,
             fee,
+            ...(pool.lpMint?.address && { lpMint: pool.lpMint.address }),
             ...(pool.mintA?.logoURI && { logoA: pool.mintA.logoURI }),
             ...(pool.mintB?.logoURI && { logoB: pool.mintB.logoURI }),
         });
@@ -402,7 +397,7 @@ export default function DashboardPage() {
                         <PortfolioCard totalUSD={totalUSD} segments={segments} pricesLoading={pricesLoading} balancesLoading={balancesLoading} />
 
                         {/* Card 3 — Token Holdings */}
-                        <TokenHoldingsCard tokenList={tokenList} balancesLoading={balancesLoading} />
+                        <TokenHoldingsCard tokenList={tokenList} balancesLoading={balancesLoading} onRefresh={refetch} />
 
                     </div>
 
@@ -419,14 +414,8 @@ export default function DashboardPage() {
                             onRefresh={loadPools}
                         />
 
-                        {/* Card 5 — Farm Rewards */}
-                        <FarmRewardsCard
-                            pools={pools}
-                            positions={positions}
-                            claimingId={claimingId}
-                            onClaim={handleClaim}
-                            onDeposit={handleDeposit}
-                        />
+                        {/* Market Trends Card */}
+                        <MarketTrendsCard />
 
                     </div>
                 </div>

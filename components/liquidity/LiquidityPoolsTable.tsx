@@ -330,11 +330,16 @@ export default function LiquidityPoolsTable() {
 
             try {
                 const stored = localStorage.getItem("aeroCustomPools");
-                if (stored) {
-                    const customPools = JSON.parse(stored);
-                    if (Array.isArray(customPools)) {
+                if (stored && publicKey) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        // STRICT WALLET CHECK: Only load pools created by the connected wallet
+                        const customPools = parsed.filter((p: any) => p.creator === publicKey.toBase58());
                         for (const p of customPools) {
-                            if (p.id && p.id.length > 20) { allIds.add(p.id); localPoolMap.set(p.id, p); }
+                            if (p.id && p.id.length > 20) {
+                                allIds.add(p.id);
+                                localPoolMap.set(p.id, p);
+                            }
                         }
                     }
                 }
@@ -580,7 +585,11 @@ export default function LiquidityPoolsTable() {
     const myPoolIds = new Set<string>();
     try {
         const stored = localStorage.getItem("aeroCustomPools");
-        if (stored) JSON.parse(stored).forEach((p: any) => p.id && myPoolIds.add(p.id));
+        if (stored && publicKey) {
+            const parsed = JSON.parse(stored);
+            const myPools = parsed.filter((p: any) => p.creator === publicKey.toBase58());
+            myPools.forEach((p: any) => p.id && myPoolIds.add(p.id));
+        }
     } catch { }
 
     const SortArrow = ({ field }: { field: typeof sortField }) => (
