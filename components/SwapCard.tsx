@@ -331,6 +331,7 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
         }
 
         setLoading(true); setSwapError(null); setTxSig(null)
+        window.dispatchEvent(new CustomEvent('quantum-quake', { detail: { active: true } }));
 
         try {
             // ── CRITICAL: always fetch real decimals from chain right here ────
@@ -501,6 +502,7 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
             setSwapError(msg); notify.error(msg)
         } finally {
             setLoading(false)
+            window.dispatchEvent(new CustomEvent('quantum-quake', { detail: { active: false } }));
         }
     }
 

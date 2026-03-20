@@ -12,6 +12,7 @@ export default function DotBackground() {
     const mouseRef = useRef({ x: -9999, y: -9999 });
     const dotsRef = useRef<Dot[]>([]);
     const animRef = useRef<number>(0);
+    const quakeRef = useRef(0);
 
     useEffect(() => {
         const canvas = canvasRef.current!;
@@ -70,6 +71,13 @@ export default function DotBackground() {
                     d.vx += (dx / dist) * force * 0.06; d.vy += (dy / dist) * force * 0.06;
                 }
                 d.x += d.vx; d.y += d.vy;
+                if (quakeRef.current > 0) {
+                    const jitter = 4;
+                    d.x += (Math.random() - 0.5) * jitter;
+                    d.y += (Math.random() - 0.5) * jitter;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = 'rgba(20,241,149,0.8)';
+                }
                 const pulse = Math.sin(time * d.pulseSpeed + d.pulseOffset) * 0.15;
                 const proximityBoost = dist < MOUSE_RADIUS ? (1 - dist / MOUSE_RADIUS) * 0.5 : 0;
                 const finalOpacity = Math.min(1, d.opacity + pulse + proximityBoost);
@@ -86,9 +94,11 @@ export default function DotBackground() {
 
         const onMouseMove = (e: MouseEvent) => { mouseRef.current = { x: e.clientX, y: e.clientY }; };
         const onMouseLeave = () => { mouseRef.current = { x: -9999, y: -9999 }; };
+        const handleQuake = (e: any) => { quakeRef.current = e.detail.active ? 1 : 0; };
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseleave', onMouseLeave);
         window.addEventListener('resize', resize);
+        window.addEventListener('quantum-quake', handleQuake);
         resize();
         animRef.current = requestAnimationFrame(draw);
 
@@ -97,6 +107,7 @@ export default function DotBackground() {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseleave', onMouseLeave);
             window.removeEventListener('resize', resize);
+            window.removeEventListener('quantum-quake', handleQuake);
         };
     }, []);
 
