@@ -17,7 +17,8 @@ import {
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
+import { createWrappedSignAll } from "@/lib/raydium-execute";
 import {
   Raydium,
   TxVersion,
@@ -38,8 +39,7 @@ function PositionPageInner() {
   const fee = searchParams.get("fee") || "0.01%";
   const poolId = searchParams.get("poolId") || "";
 
-  const { publicKey, signTransaction, sendTransaction, connected } =
-    useWallet();
+  const { publicKey, signTransaction, signAllTransactions, sendTransaction, connected } = useWallet();
   const { connection } = useConnection();
 
   const [minPrice, setMinPrice] = useState<string>("0.5");
@@ -213,9 +213,7 @@ function PositionPageInner() {
               disableFeatureCheck: true,
               disableLoadToken: true,
             });
-            // @ts-ignore
-            const ticks = await raydium.clmm.getPoolTicks(poolId);
-            setPoolTicks(ticks);
+            // getPoolTicks not available in sdk-v2.
           } catch (tickErr) {
             console.warn("Could not fetch pool ticks:", tickErr);
           }
@@ -474,23 +472,14 @@ function PositionPageInner() {
     setTxSig(null);
 
     try {
-      let manualTxId: string = "";
-
-      // The manual sending workaround for the SDK bug
-      const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-        console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
-        for (let i = 0; i < txs.length; i++) {
-          const tx = txs[i];
-          if (tx instanceof Transaction) {
-            const sig = await sendTransaction(tx, connection);
-            console.log("✅ TX sent via wallet adapter! Sig:", sig);
-            await connection.confirmTransaction(sig, "confirmed");
-            manualTxId = sig;
-          }
+      let manualTxId = "";
+      const wrappedSignAll = await createWrappedSignAll(
+        connection,
+        signAllTransactions,
+        (sig) => {
+          manualTxId = sig;
         }
-        // Return empty array to prevent SDK from trying to serialize invalid transactions
-        return [];
-      };
+      );
 
       const raydium = await Raydium.load({
         owner: publicKey,
@@ -498,7 +487,7 @@ function PositionPageInner() {
         cluster: "devnet",
         disableFeatureCheck: true,
         disableLoadToken: true,
-        signAllTransactions: wrappedSignAllTransactions,
+        signAllTransactions: wrappedSignAll,
       });
 
       // Fetch pool info
@@ -672,7 +661,7 @@ function PositionPageInner() {
         await raydium.clmm.openPositionFromBase({
           poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
           poolKeys: undefined,
-          ownerInfo: { useSOLBalance: true },
+          ownerInfo: { useSOLBalance: true, closePosition: false } as any,
           tickLower,
           tickUpper,
           base: baseTokenStr,
@@ -681,60 +670,62 @@ function PositionPageInner() {
           txVersion: TxVersion.LEGACY,
         });
 
+      // Execute the transaction - SDK handles signing internally via wrappedSignAll
       try {
-        await openPositionExecute({ sendAndConfirm: true });
+        const { txId } = await openPositionExecute({ sendAndConfirm: true });
+        setTxSig(txId || manualTxId);
       } catch (execErr: any) {
-        if (execErr?.message !== "__TX_SENT_MANUALLY__") throw execErr;
+        // SDK may fail serializing after we already sent — that's fine
+        if (manualTxId) {
+          setTxSig(manualTxId);
+        } else {
+          throw execErr;
+        }
       }
 
-      if (manualTxId) {
-        setTxSig(manualTxId);
-
-        // Update localStorage so the liquidity table shows the deposit
-        // Update localStorage so the liquidity table shows the deposit
-        try {
-          const stored = localStorage.getItem("aeroCustomPools");
-          const customPools = stored ? JSON.parse(stored) : [];
-          let found = false;
-          const updated = customPools.map((p: any) => {
-            if (p.id === poolId) {
-              found = true;
-              const depA = parseFloat(depositA || "0");
-              const depB = parseFloat(depositB || "0");
-              const existingA = parseFloat(p.depositedA || "0");
-              const existingB = parseFloat(p.depositedB || "0");
-              const totalA = existingA + depA;
-              const totalB = existingB + depB;
-              return {
-                ...p,
-                liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`,
-                depositedA: totalA.toString(),
-                depositedB: totalB.toString(),
-              };
-            }
-            return p;
-          });
-
-          if (!found) {
-            updated.push({
-              id: poolId,
-              name: `${tokenAInfo.symbol}-${tokenBInfo.symbol}`,
-              symbolA: tokenAInfo.symbol,
-              symbolB: tokenBInfo.symbol,
-              logoA: tokenAInfo.logoURI,
-              logoB: tokenBInfo.logoURI,
-              fee: fee || "—",
-              depositedA: parseFloat(depositA || "0").toString(),
-              depositedB: parseFloat(depositB || "0").toString(),
-              liquidity: `${parseFloat(depositA || "0")} ${tokenAInfo.symbol} + ${parseFloat(depositB || "0")} ${tokenBInfo.symbol}`,
-            });
+      // Update localStorage so the liquidity table shows the deposit
+      try {
+        const stored = localStorage.getItem("aeroCustomPools");
+        const customPools = stored ? JSON.parse(stored) : [];
+        let found = false;
+        const updated = customPools.map((p: any) => {
+          if (p.id === poolId) {
+            found = true;
+            const depA = parseFloat(depositA || "0");
+            const depB = parseFloat(depositB || "0");
+            const existingA = parseFloat(p.depositedA || "0");
+            const existingB = parseFloat(p.depositedB || "0");
+            const totalA = existingA + depA;
+            const totalB = existingB + depB;
+            return {
+              ...p,
+              liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`,
+              depositedA: totalA.toString(),
+              depositedB: totalB.toString(),
+            };
           }
-          localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
-        } catch (e) { }
+          return p;
+        });
 
-        setDepositA("");
-        setDepositB("");
-      }
+        if (!found) {
+          updated.push({
+            id: poolId,
+            name: `${tokenAInfo.symbol}-${tokenBInfo.symbol}`,
+            symbolA: tokenAInfo.symbol,
+            symbolB: tokenBInfo.symbol,
+            logoA: tokenAInfo.logoURI,
+            logoB: tokenBInfo.logoURI,
+            fee: fee || "—",
+            depositedA: parseFloat(depositA || "0").toString(),
+            depositedB: parseFloat(depositB || "0").toString(),
+            liquidity: `${parseFloat(depositA || "0")} ${tokenAInfo.symbol} + ${parseFloat(depositB || "0")} ${tokenBInfo.symbol}`,
+          });
+        }
+        localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
+      } catch (e) { }
+
+      setDepositA("");
+      setDepositB("");
     } catch (err: any) {
       console.error("❌ Add liquidity failed:", err);
       setTxError(

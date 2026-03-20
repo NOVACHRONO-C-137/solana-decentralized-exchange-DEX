@@ -12,10 +12,11 @@ import BN from "bn.js";
 import Decimal from "decimal.js";
 import { formatLargeNumber } from "@/lib/utils";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
+import { createWrappedSignAll } from "@/lib/raydium-execute";
 
 export default function StandardPoolPage() {
     const router = useRouter();
-    const { publicKey, sendTransaction, connected } = useWallet();
+    const { publicKey, signAllTransactions, connected } = useWallet();
     const { connection } = useConnection();
 
     // Use token balances hook
@@ -152,20 +153,7 @@ export default function StandardPoolPage() {
 
         try {
             let manualTxId = "";
-            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-                console.log("🔑 Intercepting", txs.length, "txs — sending via wallet adapter...");
-                for (let i = 0; i < txs.length; i++) {
-                    const tx = txs[i];
-                    if ('serialize' in tx && 'feePayer' in tx) {
-                        const sig = await sendTransaction(tx as Transaction, connection);
-                        console.log("✅ TX sent via wallet adapter! Sig:", sig);
-                        await connection.confirmTransaction(sig, "confirmed");
-                        manualTxId = sig;
-                    }
-                }
-                // Return empty array to prevent SDK from trying to serialize invalid transactions
-                return [];
-            };
+            const wrappedSignAll = await createWrappedSignAll(connection, signAllTransactions, (sig) => { manualTxId = sig; });
 
             const raydium = await Raydium.load({
                 owner: publicKey,
@@ -173,7 +161,7 @@ export default function StandardPoolPage() {
                 cluster: "devnet",
                 disableFeatureCheck: true,
                 disableLoadToken: true,
-                signAllTransactions: wrappedSignAllTransactions, // Use intercept hack!
+                signAllTransactions: wrappedSignAll,
             });
 
             const mintA = {
@@ -226,19 +214,19 @@ export default function StandardPoolPage() {
                 feeConfig,
                 associatedOnly: false,
                 ownerInfo: { useSOLBalance: true },
-                txVersion: TxVersion.LEGACY,
+                txVersion: TxVersion.V0,
+                computeBudgetConfig: {
+                    units: 600_000,
+                    microLamports: 5_000,
+                },
             });
 
             try {
                 await createCpmmPool({ sendAndConfirm: true });
             } catch (e: any) {
-                if (e?.message === "__TX_SENT_MANUALLY__") {
-                    console.log("✅ Pool created (manual send):", manualTxId);
-                    setTxSig(manualTxId);
-                } else {
-                    throw e;
-                }
+                if (!manualTxId) throw e;
             }
+            if (manualTxId) setTxSig(manualTxId);
 
             const poolIdStr = extInfo.address.poolId.toString();
 

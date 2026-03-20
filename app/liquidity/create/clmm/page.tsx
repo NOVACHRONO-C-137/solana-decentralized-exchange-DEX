@@ -18,7 +18,7 @@ import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelec
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
-
+import { createWrappedSignAll } from "@/lib/raydium-execute";
 
 
 // ── Fee tier config ───────────────────────────────────────
@@ -32,7 +32,7 @@ const FEE_TIERS = [
 // ─────────────────────────────────────────────────────────
 export default function CreatePoolPage() {
     const router = useRouter();
-    const { publicKey, sendTransaction, connected } = useWallet();
+    const { publicKey, sendTransaction, signAllTransactions, connected } = useWallet();
     const { connection } = useConnection();
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
     const balancesMap = new Map<string, number>();
@@ -136,26 +136,10 @@ export default function CreatePoolPage() {
         setTxSig(null);
 
         try {
-            // 1. Init Raydium SDK on devnet
-            // BYPASS SDK's broken execute() flow:
-            // The SDK's execute() calls signAllTransactions, then serializes the ORIGINAL
-            // tx objects (ignoring the signed copies). Fix: send txs directly via wallet
-            // adapter's sendTransaction inside signAllTransactions, then throw a sentinel.
+            // 1. Init Raydiu            // 1. Init Raydium SDK on devnet
+            // Use createWrappedSignAll to properly sign and send transactions
             let lastManualTxId = "";
-
-            const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-                for (let i = 0; i < txs.length; i++) {
-                    const tx = txs[i];
-                    if ('serialize' in tx && 'feePayer' in tx) {
-                        // Legacy Transaction — send via wallet adapter
-                        const sig = await sendTransaction(tx as Transaction, connection);
-                        await connection.confirmTransaction(sig, "confirmed");
-                        lastManualTxId = sig;
-                    }
-                }
-                // Return empty array to prevent SDK from trying to serialize invalid transactions
-                return [];
-            };
+            const wrappedSignAll = await createWrappedSignAll(connection, signAllTransactions, (sig) => { lastManualTxId = sig; });
 
             const raydium = await Raydium.load({
                 owner: publicKey,
@@ -163,7 +147,7 @@ export default function CreatePoolPage() {
                 cluster: "devnet",
                 disableFeatureCheck: true,
                 disableLoadToken: true,
-                signAllTransactions: wrappedSignAllTransactions,
+                signAllTransactions: wrappedSignAll,
             });
 
             // 2. Fetch available CLMM fee configs and match selected tier
@@ -213,21 +197,22 @@ export default function CreatePoolPage() {
                 mint2,
                 ammConfig,
                 initialPrice: price,
-                txVersion: TxVersion.LEGACY,
+                txVersion: TxVersion.V0,
+                computeBudgetConfig: {
+                    units: 600_000,
+                    microLamports: 5_000,
+                },
             })
 
-            // Execute createPool — our wrapper intercepts, sends manually, throws sentinel
+            // Execute createPool
             let createTxId = "";
             try {
                 await createPoolExecute({ sendAndConfirm: true });
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
-                if (e?.message === "__TX_SENT_MANUALLY__") {
-                    createTxId = lastManualTxId;
-                } else {
-                    throw e;
-                }
+                if (!lastManualTxId) throw e;
             }
+            if (lastManualTxId) createTxId = lastManualTxId;
 
             const poolIdStr = extInfo.address.id.toString();
 
@@ -267,43 +252,36 @@ export default function CreatePoolPage() {
 
             if (hasDeposit) {
                 try {
-                    // Wait for pool to settle on-chain
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-
-                    // Fetch REAL pool info from chain — don't use mockPoolInfo
-                    const realPoolInfoRes = await fetch(
-                        `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolIdStr}`
-                    );
-                    const realPoolInfoJson = await realPoolInfoRes.json();
-                    const realPoolData = realPoolInfoJson?.data?.[0];
-
-                    if (!realPoolData) {
-                        throw new Error("Could not fetch real pool info after creation. Try adding liquidity from the pool page.");
+                    // Wait for pool to be available on-chain — retry up to 10 times
+                    let clmmPoolInfo: any = null;
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        try {
+                            const result = await raydium.clmm.getPoolInfoFromRpc(poolIdStr);
+                            if (result?.poolInfo) { clmmPoolInfo = result; break; }
+                        } catch {
+                            // pool not ready yet, will retry
+                        }
                     }
 
-                    // Use SDK to get proper pool keys and info
-                    const clmmPoolInfo = await raydium.clmm.getRpcClmmPoolInfo({
-                        poolId: poolIdStr
-                    });
+                    if (!clmmPoolInfo) {
+                        throw new Error("Pool created but not yet available on-chain. Add liquidity from the pool page.");
+                    }
 
                     const tickSpacing = matchedConfig.tickSpacing;
                     let tickLower: number;
                     let tickUpper: number;
 
                     if (priceRangeMode === "full") {
-                        const MIN_TICK = -443636;
-                        const MAX_TICK = 443636;
-                        tickLower = Math.ceil(MIN_TICK / tickSpacing) * tickSpacing;
-                        tickUpper = Math.floor(MAX_TICK / tickSpacing) * tickSpacing;
+                        tickLower = Math.ceil(-443636 / tickSpacing) * tickSpacing;
+                        tickUpper = Math.floor(443636 / tickSpacing) * tickSpacing;
                     } else {
                         const { tick: tl } = TickUtils.getPriceAndTick({
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             poolInfo: clmmPoolInfo as any,
                             price: new Decimal(minPrice),
                             baseIn: true,
                         });
                         const { tick: tu } = TickUtils.getPriceAndTick({
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             poolInfo: clmmPoolInfo as any,
                             price: new Decimal(maxPrice),
                             baseIn: true,
@@ -312,43 +290,32 @@ export default function CreatePoolPage() {
                         tickUpper = tu;
                     }
 
-                    const amountA = new BN(
-                        Math.floor(parseFloat(depositA || "0") * Math.pow(10, baseToken.decimals))
-                    );
-                    const amountB = new BN(
-                        Math.floor(parseFloat(depositB || "0") * Math.pow(10, quoteToken.decimals))
-                    );
-
-                    // Get pool keys separately
-                    const poolKeys = await raydium.clmm.getClmmPoolKeys(poolIdStr);
+                    const amountA = new BN(Math.floor(parseFloat(depositA || "0") * Math.pow(10, baseToken.decimals)));
+                    const amountB = new BN(Math.floor(parseFloat(depositB || "0") * Math.pow(10, quoteToken.decimals)));
 
                     const { execute: openPositionExecute } = await raydium.clmm.openPositionFromBase({
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        poolInfo: clmmPoolInfo as any,   // ← real on-chain state
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        poolKeys: poolKeys as any,        // ← real pool keys
+                        poolInfo: clmmPoolInfo.poolInfo as any,
+                        poolKeys: clmmPoolInfo.poolKeys as any,
                         ownerInfo: { useSOLBalance: true },
                         tickLower,
                         tickUpper,
                         base: "MintA",
                         baseAmount: amountA,
-                        otherAmountMax: new BN(Math.floor(amountB.toNumber() * 1.01)), // 1% slippage
-                        txVersion: TxVersion.LEGACY,
+                        otherAmountMax: new BN(Math.floor(amountB.toNumber() * 1.05)), // 5% slippage
+                        txVersion: TxVersion.V0,
+                        computeBudgetConfig: {
+                            units: 600_000,
+                            microLamports: 5_000,
+                        },
                     });
 
                     try {
                         await openPositionExecute({ sendAndConfirm: true });
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
-                        if (e?.message === "__TX_SENT_MANUALLY__") {
-                            setTxSig(lastManualTxId);
-                            notify.success("Transaction confirmed!");
-                        } else {
-                            throw e;
-                        }
+                        if (!lastManualTxId) throw e;
                     }
+                    if (lastManualTxId) setTxSig(lastManualTxId);
 
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } catch (posErr: any) {
                     setTxSig(createTxId);
                     notify.success("Transaction confirmed!");

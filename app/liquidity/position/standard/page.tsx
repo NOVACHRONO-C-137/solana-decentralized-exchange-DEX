@@ -5,8 +5,9 @@ import { formatLargeNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, RefreshCw, Loader2, ArrowDownUp } from "lucide-react";
 import Image from "next/image";
+import { createWrappedSignAll, slippageToBps } from "@/lib/raydium-execute";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { Raydium, TxVersion, Percent } from "@raydium-io/raydium-sdk-v2";
 import { DEVNET_TOKENS } from "@/components/liquidity/TokenSelectorModal";
 import BN from "bn.js";
@@ -21,7 +22,7 @@ function PositionPageInner() {
   const fee = searchParams.get("fee") || "0.25%";
   const poolId = searchParams.get("poolId") || "";
 
-  const { publicKey, sendTransaction, connected } = useWallet();
+  const { publicKey, sendTransaction, signAllTransactions, connected } = useWallet();
   const { connection } = useConnection();
 
   const [depositA, setDepositA] = useState<string>("");
@@ -165,6 +166,50 @@ function PositionPageInner() {
   const bottomDeposit = isInverted ? depositA : depositB;
   const setBottomDeposit = isInverted ? setDepositA : setDepositB;
 
+  const persistDepositedPool = () => {
+    try {
+      const stored = localStorage.getItem("aeroCustomPools");
+      const customPools = stored ? JSON.parse(stored) : [];
+      let found = false;
+      const updated = customPools.map((p: any) => {
+        if (p.id === poolId) {
+          found = true;
+          const totalA = parseFloat(p.depositedA || "0") + parseFloat(depositA);
+          const totalB = parseFloat(p.depositedB || "0") + parseFloat(depositB);
+          return {
+            ...p,
+            type: "Standard",
+            liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`,
+            depositedA: totalA.toString(),
+            depositedB: totalB.toString(),
+          };
+        }
+        return p;
+      });
+
+      if (!found) {
+        updated.push({
+          id: poolId,
+          name: `${tokenAInfo.symbol}-${tokenBInfo.symbol}`,
+          symbolA: tokenAInfo.symbol,
+          symbolB: tokenBInfo.symbol,
+          mintA: tokenAInfo.mint,
+          mintB: tokenBInfo.mint,
+          decimalsA: tokenAInfo.decimals,
+          decimalsB: tokenBInfo.decimals,
+          logoA: tokenAInfo.logoURI,
+          logoB: tokenBInfo.logoURI,
+          type: "Standard",
+          depositedA: depositA,
+          depositedB: depositB,
+          liquidity: `${depositA} ${tokenAInfo.symbol} + ${depositB} ${tokenBInfo.symbol}`,
+        });
+      }
+
+      localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
+    } catch { }
+  };
+
 
   const handleAddLiquidity = async () => {
     if (!publicKey || !connected) {
@@ -186,18 +231,13 @@ function PositionPageInner() {
 
     try {
       let manualTxId = "";
-      const wrappedSignAllTransactions = async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
-        for (let i = 0; i < txs.length; i++) {
-          const tx = txs[i];
-          if (tx instanceof Transaction) {
-            const sig = await sendTransaction(tx, connection);
-            await connection.confirmTransaction(sig, "confirmed");
-            manualTxId = sig;
-          }
+      const wrappedSignAll = await createWrappedSignAll(
+        connection,
+        signAllTransactions,
+        (sig) => {
+          manualTxId = sig;
         }
-        // Return empty array to prevent SDK from trying to serialize invalid transactions
-        return [];
-      };
+      );
 
       const raydium = await Raydium.load({
         owner: publicKey,
@@ -205,7 +245,7 @@ function PositionPageInner() {
         cluster: "devnet",
         disableFeatureCheck: true,
         disableLoadToken: true,
-        signAllTransactions: wrappedSignAllTransactions,
+        signAllTransactions: wrappedSignAll,
       });
 
       // Standard AMM pools in v2 use raydium.cpmm
@@ -226,7 +266,8 @@ function PositionPageInner() {
       const inputAmount = new BN(new Decimal(depositA).mul(10 ** tokenAInfo.decimals).toFixed(0));
 
       // Slippage processing
-      const maxSlippage = slippageTab === "Auto" ? 0.025 : parseFloat(customSlippage) / 100;
+      // Use basis points (integer) — Percent only accepts integers, not floats
+      const maxSlippage = slippageTab === "Auto" ? 2.5 : parseFloat(customSlippage);
 
       const baseIn = poolInfo.mintA.address === tokenAInfo.mint;
 
@@ -235,37 +276,30 @@ function PositionPageInner() {
         poolKeys,
         inputAmount,
         baseIn,
-        slippage: new Percent(maxSlippage * 100, 100) as any,
+        slippage: new Percent(slippageToBps(maxSlippage), 10000) as any,
         txVersion: TxVersion.LEGACY,
       });
 
+      let txId = "";
       try {
-        await execute({ sendAndConfirm: true });
+        const result = await execute({ sendAndConfirm: true });
+        txId = result?.txId || "";
       } catch (err: any) {
-        if (err?.message !== "__TX_SENT_MANUALLY__") throw err;
+        // SDK may fail serializing after we already sent — that's fine
+        if (!manualTxId) {
+          throw err;
+        }
       }
 
-      if (manualTxId) {
-        setTxSig(manualTxId);
-
-        // Quick Local Storage updates
-        try {
-          const stored = localStorage.getItem("aeroCustomPools");
-          const customPools = stored ? JSON.parse(stored) : [];
-          const updated = customPools.map((p: any) => {
-            if (p.id === poolId) {
-              const totalA = parseFloat(p.depositedA || "0") + parseFloat(depositA);
-              const totalB = parseFloat(p.depositedB || "0") + parseFloat(depositB);
-              return { ...p, liquidity: `${totalA} ${tokenAInfo.symbol} + ${totalB} ${tokenBInfo.symbol}`, depositedA: totalA.toString(), depositedB: totalB.toString() };
-            }
-            return p;
-          });
-          localStorage.setItem("aeroCustomPools", JSON.stringify(updated));
-        } catch (e) { }
-
-        setDepositA("");
-        setDepositB("");
+      const confirmedTxId = txId || manualTxId;
+      if (!confirmedTxId) {
+        throw new Error("Liquidity transaction did not return a confirmed signature.");
       }
+
+      setTxSig(confirmedTxId);
+      persistDepositedPool();
+      setDepositA("");
+      setDepositB("");
     } catch (err: any) {
       console.error("❌ Add standard liquidity failed:", err);
       setTxError(err?.message || "Failed to add liquidity.");

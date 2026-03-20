@@ -18,6 +18,27 @@ import { FarmRewardsCard } from "@/components/dashboard/FarmRewardsCard";
 import { PoolsCard } from "@/components/dashboard/PoolsCard";
 import { notify } from "@/lib/toast";
 
+function normalizePoolType(type?: string): string {
+    const t = (type || "").toLowerCase();
+    if (t === "clmm" || t === "concentrated") return "Concentrated";
+    if (t === "standard") return "Standard";
+    if (t === "legacy") return "Legacy";
+    return type || "Concentrated";
+}
+
+function normalizeStoredPool(pool: any) {
+    return {
+        ...pool,
+        type: normalizePoolType(pool.type),
+        mintA: typeof pool.mintA === "string"
+            ? { address: pool.mintA, symbol: pool.symbolA || "?", logoURI: pool.logoA, decimals: pool.decimalsA || 6 }
+            : pool.mintA,
+        mintB: typeof pool.mintB === "string"
+            ? { address: pool.mintB, symbol: pool.symbolB || "?", logoURI: pool.logoB, decimals: pool.decimalsB || 6 }
+            : pool.mintB,
+    };
+}
+
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -30,7 +51,7 @@ export default function DashboardPage() {
 
     const [pools, setPools] = useState<any[]>([]);
     const [poolsLoading, setPoolsLoading] = useState(false);
-    const [createdPoolIds, setCreatedPoolIds] = useState<Set<string>>(new Set());
+    const [positionPoolIds, setPositionPoolIds] = useState<Set<string>>(new Set());
 
     const [positions, setPositions] = useState<any[]>([]);
     const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -58,152 +79,125 @@ export default function DashboardPage() {
     const loadPools = useCallback(async () => {
         if (!publicKey || !connected) return;
         setPoolsLoading(true);
+        const positionIds = new Set<string>();
         const allIds = new Set<string>();
-        const createdIds = new Set<string>();
 
-        // Read localStorage ONCE at the start
+        // Read localStorage
         let customPools: any[] = [];
         try {
             const stored = localStorage.getItem("aeroCustomPools");
-            if (stored) {
-                customPools = JSON.parse(stored);
-            }
+            if (stored) customPools = JSON.parse(stored);
         } catch { }
 
         // Show localStorage pools immediately while we fetch
         if (customPools.length > 0) {
-            const normalized = customPools.map((p: any) => ({
-                ...p,
-                mintA: typeof p.mintA === "string"
-                    ? { address: p.mintA, symbol: p.symbolA || "?", logoURI: p.logoA, decimals: p.decimalsA || 6 }
-                    : p.mintA,
-                mintB: typeof p.mintB === "string"
-                    ? { address: p.mintB, symbol: p.symbolB || "?", logoURI: p.logoB, decimals: p.decimalsB || 6 }
-                    : p.mintB,
-            }));
-            setPools(normalized); // show immediately, API will enrich later
+            setPools(customPools.map((p: any) => normalizeStoredPool(p)));
         }
 
-        // 1. From localStorage (reuse the already-parsed data)
-        customPools.forEach((p: any) => {
-            if (p.id) {
-                allIds.add(p.id);
-                createdIds.add(p.id);
-            }
-        });
-        // 2. On-chain CLMM discovery
+        customPools.forEach((p: any) => { if (p.id) allIds.add(p.id); });
+
+        // CLMM positions via SDK
         try {
-            const accounts = await connection.getProgramAccounts(
-                new PublicKey(DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID),
-                {
-                    filters: [
-                        { dataSize: 1544 },
-                        { memcmp: { offset: 41, bytes: publicKey.toBase58() } }
-                    ]
-                }
-            );
-            accounts.forEach(({ pubkey }) => {
-                allIds.add(pubkey.toBase58());
-                createdIds.add(pubkey.toBase58());
+            const raydium = await Raydium.load({ owner: publicKey, connection, cluster: "devnet", disableFeatureCheck: true, disableLoadToken: true });
+            const userPositions = await raydium.clmm.getOwnerPositionInfo({ programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID });
+            setPositions(userPositions);
+            userPositions.forEach((pos: any) => {
+                const id = pos.poolId.toString();
+                positionIds.add(id);
+                allIds.add(id);
             });
         } catch { }
 
+        // ── Step 2: Standard/CPMM positions via direct pool account read ──
+        // We already know pool IDs from localStorage. Read each account directly,
+        // extract lpMint at offset 136 (CPMM layout), check wallet LP balance.
         try {
-            const cpmmAccounts = await connection.getProgramAccounts(
-                new PublicKey(DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM),
-                {
-                    filters: [
-                        { dataSize: 637 },
-                        { memcmp: { offset: 40, bytes: publicKey.toBase58() } }
-                    ]
+            const storedIds = customPools.map((p: any) => p.id).filter(Boolean);
+
+            for (const poolId of storedIds) {
+                // Skip if already found via CLMM positions
+                if (positionIds.has(poolId)) continue;
+
+                try {
+                    const info = await connection.getAccountInfo(new PublicKey(poolId));
+                    if (!info?.data) {
+                        continue;
+                    }
+
+                    const data = Buffer.from(info.data);
+
+                    // CPMM PoolState: lpMint @ offset 136 (32 bytes)
+                    if (data.length >= 168) {
+                        const lpMintBytes = data.slice(136, 168);
+                        const isValid = !lpMintBytes.every((b: number) => b === 0);
+                        if (!isValid) continue;
+
+                        const lpMint = new PublicKey(lpMintBytes).toBase58();
+
+                        // Check wallet LP token balance
+                        const accounts = await connection.getParsedTokenAccountsByOwner(
+                            publicKey,
+                            { mint: new PublicKey(lpMint) }
+                        );
+                        const balance = accounts.value.reduce(
+                            (sum: number, a: any) => sum + (a.account.data.parsed.info.tokenAmount.uiAmount || 0), 0
+                        );
+                        if (balance > 0) {
+                            positionIds.add(poolId);
+                            allIds.add(poolId);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("[loadPools] error checking pool", poolId, e);
                 }
-            );
-            cpmmAccounts.forEach(({ pubkey }) => {
-                allIds.add(pubkey.toBase58());
-                createdIds.add(pubkey.toBase58());
-            });
-        } catch {
+            }
+
+        } catch (e) {
+            console.warn("[loadPools] Step2 outer error:", e);
         }
 
-        try {
-            const ammAccounts = await connection.getProgramAccounts(
-                new PublicKey(DEVNET_PROGRAM_ID.AMM_V4),
-                {
-                    filters: [
-                        { dataSize: 752 },
-                        { memcmp: { offset: 400, bytes: publicKey.toBase58() } }
-                    ]
-                }
-            );
-            ammAccounts.forEach(({ pubkey }) => {
-                allIds.add(pubkey.toBase58());
-                createdIds.add(pubkey.toBase58());
-            });
-        } catch {
-        }
+        // Fetch pool metadata for all known IDs
+        if (allIds.size > 0) {
+            try {
+                const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${Array.from(allIds).join(",")}`);
+                const json = await res.json();
+                const apiPools = (json.data || [])
+                    .filter((p: any) => p?.mintA && p?.mintB)
+                    .map((p: any) => ({ ...p, type: normalizePoolType(p.type) }));
+                // apiPools loaded
 
-        try {
-            const raydium = await Raydium.load({
-                owner: publicKey,
-                connection,
-                cluster: "devnet",
-                disableFeatureCheck: true,
-                disableLoadToken: true,
-            });
-            const userPositions = await raydium.clmm.getOwnerPositionInfo({
-                programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID,
-            });
-            setPositions(userPositions);
-            userPositions.forEach((pos: any) => {
-                allIds.add(pos.poolId.toString());
-            });
-        } catch {
-        }
-
-        setCreatedPoolIds(createdIds);
-
-        const idsArray = Array.from(allIds);
-        if (!idsArray.length) { setPoolsLoading(false); setPools([]); return; }
-
-        // 3. Fetch metadata from API, then merge with localStorage for any missing pools
-        // Build localStorage map for fallback (reuse already-parsed customPools)
-        const localPoolMap = new Map<string, any>();
-        for (const p of customPools) {
-            if (p.id) localPoolMap.set(p.id, p);
-        }
-
-
-
-        try {
-            const res = await fetch(
-                `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${idsArray.join(",")}`
-            );
-            const json = await res.json();
-
-            if (json.data && Array.isArray(json.data)) {
-                const apiPools = json.data.filter((p: any) => p && p.mintA && p.mintB);
-                const apiIds = new Set(apiPools.map((p: any) => p.id));
-                const missingPools: any[] = [];
-                for (const [id, local] of Array.from(localPoolMap.entries())) {
-                    if (!apiIds.has(id)) {
-                        missingPools.push({
-                            ...local,
-                            mintA: typeof local.mintA === "string"
-                                ? { address: local.mintA, symbol: local.symbolA || "?", logoURI: local.logoA, decimals: local.decimalsA || 6 }
-                                : local.mintA,
-                            mintB: typeof local.mintB === "string"
-                                ? { address: local.mintB, symbol: local.symbolB || "?", logoURI: local.logoB, decimals: local.decimalsB || 6 }
-                                : local.mintB,
-                        });
+                // Check LP token balance for standard/legacy pools
+                for (const pool of apiPools) {
+                    if ((pool.type === "Standard" || pool.type === "Legacy") && pool.lpMint?.address) {
+                        // checking LP mint
+                        try {
+                            const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(pool.lpMint.address) });
+                            // LP accounts
+                            const hasLp = accounts.value.some((a: any) => a.account.data.parsed.info.tokenAmount.uiAmount > 0);
+                            if (hasLp) {
+                                positionIds.add(pool.id);
+                                allIds.add(pool.id);
+                            }
+                        } catch { }
                     }
                 }
+                const mergedPools = new Map<string, any>();
 
-                setPools([...apiPools, ...missingPools]);
-            }
-        } catch {
-        } finally {
-            setPoolsLoading(false);
+                customPools
+                    .map((p: any) => normalizeStoredPool(p))
+                    .forEach((pool: any) => mergedPools.set(pool.id || pool.poolId, pool));
+
+                apiPools.forEach((pool: any) => {
+                    mergedPools.set(pool.id || pool.poolId, pool);
+                });
+
+                setPools(Array.from(mergedPools.values()));
+            } catch { }
         }
+
+        setPositionPoolIds(positionIds);
+        // final positionPoolIds
+        setPoolsLoading(false);
     }, [publicKey, connected, connection]);
 
     useEffect(() => { loadPools(); }, [loadPools]);
@@ -330,7 +324,7 @@ export default function DashboardPage() {
                 ? `${(pool.feeRate * 100).toFixed(2)}%`
                 : `${(pool.feeRate / 100).toFixed(2)}%`)
             : pool.fee || "0.25%";
-        const type = pool.type || "Concentrated";
+        const type = normalizePoolType(pool.type);
         const isStandard = type === "Standard";
         const basePath = isStandard ? "/liquidity/position/standard" : "/liquidity/position/clmm";
 
@@ -362,7 +356,7 @@ export default function DashboardPage() {
                 ? `${(pool.feeRate * 100).toFixed(2)}%`
                 : `${(pool.feeRate / 100).toFixed(2)}%`)
             : pool.fee || "0.25%";
-        const type = (pool.type || "").toLowerCase();
+        const type = normalizePoolType(pool.type).toLowerCase();
         const isStandard = type === "standard";
         const q = new URLSearchParams({
             poolId: id,
@@ -418,9 +412,8 @@ export default function DashboardPage() {
                         {/* Card 4 — My Pools */}
                         <PoolsCard
                             pools={pools}
-                            positions={positions}
                             poolsLoading={poolsLoading}
-                            createdPoolIds={createdPoolIds}
+                            positionPoolIds={positionPoolIds}
                             onDeposit={handleDeposit}
                             onWithdraw={handleWithdraw}
                             onRefresh={loadPools}

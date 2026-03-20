@@ -266,7 +266,7 @@ export function TokenSelectorModal({
                             <Loader2 className="h-5 w-5 text-[var(--neon-teal)] animate-spin shrink-0" />
                             <div>
                                 <p className="text-sm font-semibold text-foreground">Looking up token…</p>
-                                <p className="text-xs text-muted-foreground">Checking Raydium API + Metaplex on-chain metadata</p>
+                                <p className="text-xs text-muted-foreground">Checking blockchain for token mint address</p>
                             </div>
                         </div>
                     )}

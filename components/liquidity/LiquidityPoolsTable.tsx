@@ -199,7 +199,11 @@ async function searchPoolsByMint(mint: string): Promise<PoolData[]> {
 async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolData | null> {
     try {
         const info = await connection.getAccountInfo(new PublicKey(poolId));
-        if (!info?.data) return null;
+        // lookupPool
+        if (!info?.data) {
+            // lookupPool
+            return null;
+        }
 
         const data: Buffer = Buffer.from(info.data);
         let mintABytes: Buffer | null = null;
@@ -207,28 +211,50 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
         let poolType = "Concentrated";
         let feeLabel = "0.25%";
 
-        if (data.length === 1544) {
-            // CLMM
+        // Helper to check if buffer is all zeros or all 0xFF
+        const isInvalidBytes = (buf: Buffer) => {
+            const allZero = buf.every(b => b === 0);
+            const allFF = buf.every(b => b === 0xFF);
+            return allZero || allFF;
+        };
+
+        // Use length ranges instead of exact matches
+        if (data.length >= 1544 && data.length < 1600) {
+            // CLMM: mintA @ offset 73, mintB @ offset 105
             mintABytes = data.slice(73, 105);
             mintBBytes = data.slice(105, 137);
             poolType = "Concentrated";
-        } else if (data.length === 637) {
-            // CPMM
+        } else if (data.length >= 600 && data.length < 700) {
+            // CPMM: mintA @ offset 168, mintB @ offset 200
             mintABytes = data.slice(168, 200);
             mintBBytes = data.slice(200, 232);
             poolType = "Standard";
-        } else if (data.length === 752) {
-            // Legacy AMM v4: coinMintAddress @ 400, pcMintAddress @ 432
+        } else if (data.length >= 700 && data.length < 800) {
+            // Legacy AMM v4: mintA @ offset 400, mintB @ offset 432
             mintABytes = data.slice(400, 432);
             mintBBytes = data.slice(432, 464);
             poolType = "Legacy";
             feeLabel = "0.25%";
+        } else if (data.length >= 137) {
+            // Fallback: try CLMM offsets
+            mintABytes = data.slice(73, 105);
+            mintBBytes = data.slice(105, 137);
+            poolType = "Concentrated";
         } else {
+            return null;
+        }
+
+        // lookupPool
+
+        // Validate extracted bytes are not all zeros or all 0xFF
+        if (!mintABytes || !mintBBytes || isInvalidBytes(mintABytes) || isInvalidBytes(mintBBytes)) {
+            // lookupPool
             return null;
         }
 
         const mintA = new PublicKey(mintABytes).toBase58();
         const mintB = new PublicKey(mintBBytes).toBase58();
+        // lookupPool
 
         // Try to enrich with metadata from Raydium API
         let symbolA = mintA.slice(0, 6);
@@ -243,6 +269,7 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
             if (mintRes.ok) {
                 const mintJson = await mintRes.json();
                 const mints: any[] = mintJson?.data || [];
+                // lookupPool
                 for (const m of mints) {
                     if (!m) continue;
                     if (m.address === mintA) { symbolA = m.symbol || symbolA; logoA = m.logoURI; decimalsA = m.decimals ?? 6; }
@@ -266,7 +293,7 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
             symbolA, symbolB,
             type: poolType,
         };
-    } catch { return null; }
+    } catch (err) { return null; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -397,21 +424,27 @@ export default function LiquidityPoolsTable() {
 
     // ── Unified search effect ──────────────────────────────────────────────
     // Single effect handles both pool-address and mint-address searches.
-    // Tries API first, falls back to on-chain for pool addresses.
+    // Order: RPC first (for pool addresses), API enrichment (for TVL/APR), mint search last.
     useEffect(() => {
+        // search
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
         const q = search.trim();
+        // search
+        // search
         if (!isValidPubkey(q)) {
+            // search
             setPoolSearchResult(null);
             setMintSearchResults([]);
             setSearchLoading(false);
             return;
         }
 
-        // If it's already in the table, no need to search
-        if (pools.find(p => p.id === q)) {
-            setPoolSearchResult(null);
+        // If it's already in the table, show it as the search result
+        const existingPool = pools.find(p => p.id === q);
+        // search
+        if (existingPool) {
+            setPoolSearchResult(existingPool);
             setMintSearchResults([]);
             setSearchLoading(false);
             return;
@@ -421,52 +454,77 @@ export default function LiquidityPoolsTable() {
         setPoolSearchResult(null);
         setMintSearchResults([]);
 
-        searchDebounceRef.current = setTimeout(async () => {
-            // Step 1: Try pool address lookup via API
-            try {
-                const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${q}`);
-                if (res.ok) {
-                    const json = await res.json();
-                    const live = json?.data?.[0];
-                    if (live?.mintA && live?.mintB) {
-                        const feeRate = live.feeRate || 0;
-                        setPoolSearchResult({
-                            id: live.id, name: `${live.mintA.symbol}-${live.mintB.symbol}`,
-                            liquidity: live.tvl ? USD_FMT.format(live.tvl) : "$0.00",
-                            volume: "$0.00", fees: "$0.00",
-                            apr: live.day?.apr ? `${live.day.apr.toFixed(2)}%` : "0%",
-                            fee: feeRate < 1 ? `${(feeRate * 100).toFixed(2)}%` : `${(feeRate / 100).toFixed(2)}%`,
-                            poolId: `${live.id.slice(0, 6)}...${live.id.slice(-4)}`,
-                            aprBreakdown: { tradeFees: "0%", yield: "0%" },
-                            mintA: live.mintA.address, mintB: live.mintB.address,
-                            decimalsA: live.mintA.decimals, decimalsB: live.mintB.decimals,
-                            logoA: live.mintA.logoURI, logoB: live.mintB.logoURI,
-                            symbolA: live.mintA.symbol, symbolB: live.mintB.symbol, type: live.type,
-                        });
-                        setSearchLoading(false);
-                        return;
-                    }
-                }
-            } catch { }
+        // search
 
-            // Step 2: API didn't know it — try reading the pool account on-chain.
-            // This works for freshly created pools not yet indexed by Raydium.
+        searchDebounceRef.current = setTimeout(async () => {
+            // search
+
+            // Step 1: Try RPC first - lookup pool on-chain to get mint addresses
+            // search
+            let onChainResult: PoolData | null = null;
             if (connection) {
-                const onChainResult = await lookupPoolOnChain(q, connection);
-                if (onChainResult) {
-                    setPoolSearchResult(onChainResult);
-                    setSearchLoading(false);
-                    return;
+                onChainResult = await lookupPoolOnChain(q, connection);
+            }
+            // search
+
+            // Step 2: If RPC found a pool, try to enrich with API data (TVL, APR, fees)
+            if (onChainResult) {
+                // search
+                try {
+                    const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${q}`);
+                    const json = await res.json();
+                    // search
+                    if (res.ok) {
+                        const live = json?.data?.[0];
+                        if (live?.mintA && live?.mintB) {
+                            // API succeeded - enrich with TVL, APR, fees
+                            const feeRate = live.feeRate || 0;
+                            const enriched: PoolData = {
+                                ...onChainResult,
+                                name: `${live.mintA.symbol || onChainResult.symbolA}-${live.mintB.symbol || onChainResult.symbolB}`,
+                                liquidity: live.tvl ? USD_FMT.format(live.tvl) : "$0.00",
+                                volume: "$0.00",
+                                fees: live.day?.volumeFee ? USD_FMT.format(live.day.volumeFee) : "$0.00",
+                                apr: live.day?.apr ? `${live.day.apr.toFixed(2)}%` : "0%",
+                                fee: feeRate < 1 ? `${(feeRate * 100).toFixed(2)}%` : `${(feeRate / 100).toFixed(2)}%`,
+                                aprBreakdown: {
+                                    tradeFees: live.day?.feeApr ? `${live.day.feeApr.toFixed(2)}%` : "0%",
+                                    yield: "0%",
+                                },
+                                mintA: live.mintA.address,
+                                mintB: live.mintB.address,
+                                decimalsA: live.mintA.decimals ?? onChainResult.decimalsA,
+                                decimalsB: live.mintB.decimals ?? onChainResult.decimalsB,
+                                logoA: live.mintA.logoURI ?? onChainResult.logoA,
+                                logoB: live.mintB.logoURI ?? onChainResult.logoB,
+                                symbolA: live.mintA.symbol ?? onChainResult.symbolA,
+                                symbolB: live.mintB.symbol ?? onChainResult.symbolB,
+                                type: live.type ?? onChainResult.type,
+                            };
+                            setPoolSearchResult(enriched);
+                            setSearchLoading(false);
+                            return;
+                        }
+                    }
+                } catch {
+                    // search
+                    // API failed or 404 - use on-chain data as fallback
                 }
+                // Use on-chain result if API failed
+                setPoolSearchResult(onChainResult);
+                setSearchLoading(false);
+                return;
             }
 
-            // Step 3: Not a pool — treat it as a mint address and search for pools containing it
+            // Step 3: RPC returned null - treat it as a mint address and search for pools containing it
+            // search
             const mintResults = await searchPoolsByMint(q);
+            // search
             setMintSearchResults(mintResults);
             setSearchLoading(false);
         }, 500);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, pools]);
+    }, [search, pools, connection]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -688,8 +746,7 @@ export default function LiquidityPoolsTable() {
                             }
                             {isMintSearch && !searchLoading && (
                                 <p className="absolute -bottom-5 left-1 text-[10px] text-[var(--neon-teal)] flex items-center gap-1">
-                                    <span className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />
-                                    {poolSearchResult ? "Pool found by address" : mintSearchResults.length > 0 ? `${mintSearchResults.length} pool(s) containing this mint` : "Searching…"}
+                                    {poolSearchResult ? <><span className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />Pool found by address</> : mintSearchResults.length > 0 ? <><span className="w-1 h-1 rounded-full bg-[var(--neon-teal)]" />{mintSearchResults.length} pool(s) containing this mint</> : null}
                                 </p>
                             )}
                         </div>
@@ -727,12 +784,30 @@ export default function LiquidityPoolsTable() {
                                         </div>
                                     </td></tr>
                                 ) : searchLoading ? (
-                                    <tr><td colSpan={6} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Loader2 className="w-6 h-6 text-[var(--neon-teal)] animate-spin" />
-                                            <span className="text-sm text-muted-foreground">Searching on-chain…</span>
-                                        </div>
-                                    </td></tr>
+                                    // Skeleton rows while searching - holds table layout
+                                    <>
+                                        {[0, 1, 2].map(i => (
+                                            <tr key={i} className="animate-pulse">
+                                                <td className="px-2 sm:px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex -space-x-2">
+                                                            <div className="w-7 h-7 rounded-full bg-muted/40" />
+                                                            <div className="w-7 h-7 rounded-full bg-muted/40" />
+                                                        </div>
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="h-3 w-16 bg-muted/40 rounded" />
+                                                            <div className="h-2 w-12 bg-muted/40 rounded" />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-2 sm:px-6 py-4 text-center"><div className="h-4 w-16 bg-muted/40 rounded ml-auto" /></td>
+                                                <td className="hidden md:table-cell px-6 py-4 text-right"><div className="h-4 w-12 bg-muted/40 rounded ml-auto" /></td>
+                                                <td className="hidden md:table-cell px-6 py-4 text-right"><div className="h-4 w-12 bg-muted/40 rounded ml-auto" /></td>
+                                                <td className="hidden md:table-cell px-6 py-4 text-right"><div className="h-4 w-10 bg-muted/40 rounded ml-auto" /></td>
+                                                <td className="px-2 sm:px-6 py-4 text-right"><div className="h-8 w-16 bg-muted/40 rounded ml-auto" /></td>
+                                            </tr>
+                                        ))}
+                                    </>
                                 ) : poolSearchResult ? (
                                     // Pool address found — show just that row
                                     <PoolRow pool={poolSearchResult} idx={0} isSearchResult />
