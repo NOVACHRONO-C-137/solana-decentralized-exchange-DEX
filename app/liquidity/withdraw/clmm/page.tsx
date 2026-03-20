@@ -10,6 +10,7 @@ import { ChevronLeft, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "luci
 import { formatLargeNumber, glassCard } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
+import { parseError } from "@/lib/error-utils";
 
 // ── Position card ─────────────────────────────────────────
 interface PositionInfo {
@@ -90,15 +91,9 @@ export default function WithdrawCLMMPage() {
 
             setPositions(formatted);
         } catch (err: any) {
-            const msg = err?.message || "Failed to load positions from chain.";
-
-            if (msg.includes("429") || msg.toLowerCase().includes("too many requests") || msg.includes("rate limit")) {
-                notify.error("RPC Rate Limited while loading positions. Try refreshing.");
-            } else {
-                notify.error(msg);
-            }
-
-            setTxError(msg);
+            const cleanMessage = parseError(err);
+            notify.error(cleanMessage);
+            setTxError(cleanMessage);
         } finally {
             setLoading(false);
         }
@@ -198,16 +193,9 @@ export default function WithdrawCLMMPage() {
             }
 
         } catch (err: any) {
-            const msg = err?.message || "Withdrawal failed. Check console.";
-
-            // Intercept rate limit errors for a cleaner toast
-            if (msg.includes("429") || msg.toLowerCase().includes("too many requests") || msg.includes("rate limit")) {
-                notify.error("RPC Rate Limited. Please try again in a few seconds.");
-            } else {
-                notify.error(msg);
-            }
-
-            setTxError(msg);
+            const cleanMessage = parseError(err);
+            notify.error(cleanMessage);
+            setTxError(cleanMessage);
         } finally {
             setWithdrawingId(null);
         }

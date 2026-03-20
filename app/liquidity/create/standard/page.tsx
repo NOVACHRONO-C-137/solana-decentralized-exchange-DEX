@@ -13,13 +13,13 @@ import Decimal from "decimal.js";
 import { formatLargeNumber } from "@/lib/utils";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { createWrappedSignAll } from "@/lib/raydium-execute";
+import { parseError } from "@/lib/error-utils";
 
 export default function StandardPoolPage() {
     const router = useRouter();
     const { publicKey, signAllTransactions, connected } = useWallet();
     const { connection } = useConnection();
 
-    // Use token balances hook
     const { balances: tokenBalances, discoveredTokens, loading: balancesLoading } = useTokenBalances();
     const balancesMap = new Map<string, number>();
     tokenBalances.forEach((tb, mint) => balancesMap.set(mint, tb.balance));
@@ -56,13 +56,10 @@ export default function StandardPoolPage() {
                 const json = await res.json();
                 if (json.success && json.data) {
                     setFeeTiers(json.data);
-                    // Select default (often the one with tradeFeeRate ~ 2500 for 0.25%)
                     const defaultFee = json.data.find((f: any) => f.tradeFeeRate === 2500) || json.data[0];
                     setSelectedFee(defaultFee);
                 }
-            } catch (err) {
-                console.error("Failed to fetch CPMM configs", err);
-            }
+            } catch { }
         };
         fetchConfigs();
     }, []);
@@ -73,11 +70,9 @@ export default function StandardPoolPage() {
         setIsTokenModalOpen(false);
     };
 
-    // Derived Balance Lookups
     const baseBalance = baseToken ? (tokenBalances.get(baseToken.mint)?.balance || 0) : 0;
     const quoteBalance = quoteToken ? (tokenBalances.get(quoteToken.mint)?.balance || 0) : 0;
 
-    // --- Clean CPMM Math Handlers ---
     const handleBaseChange = (val: string) => {
         setBaseAmount(val);
         if (!val) return setQuoteAmount("");
@@ -127,7 +122,6 @@ export default function StandardPoolPage() {
 
         const val = (bal * pct).toFixed(isBase ? (baseToken?.decimals || 6) : (quoteToken?.decimals || 6));
 
-        // Remove trailing zeroes from the string so it formats cleanly
         let cleanVal = val;
         if (cleanVal.includes('.')) {
             cleanVal = cleanVal.replace(/\.?0+$/, "");
@@ -230,7 +224,6 @@ export default function StandardPoolPage() {
 
             const poolIdStr = extInfo.address.poolId.toString();
 
-            // Store custom pool locally so it appears in liquidity list immediately
             const stored = localStorage.getItem("aeroCustomPools");
             let customPools = [];
             try {
@@ -260,14 +253,13 @@ export default function StandardPoolPage() {
             customPools.push(newPool);
             localStorage.setItem("aeroCustomPools", JSON.stringify(customPools));
 
-            // Small delay for UI feedback then redirect
             setTimeout(() => {
                 router.push("/liquidity");
             }, 1000);
 
         } catch (err: any) {
-            console.error(err);
-            setTxError(err?.message || "Failed to create pool. Check console.");
+            const cleanMessage = parseError(err);
+            setTxError(cleanMessage);
         } finally {
             setIsCreating(false);
         }

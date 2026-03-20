@@ -1,6 +1,3 @@
-// app/liquidity/create/clmm/page.tsx
-
-
 "use client";
 
 
@@ -18,18 +15,18 @@ import { TokenSelectorModal, TokenInfo } from "@/components/liquidity/TokenSelec
 import { useTokenBalances } from "@/hooks/useTokenBalances"
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
+import { parseError } from "@/lib/error-utils";
 import { createWrappedSignAll } from "@/lib/raydium-execute";
 
 
-// ── Fee tier config ───────────────────────────────────────
-// label shown in UI → fee rate in bps (hundredths of a percent × 100)
+
 const FEE_TIERS = [
     { label: "0.01%", bps: 100 },
     { label: "0.05%", bps: 500 },
     { label: "0.25%", bps: 2500 },
 ]
 
-// ─────────────────────────────────────────────────────────
+
 export default function CreatePoolPage() {
     const router = useRouter();
     const { publicKey, sendTransaction, signAllTransactions, connected } = useWallet();
@@ -64,7 +61,7 @@ export default function CreatePoolPage() {
     const [txError, setTxError] = useState<string | null>(null);
     const [txSig, setTxSig] = useState<string | null>(null);
 
-    // ── Helpers ─────────────────────────────────────────────
+    // Helpers
     const handleTokenSelect = (token: TokenInfo) => {
         if (activeSelectionSlot === "base") setBaseToken(token)
         if (activeSelectionSlot === "quote") setQuoteToken(token)
@@ -108,14 +105,14 @@ export default function CreatePoolPage() {
     const { ratioA: rA, ratioB: rB } = calculateCLMMRatio(currentPrice, rangeMin, rangeMax)
 
     // USD values — each token's USD value
-    const usdA = (parseFloat(depositA) || 0) * currentPrice  // base token in USD (priced in quote)
-    const usdB = (parseFloat(depositB) || 0)                  // quote token is worth face value
+    const usdA = (parseFloat(depositA) || 0) * currentPrice
+    const usdB = (parseFloat(depositB) || 0)
     const totalDeposit = usdA + usdB
 
     const ratioA = (rA * 100).toFixed(1)
     const ratioB = (rB * 100).toFixed(1)
 
-    // ── Create Pool ──────────────────────────────────────────
+    // Create Pool
     const handleCreatePool = async () => {
         if (!connected || !publicKey) {
             const msg = "Please connect your wallet first.";
@@ -136,8 +133,6 @@ export default function CreatePoolPage() {
         setTxSig(null);
 
         try {
-            // 1. Init Raydiu            // 1. Init Raydium SDK on devnet
-            // Use createWrappedSignAll to properly sign and send transactions
             let lastManualTxId = "";
             const wrappedSignAll = await createWrappedSignAll(connection, signAllTransactions, (sig) => { lastManualTxId = sig; });
 
@@ -150,11 +145,10 @@ export default function CreatePoolPage() {
                 signAllTransactions: wrappedSignAll,
             });
 
-            // 2. Fetch available CLMM fee configs and match selected tier
+
             const configRes = await fetch("https://api-v3-devnet.raydium.io/main/clmm-config")
             const json = await configRes.json()
             const configs = json.data
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const matchedConfig = configs.find((c: any) => c.tradeFeeRate === selectedFee.bps)
             if (!matchedConfig) throw new Error(`No devnet CLMM config found for fee tier ${selectedFee.label}. Try 0.04%.`)
 
@@ -204,11 +198,10 @@ export default function CreatePoolPage() {
                 },
             })
 
-            // Execute createPool
+
             let createTxId = "";
             try {
                 await createPoolExecute({ sendAndConfirm: true });
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
                 if (!lastManualTxId) throw e;
             }
@@ -216,7 +209,7 @@ export default function CreatePoolPage() {
 
             const poolIdStr = extInfo.address.id.toString();
 
-            // Save pool to localStorage IMMEDIATELY so it shows in the table
+
             const newPool = {
                 id: poolIdStr,
                 name: `${baseToken.symbol}-${quoteToken.symbol}`,
@@ -239,7 +232,6 @@ export default function CreatePoolPage() {
                 createdAt: new Date().toISOString(),
             };
             const stored = localStorage.getItem("aeroCustomPools");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let customPools: any[] = [];
             try {
                 if (stored) customPools = JSON.parse(stored);
@@ -247,12 +239,12 @@ export default function CreatePoolPage() {
             customPools.push(newPool);
             localStorage.setItem("aeroCustomPools", JSON.stringify(customPools));
 
-            // 4. Try to open position with initial liquidity (optional step)
+
             const hasDeposit = (parseFloat(depositA || "0") > 0) || (parseFloat(depositB || "0") > 0);
 
             if (hasDeposit) {
                 try {
-                    // Wait for pool to be available on-chain — retry up to 10 times
+
                     let clmmPoolInfo: any = null;
                     for (let attempt = 0; attempt < 10; attempt++) {
                         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -301,7 +293,7 @@ export default function CreatePoolPage() {
                         tickUpper,
                         base: "MintA",
                         baseAmount: amountA,
-                        otherAmountMax: new BN(Math.floor(amountB.toNumber() * 1.05)), // 5% slippage
+                        otherAmountMax: new BN(Math.floor(amountB.toNumber() * 1.05)),
                         txVersion: TxVersion.V0,
                         computeBudgetConfig: {
                             units: 600_000,
@@ -330,17 +322,16 @@ export default function CreatePoolPage() {
 
             setDepositA("");
             setDepositB("");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            const msg = err?.message || "Pool creation failed. Check console for details.";
-            setTxError(msg);
-            notify.error(msg);
+            const cleanMessage = parseError(err);
+            setTxError(cleanMessage);
+            notify.error(cleanMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    // ── PAIR BAR ─────────────────────────────────────────────
+
     const PairBar = ({ onEdit }: { onEdit: () => void }) => (
         <div className="flex items-center justify-between bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 mb-4">
             <div className="flex items-center gap-3">
@@ -357,7 +348,7 @@ export default function CreatePoolPage() {
         </div>
     );
 
-    // ── STEP 1 ────────────────────────────────────────────────
+
     const renderStep1 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">First, select tokens & fee tier</h2>
@@ -421,7 +412,7 @@ export default function CreatePoolPage() {
         </div>
     );
 
-    // ── STEP 2 ────────────────────────────────────────────────
+
     const renderStep2 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Next, set initial token price & position price range</h2>
@@ -503,7 +494,7 @@ export default function CreatePoolPage() {
         </div>
     );
 
-    // ── Auto-calculate paired token ─────────────────────────
+
     const handleDepositAChange = (val: string) => {
         setDepositA(val)
         const amount = parseFloat(val)
@@ -528,7 +519,7 @@ export default function CreatePoolPage() {
         }
     }
 
-    // ── STEP 3 ────────────────────────────────────────────────
+
     const renderStep3 = () => (
         <div className="w-full md:w-2/3 pt-10">
             <h2 className="text-xl font-bold mb-6">Last, please enter token deposit amount</h2>
@@ -668,7 +659,7 @@ export default function CreatePoolPage() {
         </div>
     );
 
-    // ── MAIN ─────────────────────────────────────────────────
+
     return (
         <main className="container mx-auto px-4 pt-24 pb-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">

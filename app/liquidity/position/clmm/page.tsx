@@ -19,6 +19,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { createWrappedSignAll } from "@/lib/raydium-execute";
+import { parseError } from "@/lib/error-utils";
 import {
   Raydium,
   TxVersion,
@@ -139,9 +140,7 @@ function PositionPageInner() {
 
       setBalanceA(await getBal(tokenAInfo.mint));
       setBalanceB(await getBal(tokenBInfo.mint));
-    } catch (error) {
-      console.error("Error fetching balances:", error);
-    } finally {
+    } catch { } finally {
       setIsFetchingBalances(false);
     }
   };
@@ -169,7 +168,6 @@ function PositionPageInner() {
         if (poolInfo) {
           if (poolInfo.price) {
             setPoolPrice(poolInfo.price);
-            // Set default range as ±20% of real price for volatile devnet tokens
             setMinPrice((poolInfo.price * 0.8).toFixed(6));
             setMaxPrice((poolInfo.price * 1.2).toFixed(6));
           }
@@ -214,13 +212,9 @@ function PositionPageInner() {
               disableLoadToken: true,
             });
             // getPoolTicks not available in sdk-v2.
-          } catch (tickErr) {
-            console.warn("Could not fetch pool ticks:", tickErr);
-          }
+          } catch { }
         }
-      } catch (err) {
-        console.warn("Could not fetch pool data:", err);
-      } finally {
+      } catch { } finally {
         setPoolLoading(false);
       }
     };
@@ -453,7 +447,6 @@ function PositionPageInner() {
 
   // ── Add Liquidity Handler ──────────────────────────────────
   const handleAddLiquidity = async () => {
-    console.log("=== ADD LIQUIDITY START ===");
     if (!publicKey || !connected) {
       setTxError("Please connect your wallet first.");
       return;
@@ -496,9 +489,7 @@ function PositionPageInner() {
         const res = await raydium.api.fetchPoolById({ ids: poolId });
         if (res && res.length > 0)
           poolInfo = res[0] as ApiV3PoolInfoConcentratedItem;
-      } catch (apiErr: any) {
-        console.log("Will try manual pool construction...");
-      }
+      } catch { }
 
       // Determine Authentic MintA / MintB Routing
       let isTokenAMintA = true;
@@ -594,14 +585,7 @@ function PositionPageInner() {
         tickLower = Math.floor(rawTickLower / tickSpacing) * tickSpacing;
         tickUpper = Math.ceil(rawTickUpper / tickSpacing) * tickSpacing;
 
-        console.log(
-          `📏 Tick range: ${tickLower} → ${tickUpper} (price ${minPrice} → ${maxPrice})`,
-        );
       } else {
-        // Fall back to full range if price range is invalid
-        console.warn(
-          "⚠️ Price range invalid or doesn't contain current price — using full range",
-        );
         tickLower = Math.ceil(-443636 / tickSpacing) * tickSpacing;
         tickUpper = Math.floor(443636 / tickSpacing) * tickSpacing;
       }
@@ -639,16 +623,12 @@ function PositionPageInner() {
       const slippage = 0.01; // 1%
 
       if (valMintB >= requiredMintB) {
-        // We have plenty of MintB. MintA is the bottleneck. Anchor to MintA.
-        console.log("⚓ Bottleneck is MintA");
         baseTokenStr = "MintA";
         baseAmountBN = amountMintA_BN;
         otherMaxBN = amountMintB_BN
           .mul(new BN(100 + slippage * 100))
           .div(new BN(100));
       } else {
-        // We don't have enough MintB. MintB is the bottleneck. Anchor to MintB.
-        console.log("⚓ Bottleneck is MintB");
         baseTokenStr = "MintB";
         baseAmountBN = amountMintB_BN;
         otherMaxBN = amountMintA_BN
@@ -727,10 +707,8 @@ function PositionPageInner() {
       setDepositA("");
       setDepositB("");
     } catch (err: any) {
-      console.error("❌ Add liquidity failed:", err);
-      setTxError(
-        err?.message || "Failed to add liquidity. Check console for details.",
-      );
+      const cleanMessage = parseError(err);
+      setTxError(cleanMessage);
     } finally {
       setLoading(false);
     }

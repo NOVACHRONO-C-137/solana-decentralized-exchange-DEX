@@ -16,25 +16,12 @@ import { useTokenBalances } from "@/hooks/useTokenBalances"
 import { notify } from "@/lib/toast"
 import { logger } from "@/lib/logger"
 import { resolveTokenFromMint } from "@/lib/token-metadata"
+import { parseError } from "@/lib/error-utils"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants — devnet program IDs
-// ─────────────────────────────────────────────────────────────────────────────
 const CLMM_PROGRAM_ID = "DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH"
 const AMM_V4_PROGRAM_ID = "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8"
 const CPMM_PROGRAM_ID = "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Read the decimals byte directly from the SPL mint account.
-// This is the ground truth — called inside handleSwap so it's ALWAYS correct
-// regardless of what the token state says.
-//
-// SPL MintLayout byte layout:
-//   [0..4]   mint_authority_option
-//   [4..36]  mint_authority
-//   [36..44] supply (u64)
-//   [44]     decimals  ← this byte
-// ─────────────────────────────────────────────────────────────────────────────
 async function getMintDecimals(mint: string, connection: any): Promise<number> {
     try {
         const info = await connection.getAccountInfo(new PublicKey(mint))
@@ -43,9 +30,6 @@ async function getMintDecimals(mint: string, connection: any): Promise<number> {
     return 6
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Token icon
-// ─────────────────────────────────────────────────────────────────────────────
 function SwapTokenIcon({ token }: { token: TokenInfo }) {
     const [imgError, setImgError] = useState(false)
 
@@ -77,9 +61,6 @@ function SwapTokenIcon({ token }: { token: TokenInfo }) {
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Token selector button
-// ─────────────────────────────────────────────────────────────────────────────
 function TokenSelector({ token, onSwitch, locked }: { token: TokenInfo; onSwitch?: () => void; locked?: boolean }) {
     return (
         <button
@@ -97,9 +78,6 @@ function TokenSelector({ token, onSwitch, locked }: { token: TokenInfo; onSwitch
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Input field
-// ─────────────────────────────────────────────────────────────────────────────
 function GradientBorderField({
     label, token, amount, balance,
     onAmountChange, onTokenSwitch, onMax, readOnly, locked,
@@ -157,9 +135,6 @@ function GradientBorderField({
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Slippage modal
-// ─────────────────────────────────────────────────────────────────────────────
 function SlippageModal({ isOpen, onClose, value, onChange }: {
     isOpen: boolean; onClose: () => void; value: string; onChange: (v: string) => void;
 }) {
@@ -193,9 +168,6 @@ function SlippageModal({ isOpen, onClose, value, onChange }: {
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main component
-// ─────────────────────────────────────────────────────────────────────────────
 function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
     const { connected, publicKey, signAllTransactions } = useWallet()
     const { connection } = useConnection()
@@ -211,13 +183,10 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
     const [toToken, setToToken] = useState<TokenInfo>(
         DEVNET_TOKENS.find(t => t.symbol === toSymbol) || DEVNET_TOKENS[0]
     )
-    // Track whether async token resolution is still in progress.
-    // Swap button is disabled until both tokens are resolved.
     const [tokensResolving, setTokensResolving] = useState(
         !!(searchParams.get("fromMint") || searchParams.get("toMint"))
     )
 
-    // ── PRIMARY: resolve from URL mint addresses ──────────────────────────────
     useEffect(() => {
         const urlFromMint = searchParams.get("fromMint")
         const urlToMint = searchParams.get("toMint")
@@ -247,10 +216,8 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
         }
 
         run()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams])
 
-    // ── SECONDARY: plain /swap — update when wallet connects ─────────────────
     useEffect(() => {
         if (discoveredTokens.length === 0) return
         if (searchParams.get("fromMint") || searchParams.get("toMint")) return
@@ -270,7 +237,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
     const [selectingFor, setSelectingFor] = useState<"from" | "to" | null>(null)
     const [loading, setLoading] = useState(false)
     const [txSig, setTxSig] = useState<string | null>(null)
-    const [swapError, setSwapError] = useState<string | null>(null)
     const [currentPoolPrice, setCurrentPoolPrice] = useState<number | null>(null)
 
     const fromBalance = getBalance(fromToken.mint)
@@ -279,7 +245,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
     const balancesMap = new Map<string, number>()
     balances.forEach((tb, mint) => balancesMap.set(mint, tb.balance))
 
-    // ── Live quote ────────────────────────────────────────────────────────────
     useEffect(() => {
         const fetchQuote = async () => {
             if (!fromToken || !toToken || fromToken.mint === toToken.mint) return
@@ -302,41 +267,37 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
     const handleFlipTokens = () => {
         setFromToken(toToken); setToToken(fromToken)
         setFromAmount(toAmount); setToAmount(fromAmount)
-        setTxSig(null); setSwapError(null); setCurrentPoolPrice(null)
+        setTxSig(null); setCurrentPoolPrice(null)
     }
 
     const handleFromAmountChange = (val: string) => {
-        if (val === "") { setFromAmount(""); setToAmount(""); setTxSig(null); setSwapError(null); return }
+        if (val === "") { setFromAmount(""); setToAmount(""); setTxSig(null); return }
         if (!/^\d*\.?\d*$/.test(val)) return
         if ((val.match(/\./g) || []).length > 1) return
-        setFromAmount(val); setTxSig(null); setSwapError(null)
+        setFromAmount(val); setTxSig(null)
         const num = Number(val)
         if (!val || isNaN(num) || num <= 0) { setToAmount(""); return }
         const rate = currentPoolPrice ?? 0.02
         setToAmount((num * rate).toFixed(6))
     }
 
-    // ── Core swap ─────────────────────────────────────────────────────────────
     const handleSwap = async () => {
         if (!connected || !publicKey) { setWalletModalOpen(true); return }
         if (!signAllTransactions) {
-            const msg = "Wallet does not support signing."; setSwapError(msg); notify.error(msg); return
+            const msg = "Wallet does not support signing."; notify.error(msg); return
         }
         const amount = Number(fromAmount)
         if (!fromAmount || isNaN(amount) || amount <= 0) {
-            const msg = "Enter a valid amount."; setSwapError(msg); notify.error(msg); return
+            const msg = "Enter a valid amount."; notify.error(msg); return
         }
         if (amount > fromBalance) {
-            const msg = `Insufficient ${fromToken.symbol} balance.`; setSwapError(msg); notify.error(msg); return
+            const msg = `Insufficient ${fromToken.symbol} balance.`; notify.error(msg); return
         }
 
-        setLoading(true); setSwapError(null); setTxSig(null)
+        setLoading(true); setTxSig(null)
         window.dispatchEvent(new CustomEvent('quantum-quake', { detail: { active: true } }));
 
         try {
-            // ── CRITICAL: always fetch real decimals from chain right here ────
-            // Never trust token state decimals — they may not have resolved yet
-            // or may have been resolved before the fix was applied.
             const [fromDecimals, toDecimals] = await Promise.all([
                 getMintDecimals(fromToken.mint, connection),
                 getMintDecimals(toToken.mint, connection),
@@ -347,14 +308,12 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
             let poolType: "clmm" | "amm" | "cpmm" | null = null
             let poolId = ""
 
-            // CLMM
             const clmmHits = await connection.getProgramAccounts(new PublicKey(CLMM_PROGRAM_ID), {
                 dataSlice: { offset: 0, length: 0 },
                 filters: [{ dataSize: 1544 }, { memcmp: { offset: 73, bytes: sorted[0] } }, { memcmp: { offset: 105, bytes: sorted[1] } }],
             })
             if (clmmHits.length > 0) { poolType = "clmm"; poolId = clmmHits[0].pubkey.toBase58() }
 
-            // CPMM
             if (!poolType) {
                 for (const [m1, m2] of [[fromToken.mint, toToken.mint], [toToken.mint, fromToken.mint]]) {
                     const hits = await connection.getProgramAccounts(new PublicKey(CPMM_PROGRAM_ID), {
@@ -365,7 +324,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
                 }
             }
 
-            // Legacy AMM v4
             if (!poolType) {
                 for (const [m1, m2] of [[sorted[0], sorted[1]], [sorted[1], sorted[0]]]) {
                     const hits = await connection.getProgramAccounts(new PublicKey(AMM_V4_PROGRAM_ID), {
@@ -385,7 +343,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
 
             const slippageFraction = parseFloat(slippage) / 100
 
-            // Use chain-fetched decimals, never token state
             const amountIn = new BN(
                 new Decimal(amount).mul(new Decimal(10).pow(fromDecimals)).toFixed(0)
             )
@@ -402,11 +359,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
                 let remainingAccounts;
 
                 try {
-                    // 🚨 CRITICAL BUG FIX FOR RAYDIUM SDK 🚨
-                    // The SDK's 'getFirstInitializedTickArray' function expects 'id' and 'programId' to be PublicKey objects.
-                    // However, the API returns them as plain strings. When the SDK tries to generate PDA addresses,
-                    // it calls '.toBuffer()' on the string, causing the "e.toBuffer is not a function" crash!
-                    // We fix this by injecting properly casted PublicKeys into a cloned poolInfo just for the computation.
                     const safeComputePoolInfo = {
                         ...poolInfo,
                         id: new PublicKey(poolInfo.id),
@@ -429,7 +381,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
                     throw new Error("Simulation failed: " + (computeErr.message || "Price impact too high for pool depth."));
                 }
 
-                // Safely extract the raw output amount based on SDK version structure
                 const outMinRaw = (minAmountOut as any)?.amount?.raw ?? (minAmountOut as any)?.raw ?? minAmountOut
                 const amountOutMin = new BN(outMinRaw.toString())
 
@@ -442,7 +393,7 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
                     amountIn,
                     amountOutMin,
                     observationId: poolInfo.observationId,
-                    remainingAccounts, // The perfectly resolved accounts from computeRes
+                    remainingAccounts,
                     txVersion: TxVersion.V0,
                     ownerInfo: { useSOLBalance: fromToken.symbol === "SOL" || toToken.symbol === "SOL" },
                 } as any)
@@ -492,14 +443,9 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
 
             setTimeout(() => refetchBalances(), 2000)
 
-        } catch (e: any) {
-            let msg: string = e?.message ?? "Swap failed"
-            if (e?.logs) {
-                const failLog = (e.logs as string[]).find((l: string) => l.includes("Error") || l.includes("failed"))
-                if (failLog) msg = failLog
-            }
-            if (msg.length > 160) msg = msg.slice(0, 160) + "…"
-            setSwapError(msg); notify.error(msg)
+        } catch (err: any) {
+            const cleanMessage = parseError(err);
+            notify.error(cleanMessage);
         } finally {
             setLoading(false)
             window.dispatchEvent(new CustomEvent('quantum-quake', { detail: { active: false } }));
@@ -556,13 +502,6 @@ function SwapCardInner({ lockedTokens = false }: { lockedTokens?: boolean }) {
                         onTokenSwitch={lockedTokens ? undefined : () => setSelectingFor("to")}
                         locked={lockedTokens}
                         readOnly />
-
-                    {swapError && (
-                        <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                            <span className="break-all">{swapError}</span>
-                        </div>
-                    )}
 
                     {txSig && (
                         <div className="mt-3 flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">

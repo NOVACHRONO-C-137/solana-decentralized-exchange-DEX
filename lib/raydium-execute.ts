@@ -29,9 +29,7 @@ export async function createWrappedSignAll(
                 // sent
                 await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
                 onSig(sig);
-            } catch (e) {
-                console.error(e);
-            }
+            } catch { }
         }
         return signedTxs; // return signed so SDK doesn't crash
     };

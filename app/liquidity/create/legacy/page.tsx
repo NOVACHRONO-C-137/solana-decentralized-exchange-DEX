@@ -12,6 +12,7 @@ import BN from "bn.js";
 import Decimal from "decimal.js";
 import { formatLargeNumber } from "@/lib/utils";
 import { useTokenBalances } from "@/hooks/useTokenBalances";
+import { parseError } from "@/lib/error-utils";
 
 export default function LegacyPoolPage() {
     const router = useRouter();
@@ -49,11 +50,8 @@ export default function LegacyPoolPage() {
             const pool = data?.data?.data?.[0];
             if (pool?.price) {
                 setInitialPrice(pool.price.toString());
-                console.log(`✅ Found existing pool price: ${pool.price}`);
             }
-        } catch (err) {
-            console.warn("Could not check existing pool:", err);
-        }
+        } catch { }
     };
 
     const handleTokenSelect = (token: TokenInfo) => {
@@ -165,8 +163,6 @@ export default function LegacyPoolPage() {
             });
 
             const { txIds: marketTxIds } = await createMarket({ sendAndConfirm: true, sequentially: true });
-            const marketTxId = marketTxIds[0];
-            console.log("✅ Market created:", marketTxId);
 
             // 2. Create Pool
             setIsCreating("pool");
@@ -203,7 +199,6 @@ export default function LegacyPoolPage() {
             setTxSig(poolTxId);
 
             const poolIdStr = extInfo.address.ammId.toString();
-            console.log("✅ Pool created:", poolTxId, "Pool ID:", poolIdStr);
 
             const stored = localStorage.getItem("aeroCustomPools");
             let customPools = [];
@@ -239,8 +234,8 @@ export default function LegacyPoolPage() {
             setTimeout(() => router.push("/liquidity"), 1000);
 
         } catch (err: any) {
-            console.error(err);
-            setTxError(err?.message || "Failed to create legacy pool.");
+            const cleanMessage = parseError(err);
+            setTxError(cleanMessage);
             setIsCreating("idle");
         }
     };

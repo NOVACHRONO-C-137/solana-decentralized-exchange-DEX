@@ -14,6 +14,7 @@ import BN from "bn.js";
 import Decimal from "decimal.js";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { SlippageSettings } from "@/components/liquidity/SlippageSettings";
+import { parseError } from "@/lib/error-utils";
 
 function PositionPageInner() {
   const router = useRouter();
@@ -31,7 +32,6 @@ function PositionPageInner() {
   const [txError, setTxError] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
 
-  // Slippage Settings
   const [showSlippageSettings, setShowSlippageSettings] = useState(false);
   const [slippageTab, setSlippageTab] = useState<"Auto" | "Custom">("Auto");
   const [customSlippage, setCustomSlippage] = useState<string>("2.5");
@@ -82,9 +82,7 @@ function PositionPageInner() {
       };
       setBalanceA(await getBal(tokenAInfo.mint));
       setBalanceB(await getBal(tokenBInfo.mint));
-    } catch (error) {
-      console.error("Error fetching balances:", error);
-    } finally {
+    } catch { } finally {
       setIsFetchingBalances(false);
     }
   };
@@ -107,9 +105,7 @@ function PositionPageInner() {
         if (poolInfo) {
           if (poolInfo.price) setPoolPrice(poolInfo.price);
         }
-      } catch (err) {
-        console.warn("Could not fetch pool data:", err);
-      } finally {
+      } catch { } finally {
         setPoolLoading(false);
       }
     };
@@ -248,7 +244,6 @@ function PositionPageInner() {
         signAllTransactions: wrappedSignAll,
       });
 
-      // Standard AMM pools in v2 use raydium.cpmm
       let poolInfo: any;
       try {
         const res = await raydium.api.fetchPoolById({ ids: poolId });
@@ -259,14 +254,11 @@ function PositionPageInner() {
 
       if (!poolInfo) throw new Error("Pool not found on Raydium API. It may take a few minutes for new pools to be indexed.");
 
-      // Real CPMM Add Liquidity Data
       const poolKeys = await raydium.cpmm.getCpmmPoolKeys(poolId);
       const rpcData = await raydium.cpmm.getRpcPoolInfo(poolInfo.id, true);
 
       const inputAmount = new BN(new Decimal(depositA).mul(10 ** tokenAInfo.decimals).toFixed(0));
 
-      // Slippage processing
-      // Use basis points (integer) — Percent only accepts integers, not floats
       const maxSlippage = slippageTab === "Auto" ? 2.5 : parseFloat(customSlippage);
 
       const baseIn = poolInfo.mintA.address === tokenAInfo.mint;
@@ -285,7 +277,6 @@ function PositionPageInner() {
         const result = await execute({ sendAndConfirm: true });
         txId = result?.txId || "";
       } catch (err: any) {
-        // SDK may fail serializing after we already sent — that's fine
         if (!manualTxId) {
           throw err;
         }
@@ -301,8 +292,8 @@ function PositionPageInner() {
       setDepositA("");
       setDepositB("");
     } catch (err: any) {
-      console.error("❌ Add standard liquidity failed:", err);
-      setTxError(err?.message || "Failed to add liquidity.");
+      const cleanMessage = parseError(err);
+      setTxError(cleanMessage);
     } finally {
       setLoading(false);
     }

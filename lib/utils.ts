@@ -14,7 +14,7 @@ export function formatLargeNumber(value: number | string, decimals: number = 2):
   if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
   if (Math.abs(num) >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
 
-  // For small numbers, format compactly up to 4 decimal places
+
   if (Math.abs(num) < 0.0001 && num !== 0) {
     return num.toExponential(decimals);
   }
@@ -42,5 +42,5 @@ export function cleanError(err: any): string {
   return msg;
 }
 
-// Glass card style - reused across the app
+
 export const glassCard = "bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl";

@@ -82,8 +82,6 @@ export default function DashboardPage() {
         const positionIds = new Set<string>();
         const allIds = new Set<string>();
 
-        // 1. Always include the global hardcoded pools so the dashboard fetches their metadata
-        // and subsequently checks if you hold their LP tokens
         const HARDCODED_DEVNET_POOL_IDS = [
             "CKaQFacstJqqVkFLLH7TeYgVQeuqB9HPE6nCM9StDEAc",
             "71Yjqv83w73n92fEsvFncFjMVHFqdUGKcuhsvnbwp8SG",
@@ -91,7 +89,6 @@ export default function DashboardPage() {
         ];
         HARDCODED_DEVNET_POOL_IDS.forEach(id => allIds.add(id));
 
-        // 2. Discover via on-chain helpers (Finds LP tokens and created pools)
         try {
             const [createdIds, depositedIds] = await Promise.all([
                 discoverCreatedPools(connection, publicKey),
@@ -105,18 +102,13 @@ export default function DashboardPage() {
                 allIds.add(id);
                 positionIds.add(id);
             });
-            console.log("[loadPools] On-chain discovery found:", allIds.size, "pools");
-        } catch (e) {
-            console.log("[loadPools] Discovery error", e);
-        }
+        } catch { }
 
-        // 2. Read localStorage as backup
         let customPools: any[] = [];
         try {
             const stored = localStorage.getItem("aeroCustomPools");
             if (stored) {
                 const parsed = JSON.parse(stored);
-                // STRICT WALLET CHECK
                 customPools = parsed.filter((p: any) => p.creator === publicKey.toBase58());
             }
         } catch { }
@@ -132,7 +124,6 @@ export default function DashboardPage() {
             }
         });
 
-        // 3. CLMM positions via SDK
         try {
             const raydium = await Raydium.load({ owner: publicKey, connection, cluster: "devnet", disableFeatureCheck: true, disableLoadToken: true });
             const userPositions = await raydium.clmm.getOwnerPositionInfo({ programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID });
@@ -141,17 +132,12 @@ export default function DashboardPage() {
                 positionIds.add(pos.poolId.toString());
                 allIds.add(pos.poolId.toString());
             });
-            console.log("[loadPools] CLMM positions found:", userPositions.length);
         } catch { }
 
-        // ── Step 2: Standard/CPMM positions via direct pool account read ──
-        // We already know pool IDs from localStorage. Read each account directly,
-        // extract lpMint at offset 136 (CPMM layout), check wallet LP balance.
         try {
             const storedIds = customPools.map((p: any) => p.id).filter(Boolean);
 
             for (const poolId of storedIds) {
-                // Skip if already found via CLMM positions
                 if (positionIds.has(poolId)) continue;
 
                 try {
@@ -162,7 +148,6 @@ export default function DashboardPage() {
 
                     const data = Buffer.from(info.data);
 
-                    // CPMM PoolState: lpMint @ offset 136 (32 bytes)
                     if (data.length >= 168) {
                         const lpMintBytes = data.slice(136, 168);
                         const isValid = !lpMintBytes.every((b: number) => b === 0);
@@ -183,26 +168,21 @@ export default function DashboardPage() {
                             allIds.add(poolId);
                         }
                     }
-                } catch (e) {
-                    console.warn("[loadPools] error checking pool", poolId, e);
-                }
+                } catch { }
             }
 
-        } catch (e) {
-            console.warn("[loadPools] Step2 outer error:", e);
-        }
+        } catch { }
 
-        // Fetch pool metadata
         if (allIds.size > 0) {
             try {
-                console.log("[loadPools] Fetching API metadata for IDs:", Array.from(allIds));
+
                 const res = await fetch(`https://api-v3-devnet.raydium.io/pools/info/ids?ids=${Array.from(allIds).join(",")}`);
                 const json = await res.json();
                 const apiPools = (json.data || [])
                     .filter((p: any) => p && p.id)
                     .map((p: any) => ({ ...p, type: normalizePoolType(p.type) }));
 
-                console.log("[loadPools] API returned valid pools:", apiPools.length);
+
 
                 const mergedPools = new Map<string, any>();
                 customPools.map((p: any) => normalizeStoredPool(p)).forEach((pool: any) => mergedPools.set(pool.id || pool.poolId, pool));
@@ -212,14 +192,13 @@ export default function DashboardPage() {
 
                 const finalPools = Array.from(mergedPools.values());
 
-                // Standard LP check
                 for (const pool of finalPools) {
                     if ((pool.type === "Standard" || pool.type === "Legacy") && pool.lpMint?.address) {
                         try {
                             const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(pool.lpMint.address) });
                             const hasLp = accounts.value.some((a: any) => a.account.data.parsed.info.tokenAmount.uiAmount > 0);
                             if (hasLp) {
-                                console.log(`[loadPools] Found LP balance for pool: ${pool.id}`);
+
                                 positionIds.add(pool.id || pool.poolId);
                                 allIds.add(pool.id || pool.poolId);
                             }
@@ -228,13 +207,10 @@ export default function DashboardPage() {
                 }
 
                 setPools(finalPools);
-            } catch (e) {
-                console.log("[loadPools] API fetch error:", e);
-            }
+            } catch { }
         }
 
         setPositionPoolIds(positionIds);
-        // final positionPoolIds
         setPoolsLoading(false);
     }, [publicKey, connected, connection]);
 
@@ -273,15 +249,14 @@ export default function DashboardPage() {
         const isSol = SOL_MINTS.has(mint);
         const symbol = isSol ? "SOL" : (token?.symbol || mint.slice(0, 8));
 
-        // 🚨 FIX: Smart price fallback logic for Devnet
         let price = prices[mint];
         if (!price) {
             if (symbol.includes("USDC") || symbol.includes("USDT")) {
-                price = 1; // Hardcode devnet stablecoins to $1
+                price = 1;
             } else if (isSol) {
                 price = prices["So11111111111111111111111111111111111111112"] || 0;
             } else {
-                price = 0; // Unknown devnet tokens default to $0, NOT the price of SOL
+                price = 0;
             }
         }
 

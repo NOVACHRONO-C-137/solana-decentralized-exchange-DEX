@@ -13,6 +13,7 @@ import { useTokenBalances } from "@/hooks/useTokenBalances";
 import { formatLargeNumber } from "@/lib/utils";
 import TokenIcon from "@/components/liquidity/TokenIcon";
 import { notify } from "@/lib/toast";
+import { parseError } from "@/lib/error-utils";
 
 export default function WithdrawStandardPage() {
     const router = useRouter();
@@ -83,9 +84,9 @@ export default function WithdrawStandardPage() {
                 setLpBalance(0);
             }
         } catch (err: any) {
-            const msg = err?.message || "Failed to load pool info from chain.";
-            setTxError(msg);
-            notify.error(msg);
+            const cleanMessage = parseError(err);
+            setTxError(cleanMessage);
+            notify.error(cleanMessage);
         } finally {
             setLoading(false);
         }
@@ -173,9 +174,9 @@ export default function WithdrawStandardPage() {
             }
 
         } catch (err: any) {
-            const msg = err?.message || "Withdrawal failed. Check console.";
-            setTxError(msg);
-            notify.error(msg);
+            const cleanMessage = parseError(err);
+            setTxError(cleanMessage);
+            notify.error(cleanMessage);
         } finally {
             setTxLoading(false);
         }
