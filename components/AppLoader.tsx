@@ -120,6 +120,7 @@ export default function AppLoader() {
         }`}
     >
 
+
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-0 pointer-events-none opacity-60 animate-in fade-in duration-500"
@@ -127,7 +128,9 @@ export default function AppLoader() {
 
       <div className="relative z-10 flex items-center justify-center">
 
+
         <div className="absolute w-24 h-24 rounded-full border-4 border-transparent border-t-[var(--neon-teal)] animate-spin" />
+
 
 
         <div className="absolute w-24 h-24 rounded-full border-2 border-[var(--neon-teal)] opacity-20 animate-ping" />
@@ -135,6 +138,7 @@ export default function AppLoader() {
         <img src="/nova-icon.svg" alt="NOVADEX" className="w-12 h-12 relative z-20" />
 
         <p className="absolute -bottom-20 w-48 text-center text-[10px] uppercase tracking-[0.2em] text-[var(--neon-teal)] opacity-40 font-bold animate-pulse">
+          Nova coordinates verified. Nova-618 locking.....
           Nova coordinates verified. Nova-618 locking.....
         </p>
       </div>
