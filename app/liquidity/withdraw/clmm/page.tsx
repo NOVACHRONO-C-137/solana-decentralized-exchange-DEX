@@ -25,7 +25,7 @@ interface PositionInfo {
     raw: any;
 }
 
-export default function WithdrawCLMMPage() {
+function WithdrawCLMMContent() {
     const router = useRouter();
     const params = useSearchParams();
     const { publicKey, sendTransaction, connected, signAllTransactions } = useWallet();
@@ -222,179 +222,185 @@ export default function WithdrawCLMMPage() {
     }
 
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading withdrawal data...</div>}>
-            <main className="container mx-auto px-4 py-12 max-w-2xl text-foreground">
-                {/* Back */}
-                <button onClick={() => router.back()}
-                    className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6">
-                    <ChevronLeft className="h-5 w-5 mr-1" /> Back
-                </button>
+        <main className="container mx-auto px-4 py-12 max-w-2xl text-foreground">
+            {/* Back */}
+            <button onClick={() => router.back()}
+                className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6">
+                <ChevronLeft className="h-5 w-5 mr-1" /> Back
+            </button>
 
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="flex -space-x-2">
-                            <TokenIcon symbol={symbolA} logo={logoA} size={36} />
-                            <TokenIcon symbol={symbolB} logo={logoB} size={36} />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold">{symbolA} / {symbolB}</h1>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded font-bold">CLMM</span>
-                                <span className="text-xs text-[var(--neon-teal)] font-semibold">{fee}</span>
-                            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="flex -space-x-2">
+                        <TokenIcon symbol={symbolA} logo={logoA} size={36} />
+                        <TokenIcon symbol={symbolB} logo={logoB} size={36} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold">{symbolA} / {symbolB}</h1>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded font-bold">CLMM</span>
+                            <span className="text-xs text-[var(--neon-teal)] font-semibold">{fee}</span>
                         </div>
                     </div>
-                    <button onClick={loadPositions}
-                        disabled={loading}
-                        className="p-2 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
-                        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                </div>
+                <button onClick={loadPositions}
+                    disabled={loading}
+                    className="p-2 hover:bg-secondary/60 dark:hover:bg-white/10 rounded-lg transition-all text-muted-foreground hover:text-foreground">
+                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                </button>
+            </div>
+
+            {/* Tx Success */}
+            {txSig && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)] mb-4">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>
+                        Withdrawal successful!{" "}
+                        <a href={`https://solscan.io/tx/${txSig}?cluster=devnet`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="underline underline-offset-2 hover:opacity-80">
+                            View on Solscan
+                        </a>
+                    </span>
+                </div>
+            )}
+
+            {/* Loading */}
+            {loading ? (
+                <div className={`${glassCard} p-10 flex flex-col items-center gap-3`}>
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--neon-teal)]" />
+                    <p className="text-sm text-muted-foreground">Loading your positions from chain...</p>
+                </div>
+            ) : positions.length === 0 ? (
+                <div className={`${glassCard} p-10 flex flex-col items-center gap-4 text-center`}>
+                    <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center">
+                        <TokenIcon symbol={symbolA} logo={logoA} size={28} />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-foreground mb-1">No positions found</p>
+                        <p className="text-xs text-muted-foreground max-w-xs">
+                            You don't have any open positions in this {symbolA}/{symbolB} pool.
+                        </p>
+                    </div>
+                    <button onClick={() => router.push(`/liquidity/position/clmm?poolId=${poolId}&symbolA=${symbolA}&symbolB=${symbolB}&fee=${fee}`)}
+                        className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
+                        Add Liquidity
                     </button>
                 </div>
-
-                {/* Tx Success */}
-                {txSig && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)] mb-4">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>
-                            Withdrawal successful!{" "}
-                            <a href={`https://solscan.io/tx/${txSig}?cluster=devnet`}
-                                target="_blank" rel="noopener noreferrer"
-                                className="underline underline-offset-2 hover:opacity-80">
-                                View on Solscan
-                            </a>
-                        </span>
-                    </div>
-                )}
-
-                {/* Loading */}
-                {loading ? (
-                    <div className={`${glassCard} p-10 flex flex-col items-center gap-3`}>
-                        <Loader2 className="h-8 w-8 animate-spin text-[var(--neon-teal)]" />
-                        <p className="text-sm text-muted-foreground">Loading your positions from chain...</p>
-                    </div>
-                ) : positions.length === 0 ? (
-                    <div className={`${glassCard} p-10 flex flex-col items-center gap-4 text-center`}>
-                        <div className="w-12 h-12 rounded-full bg-[var(--neon-teal)]/10 border border-[var(--neon-teal)]/20 flex items-center justify-center">
-                            <TokenIcon symbol={symbolA} logo={logoA} size={28} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-semibold text-foreground mb-1">No positions found</p>
-                            <p className="text-xs text-muted-foreground max-w-xs">
-                                You don't have any open positions in this {symbolA}/{symbolB} pool.
-                            </p>
-                        </div>
-                        <button onClick={() => router.push(`/liquidity/position/clmm?poolId=${poolId}&symbolA=${symbolA}&symbolB=${symbolB}&fee=${fee}`)}
-                            className="px-4 py-2 rounded-xl bg-[var(--neon-teal)]/10 text-[var(--neon-teal)] text-sm font-semibold hover:bg-[var(--neon-teal)]/20 transition-all border border-[var(--neon-teal)]/20">
-                            Add Liquidity
-                        </button>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        <p className="text-sm text-muted-foreground">
-                            You have <span className="text-foreground font-semibold">{positions.length}</span> open position{positions.length > 1 ? "s" : ""} in this pool.
-                        </p>
-                        {positions.map((pos, i) => (
-                            <div key={pos.nftMint} className={`${glassCard} p-5 flex flex-col gap-4`}>
-                                {/* Position header */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-foreground">Position #{i + 1}</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${pos.liquidity.isZero()
-                                            ? "bg-secondary/50 text-muted-foreground"
-                                            : "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]"
-                                            }`}>
-                                            {pos.liquidity.isZero() ? "Empty" : "Active"}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground font-mono">
-                                        {pos.nftMint.slice(0, 6)}...{pos.nftMint.slice(-4)}
+            ) : (
+                <div className="flex flex-col gap-4">
+                    <p className="text-sm text-muted-foreground">
+                        You have <span className="text-foreground font-semibold">{positions.length}</span> open position{positions.length > 1 ? "s" : ""} in this pool.
+                    </p>
+                    {positions.map((pos, i) => (
+                        <div key={pos.nftMint} className={`${glassCard} p-5 flex flex-col gap-4`}>
+                            {/* Position header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-foreground">Position #{i + 1}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${pos.liquidity.isZero()
+                                        ? "bg-secondary/50 text-muted-foreground"
+                                        : "bg-[var(--neon-teal)]/10 text-[var(--neon-teal)]"
+                                        }`}>
+                                        {pos.liquidity.isZero() ? "Empty" : "Active"}
                                     </span>
                                 </div>
+                                <span className="text-xs text-muted-foreground font-mono">
+                                    {pos.nftMint.slice(0, 6)}...{pos.nftMint.slice(-4)}
+                                </span>
+                            </div>
 
-                                {/* Price range */}
-                                <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 grid grid-cols-2 gap-3">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Min Price</p>
-                                        <p className="text-sm font-bold text-foreground">{formatTick(pos.tickLower)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{symbolB} per {symbolA}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Max Price</p>
-                                        <p className="text-sm font-bold text-foreground">{formatTick(pos.tickUpper)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{symbolB} per {symbolA}</p>
-                                    </div>
+                            {/* Price range */}
+                            <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Min Price</p>
+                                    <p className="text-sm font-bold text-foreground">{formatTick(pos.tickLower)}</p>
+                                    <p className="text-[10px] text-muted-foreground">{symbolB} per {symbolA}</p>
                                 </div>
-
-                                {/* Liquidity */}
-                                <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3">
-                                    <p className="text-xs text-muted-foreground mb-1">Liquidity</p>
-                                    <p className="text-lg font-bold text-foreground">
-                                        {formatLargeNumber(pos.liquidity.toNumber())}
-                                        <span className="text-sm font-normal text-muted-foreground ml-1">units</span>
-                                    </p>
+                                <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Max Price</p>
+                                    <p className="text-sm font-bold text-foreground">{formatTick(pos.tickUpper)}</p>
+                                    <p className="text-[10px] text-muted-foreground">{symbolB} per {symbolA}</p>
                                 </div>
+                            </div>
 
-                                {/* Fees earned */}
-                                {(!pos.tokenFeeAmountA.isZero() || !pos.tokenFeeAmountB.isZero()) && (
-                                    <div className="bg-[var(--neon-teal)]/5 border border-[var(--neon-teal)]/20 rounded-xl px-4 py-3">
-                                        <p className="text-xs text-[var(--neon-teal)] font-semibold mb-2">Uncollected Fees</p>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">{symbolA}</span>
-                                            <span className="font-bold text-foreground">
-                                                {formatLargeNumber(pos.tokenFeeAmountA.toNumber() / Math.pow(10, 6))}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1">
-                                            <span className="text-muted-foreground">{symbolB}</span>
-                                            <span className="font-bold text-foreground">
-                                                {formatLargeNumber(pos.tokenFeeAmountB.toNumber() / Math.pow(10, 6))}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Actions */}
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => handleWithdraw(pos, false)}
-                                        disabled={!!withdrawingId || pos.liquidity.isZero()}
-                                        className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
-                                            ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
-                                            : "border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10 cursor-pointer"
-                                            }`}
-                                    >
-                                        {withdrawingId === pos.nftMint ? (
-                                            <><Loader2 className="h-4 w-4 animate-spin" /> Withdrawing...</>
-                                        ) : (
-                                            "Withdraw"
-                                        )}
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleWithdraw(pos, true)}
-                                        disabled={!!withdrawingId || pos.liquidity.isZero()}
-                                        className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
-                                            ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
-                                            : "border-red-400/50 text-red-400 hover:bg-red-400/10 cursor-pointer"
-                                            }`}
-                                    >
-                                        {withdrawingId === pos.nftMint ? (
-                                            <><Loader2 className="h-4 w-4 animate-spin" /> Closing...</>
-                                        ) : (
-                                            "Close Position"
-                                        )}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-muted-foreground text-center">
-                                    <span className="text-[var(--neon-teal)]">Withdraw</span> removes liquidity but keeps the position open.{" "}
-                                    <span className="text-red-400">Close Position</span> burns the NFT and reclaims rent SOL — use when done permanently.
+                            {/* Liquidity */}
+                            <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3">
+                                <p className="text-xs text-muted-foreground mb-1">Liquidity</p>
+                                <p className="text-lg font-bold text-foreground">
+                                    {formatLargeNumber(pos.liquidity.toNumber())}
+                                    <span className="text-sm font-normal text-muted-foreground ml-1">units</span>
                                 </p>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </main>
+
+                            {/* Fees earned */}
+                            {(!pos.tokenFeeAmountA.isZero() || !pos.tokenFeeAmountB.isZero()) && (
+                                <div className="bg-[var(--neon-teal)]/5 border border-[var(--neon-teal)]/20 rounded-xl px-4 py-3">
+                                    <p className="text-xs text-[var(--neon-teal)] font-semibold mb-2">Uncollected Fees</p>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">{symbolA}</span>
+                                        <span className="font-bold text-foreground">
+                                            {formatLargeNumber(pos.tokenFeeAmountA.toNumber() / Math.pow(10, 6))}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm mt-1">
+                                        <span className="text-muted-foreground">{symbolB}</span>
+                                        <span className="font-bold text-foreground">
+                                            {formatLargeNumber(pos.tokenFeeAmountB.toNumber() / Math.pow(10, 6))}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => handleWithdraw(pos, false)}
+                                    disabled={!!withdrawingId || pos.liquidity.isZero()}
+                                    className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
+                                        ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
+                                        : "border-[var(--neon-teal)]/50 text-[var(--neon-teal)] hover:bg-[var(--neon-teal)]/10 cursor-pointer"
+                                        }`}
+                                >
+                                    {withdrawingId === pos.nftMint ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Withdrawing...</>
+                                    ) : (
+                                        "Withdraw"
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => handleWithdraw(pos, true)}
+                                    disabled={!!withdrawingId || pos.liquidity.isZero()}
+                                    className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 border ${pos.liquidity.isZero()
+                                        ? "border-border text-muted-foreground cursor-not-allowed opacity-50"
+                                        : "border-red-400/50 text-red-400 hover:bg-red-400/10 cursor-pointer"
+                                        }`}
+                                >
+                                    {withdrawingId === pos.nftMint ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Closing...</>
+                                    ) : (
+                                        "Close Position"
+                                    )}
+                                </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground text-center">
+                                <span className="text-[var(--neon-teal)]">Withdraw</span> removes liquidity but keeps the position open.{" "}
+                                <span className="text-red-400">Close Position</span> burns the NFT and reclaims rent SOL — use when done permanently.
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </main>
+    );
+}
+
+export default function WithdrawCLMMPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading withdrawal data...</div>}>
+            <WithdrawCLMMContent />
         </Suspense>
     );
 }
