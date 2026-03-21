@@ -139,7 +139,6 @@ export default function AppLoader() {
 
         <p className="absolute -bottom-20 w-48 text-center text-[10px] uppercase tracking-[0.2em] text-[var(--neon-teal)] opacity-40 font-bold animate-pulse">
           Nova coordinates verified. Nova-618 locking.....
-          Nova coordinates verified. Nova-618 locking.....
         </p>
       </div>
     </div>
