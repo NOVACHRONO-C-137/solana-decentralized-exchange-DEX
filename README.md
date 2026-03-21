@@ -1,22 +1,18 @@
 # NOVADEX - Solana Decentralized Exchange
 
-A high-performance Web3 application designed to demonstrate the full lifecycle of token swapping and liquidity management on the Solana Blockchain. 
-
-This project operates exclusively on the **Solana Devnet** and leverages the **Raydium SDK v2** to interact directly with Raydium's on-chain smart contracts. It serves as a portfolio piece showcasing advanced MERN and Web3 frontend integration skills.
+Web3 application designed to demonstrate the full lifecycle of token swapping and liquidity management on the Solana Blockchain. 
 
 ---
 
-## 🛠 Technology Stack & Programs Used
-
-This DEX does not use a custom backend for transactions; it interacts directly with the Solana blockchain using the following technologies:
+## Technology Stack & Programs Used
 
 * **Frontend:** Next.js 14 (App Router), React 18, Tailwind CSS, Lucide Icons.
 * **Web3 Integration:** `@solana/web3.js`, `@solana/wallet-adapter-react`.
 * **DEX Engine:** `@raydium-io/raydium-sdk-v2`.
 * **Solana Programs Interacted With:**
-  * **Raydium CLMM Program:** For Concentrated Liquidity pools (custom price ranges).
-  * **Raydium CPMM Program:** For standard Constant Product Market Maker pools.
-  * **Raydium AMM V4 Program:** For legacy liquidity pools.
+  * **Raydium CLMM Program:** For Concentrated Liquidity pools (custom price ranges) [DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH](https://solscan.io/account/DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH?cluster=devnet).
+  * **Raydium CPMM Program:** For standard Constant Product Market Maker pools. [DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb](https://solscan.io/account/DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb?cluster=devnet).
+  * **Raydium AMM V4 Program:** For legacy liquidity pools. [675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8](https://solscan.io/account/675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8?cluster=devnet).
 
 ---
 
