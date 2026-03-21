@@ -12,7 +12,7 @@ Web3 application designed to demonstrate the full lifecycle of token swapping an
 * **Solana Programs Interacted With:**
   * **Raydium CLMM Program:** For Concentrated Liquidity pools (custom price ranges) [DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH](https://solscan.io/account/DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH?cluster=devnet).
   * **Raydium CPMM Program:** For standard Constant Product Market Maker pools. [DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb](https://solscan.io/account/DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb?cluster=devnet).
-  * **Raydium AMM V4 Program:** For legacy liquidity pools. [675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8](https://solscan.io/account/675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8?cluster=devnet).
+  * **Raydium AMM V4 Program:** For legacy liquidity pools, you need extra sol for this. [675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8](https://solscan.io/account/675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8?cluster=devnet).
 
 ---
 
