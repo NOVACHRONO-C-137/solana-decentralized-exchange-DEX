@@ -10,7 +10,7 @@ export function ConnectWalletModal({ isOpen, onClose }: { isOpen: boolean; onClo
     const { wallets, select } = useWallet();
     const [showUninstalled, setShowUninstalled] = useState(false);
 
-    // split into installed / loadable vs uninstalled
+
     const installedWallets = wallets.filter(
         (w) => w.readyState === WalletReadyState.Installed || w.readyState === WalletReadyState.Loadable
     );
@@ -22,10 +22,10 @@ export function ConnectWalletModal({ isOpen, onClose }: { isOpen: boolean; onClo
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            {/* The [&>button]:hidden removes the default UI dialog close X, so we can use our custom one */}
+
             <DialogContent className="bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.02)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.06)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] text-foreground w-[95vw] sm:max-w-[420px] rounded-2xl [&>button]:hidden overflow-hidden p-0 gap-0">
 
-                {/* Header */}
+
                 <div className="flex items-center justify-between p-4 sm:p-6 pb-2 sm:pb-2">
                     <h2 className="text-[15px] sm:text-[17px] font-bold tracking-wide">Connect your wallet to NOVADEX</h2>
                     <button onClick={onClose} className="text-foreground/40 hover:text-foreground dark:text-white/40 dark:hover:text-white transition-colors cursor-pointer">
@@ -33,20 +33,20 @@ export function ConnectWalletModal({ isOpen, onClose }: { isOpen: boolean; onClo
                     </button>
                 </div>
 
-                {/* Main Content (Dislaimer & Wallets) */}
+
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-2">
 
-                    {/* Disclaimer */}
+
                     <div className="mb-4 sm:mb-6">
                         <div className="bg-secondary/40 dark:bg-secondary/30 rounded-xl p-3 sm:p-4 text-[10px] sm:text-xs text-foreground/70 dark:text-white/60 leading-relaxed font-medium">
-                            By connecting your wallet, you have acknowledged that you actually know how to use this DEX.
+                            Your wallet will be connected to this website, make sure to use a test wallet.
                         </div>
                     </div>
 
-                    {/* Choose Wallet Title */}
+
                     <h3 className="font-bold text-[13px] sm:text-[15px] mb-3 sm:mb-4 tracking-wide text-foreground dark:text-white/90">Choose wallet</h3>
 
-                    {/* Wallet Grid */}
+
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6 max-h-[240px] sm:max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
                         {displayWallets.length > 0 ? (
                             displayWallets.map((wallet) => (
@@ -74,7 +74,6 @@ export function ConnectWalletModal({ isOpen, onClose }: { isOpen: boolean; onClo
                         )}
                     </div>
 
-                    {/* Toggle Show Uninstalled */}
                     <div className="flex items-center justify-between bg-secondary/40 dark:bg-secondary/20 p-3 sm:p-4 rounded-xl border border-transparent">
                         <span className="text-xs sm:text-[13px] font-semibold text-foreground dark:text-white/70 flex items-center gap-2">
                             <WalletCards className="w-4 h-4 text-foreground/40 dark:text-white/40" />

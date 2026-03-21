@@ -14,7 +14,7 @@ function TokenAvatar({ symbol, logoUrl }: { symbol: string, logoUrl?: string }) 
 
     if (logoUrl && !imgError) {
         return (
-            // eslint-disable-next-line @next/next/no-img-element
+
             <img
                 src={logoUrl}
                 alt={symbol}
@@ -65,7 +65,6 @@ function generateMockData(poolName: string, isLiquidity: boolean) {
 export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean, onClose: () => void, poolName: string }) {
     const [activeTab, setActiveTab] = useState<"volume" | "liquidity">("volume")
 
-    // Fetch dynamically discovered tokens
     const { discoveredTokens } = useTokenBalances();
 
     const chartData = useMemo(() => {
@@ -73,7 +72,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
         return generateMockData(poolName, activeTab === "liquidity");
     }, [poolName, activeTab]);
 
-    // Merge static tokens with dynamic tokens
+
     const allTokens = useMemo(() => {
         return [...DEVNET_TOKENS, ...(discoveredTokens || [])];
     }, [discoveredTokens]);
@@ -85,7 +84,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
                             {poolName.split("-").map((symbol, idx) => {
-                                // Look up the specific token in the merged list
+
                                 const tokenInfo = allTokens.find(t => t.symbol === symbol);
 
                                 return (
@@ -103,7 +102,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                     </div>
                 </DialogHeader>
 
-                {/* Raydium-style Tabs */}
+
                 <div className="flex gap-1 mt-4 bg-black/[0.04] dark:bg-[rgba(255,255,255,0.03)] border border-black/[0.07] dark:border-[rgba(255,255,255,0.07)] rounded-xl p-1 w-fit">
                     <button
                         onClick={() => setActiveTab("volume")}
@@ -119,7 +118,7 @@ export function PoolChartModal({ isOpen, onClose, poolName }: { isOpen: boolean,
                     </button>
                 </div>
 
-                {/* The Chart Container */}
+
                 <div className="h-[250px] sm:h-[320px] w-full mt-4 sm:mt-6 pr-2 sm:pr-4">
                     <div className="chart-fade h-full w-full">
                         <ResponsiveContainer width="100%" height="100%">

@@ -37,31 +37,29 @@ export default function CreatePoolPage() {
 
     const [currentStep, setCurrentStep] = useState<number>(1);
 
-    // Step 1 state
     const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
     const [activeSelectionSlot, setActiveSelectionSlot] = useState<"base" | "quote" | null>(null);
     const [baseToken, setBaseToken] = useState<TokenInfo | null>(null);
     const [quoteToken, setQuoteToken] = useState<TokenInfo | null>(null);
     const [feeTierOpen, setFeeTierOpen] = useState<boolean>(false);
-    const [selectedFee, setSelectedFee] = useState(FEE_TIERS[2]); // default 0.04%
+    const [selectedFee, setSelectedFee] = useState(FEE_TIERS[2]);
 
-    // Step 2 state
+
     const [priceBase, setPriceBase] = useState<"base" | "quote">("base");
     const [initialPrice, setInitialPrice] = useState<string>("1");
     const [priceRangeMode, setPriceRangeMode] = useState<"full" | "custom">("full");
     const [minPrice, setMinPrice] = useState<string>("0.5000");
     const [maxPrice, setMaxPrice] = useState<string>("2.0000");
 
-    // Step 3 state
+
     const [depositA, setDepositA] = useState<string>("");
     const [depositB, setDepositB] = useState<string>("");
 
-    // Tx state
     const [loading, setLoading] = useState<boolean>(false);
     const [txError, setTxError] = useState<string | null>(null);
     const [txSig, setTxSig] = useState<string | null>(null);
 
-    // Helpers
+
     const handleTokenSelect = (token: TokenInfo) => {
         if (activeSelectionSlot === "base") setBaseToken(token)
         if (activeSelectionSlot === "quote") setQuoteToken(token)
@@ -82,7 +80,7 @@ export default function CreatePoolPage() {
     const step1Ready = !!(baseToken && quoteToken);
     const step1ButtonLabel = !baseToken ? "Select Base token" : !quoteToken ? "Select Quote token" : "Continue";
 
-    // CLMM correct ratio calculation
+
     function calculateCLMMRatio(currentPrice: number, minPrice: number, maxPrice: number) {
         if (currentPrice <= minPrice) return { ratioA: 1, ratioB: 0 }
         if (currentPrice >= maxPrice) return { ratioA: 0, ratioB: 1 }
@@ -104,7 +102,7 @@ export default function CreatePoolPage() {
 
     const { ratioA: rA, ratioB: rB } = calculateCLMMRatio(currentPrice, rangeMin, rangeMax)
 
-    // USD values — each token's USD value
+
     const usdA = (parseFloat(depositA) || 0) * currentPrice
     const usdB = (parseFloat(depositB) || 0)
     const totalDeposit = usdA + usdB
@@ -112,7 +110,7 @@ export default function CreatePoolPage() {
     const ratioA = (rA * 100).toFixed(1)
     const ratioB = (rB * 100).toFixed(1)
 
-    // Create Pool
+
     const handleCreatePool = async () => {
         if (!connected || !publicKey) {
             const msg = "Please connect your wallet first.";
@@ -542,7 +540,6 @@ export default function CreatePoolPage() {
                     </button>
                 </div>
 
-                {/* Base token deposit */}
                 {[
                     { token: baseToken, val: depositA, setter: setDepositA },
                     { token: quoteToken, val: depositB, setter: setDepositB },
@@ -592,7 +589,6 @@ export default function CreatePoolPage() {
                     </div>
                 ))}
 
-                {/* Total + ratio */}
                 <div className="bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-bold text-foreground/70">Total Deposit</span>
@@ -613,7 +609,6 @@ export default function CreatePoolPage() {
                     </div>
                 </div>
 
-                {/* Error */}
                 {txError && (
                     <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -621,7 +616,7 @@ export default function CreatePoolPage() {
                     </div>
                 )}
 
-                {/* Success */}
+
                 {txSig && (
                     <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">
                         <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -635,7 +630,7 @@ export default function CreatePoolPage() {
                     </div>
                 )}
 
-                {/* Create Pool button */}
+
                 <button
                     onClick={handleCreatePool}
                     disabled={loading || (!depositA && !depositB)}

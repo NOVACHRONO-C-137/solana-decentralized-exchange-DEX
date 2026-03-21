@@ -17,11 +17,11 @@ export async function createWrappedSignAll(
                 if (tx instanceof Transaction) {
                     rawTx = tx.serialize();
                 } else {
-                    // VersionedTransaction
+
                     rawTx = Buffer.from((tx as VersionedTransaction).serialize());
                 }
                 const sig = await connection.sendRawTransaction(rawTx, { skipPreflight: true });
-                // sent
+
                 await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
                 onSig(sig);
             } catch { }

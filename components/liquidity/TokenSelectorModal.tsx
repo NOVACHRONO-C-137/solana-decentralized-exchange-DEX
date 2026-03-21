@@ -1,5 +1,3 @@
-//components/liquidity/TokenSelectorModal.tsx
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -54,7 +52,7 @@ function TokenLogo({ token, size = 36 }: { token: TokenInfo; size?: number }) {
     if (token.logoURI && !imgError) {
         return (
             <div className="rounded-full overflow-hidden shrink-0" style={{ width: size, height: size }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+
                 <img src={token.logoURI} alt={token.symbol} width={size} height={size}
                     className="rounded-full object-cover" style={{ width: size, height: size }}
                     onError={() => setImgError(true)} />
@@ -121,12 +119,12 @@ export function TokenSelectorModal({
         setMintSearchResult(null);
 
         debounceRef.current = setTimeout(async () => {
-            // resolveTokenFromMint: Raydium API → Metaplex on-chain PDA → fallback
+
             const result = await resolveTokenFromMint(q, "", allLocal, connection);
             setMintSearchLoading(false);
             setMintSearchResult(result);
         }, 500);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
     }, [searchQuery, discoveredTokens]);
 
     const handleCopy = (e: React.MouseEvent, address: string) => {
@@ -271,7 +269,7 @@ export function TokenSelectorModal({
                         </div>
                     )}
 
-                    {/* Found token card */}
+
                     {mintSearchResult && !mintSearchLoading && (
                         <div className="mt-2 mb-3 mx-1">
                             <p className="text-[10px] text-[var(--neon-teal)] font-semibold uppercase tracking-wider mb-2 px-1">
@@ -280,7 +278,7 @@ export function TokenSelectorModal({
                             <div onClick={() => { onSelectToken(mintSearchResult); onClose(); setSearchQuery(""); }}
                                 className="flex justify-between items-center p-3 rounded-xl border border-[var(--neon-teal)]/30 bg-[var(--neon-teal)]/5 hover:bg-[var(--neon-teal)]/10 cursor-pointer transition-all">
                                 <div className="flex items-center gap-3">
-                                    {/* Larger icon so logo is clearly visible */}
+
                                     <TokenLogo token={mintSearchResult} size={40} />
                                     <div className="flex flex-col">
                                         <span className="font-bold text-base text-foreground">{mintSearchResult.symbol}</span>
@@ -312,7 +310,7 @@ export function TokenSelectorModal({
                         </div>
                     )}
 
-                    {/* Wallet token list */}
+
                     {sorted.length > 0 && (
                         <>
                             {isMintSearch && (

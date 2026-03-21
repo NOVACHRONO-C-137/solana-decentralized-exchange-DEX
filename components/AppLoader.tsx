@@ -119,24 +119,23 @@ export default function AppLoader() {
       className={`fixed inset-0 z-[9999] flex items-center justify-center bg-background transition-opacity duration-1000 ${visible ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
     >
-      {/* Quantum Dot Background */}
+
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-0 pointer-events-none opacity-60 animate-in fade-in duration-500"
       />
 
       <div className="relative z-10 flex items-center justify-center">
-        {/* spinning ring */}
+
         <div className="absolute w-24 h-24 rounded-full border-4 border-transparent border-t-[var(--neon-teal)] animate-spin" />
 
-        {/* Secondary pulsing ring to blend with waves */}
+
         <div className="absolute w-24 h-24 rounded-full border-2 border-[var(--neon-teal)] opacity-20 animate-ping" />
 
-        {/* logo */}
         <img src="/nova-icon.svg" alt="NOVADEX" className="w-12 h-12 relative z-20" />
 
         <p className="absolute -bottom-20 w-48 text-center text-[10px] uppercase tracking-[0.2em] text-[var(--neon-teal)] opacity-40 font-bold animate-pulse">
-          Establishing Secure Link...
+          Nova coordinates verified. Nova-618 locking.....
         </p>
       </div>
     </div>

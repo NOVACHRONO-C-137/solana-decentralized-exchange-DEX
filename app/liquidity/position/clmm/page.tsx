@@ -1,5 +1,3 @@
-//app/liquidity/position/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, Suspense, useRef } from "react";
@@ -54,7 +52,7 @@ function PositionPageInner() {
   const [txSig, setTxSig] = useState<string | null>(null);
   const [activeRange, setActiveRange] = useState<string | null>(null);
 
-  // --- NEW: Slippage Settings State ---
+
   const [showSlippageSettings, setShowSlippageSettings] = useState(false);
   const [slippageTab, setSlippageTab] = useState<"Auto" | "Custom">("Auto");
   const [customSlippage, setCustomSlippage] = useState<string>("2.5");
@@ -70,7 +68,7 @@ function PositionPageInner() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // State to handle visual swapping of the tokens in the UI
+
   const [isInverted, setIsInverted] = useState(false);
 
   const tokens = poolName.split("-");
@@ -84,7 +82,7 @@ function PositionPageInner() {
   const urlDecimalsA = searchParams.get("decimalsA");
   const urlDecimalsB = searchParams.get("decimalsB");
 
-  // Fallbacks for tokens not in DEVNET_TOKENS
+
   const fallbackA: any = {
     symbol: tokenA,
     mint: urlMintA || "",
@@ -101,7 +99,7 @@ function PositionPageInner() {
     name: tokenB,
   };
 
-  // Find token info from DEVNET_TOKENS or fall back to URL info
+
   const initialAInfo =
     DEVNET_TOKENS.find((t) => t.symbol === tokenA) || fallbackA;
   const initialBInfo =
@@ -123,12 +121,12 @@ function PositionPageInner() {
     setIsFetchingBalances(true);
     try {
       const getBal = async (mint: string) => {
-        // Handle native SOL
+
         if (mint === "11111111111111111111111111111111" || mint === "So11111111111111111111111111111111111111112") {
           const bal = await connection.getBalance(publicKey);
-          return bal / 10 ** 9; // Convert lamports to SOL
+          return bal / 10 ** 9;
         }
-        // Handle SPL Tokens
+
         const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { mint: new PublicKey(mint) });
         if (accounts.value.length > 0) {
           return accounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
@@ -143,7 +141,7 @@ function PositionPageInner() {
     }
   };
 
-  // Fetch when wallet or tokens change
+
   useEffect(() => {
     fetchBalances();
   }, [publicKey, connection, tokenAInfo.mint, tokenBInfo.mint]);
@@ -152,7 +150,7 @@ function PositionPageInner() {
   const [poolLoading, setPoolLoading] = useState(false);
   const [poolTicks, setPoolTicks] = useState<any[]>([]);
 
-  // Fetch pool metadata and price
+
   useEffect(() => {
     if (!poolId) return;
     const fetchPoolData = async () => {
@@ -200,16 +198,16 @@ function PositionPageInner() {
           }
 
           try {
-            // Fetch real CLMM ticks
+
             const raydium = await Raydium.load({
               owner:
-                publicKey || new PublicKey("11111111111111111111111111111111"), // pubkey or dummy if unconnected
+                publicKey || new PublicKey("11111111111111111111111111111111"),
               connection,
               cluster: "devnet",
               disableFeatureCheck: true,
               disableLoadToken: true,
             });
-            // getPoolTicks not available in sdk-v2.
+
           } catch { }
         }
       } catch { } finally {
@@ -354,7 +352,7 @@ function PositionPageInner() {
       const invertedPrice = 1 / poolPrice;
       const displayMin = invertedPrice * (1 - pct);
       const displayMax = invertedPrice * (1 + pct);
-      // Map back to base scale
+
       newMin = 1 / displayMax;
       newMax = 1 / displayMin;
     }
@@ -363,7 +361,7 @@ function PositionPageInner() {
     setMaxPrice(newMax.toFixed(6));
   };
 
-  // Dynamic values depending on Price Toggle
+
   const displayMin = priceToggle === "B" ? minPrice : (parseFloat(maxPrice) > 0 ? (1 / parseFloat(maxPrice)).toFixed(6) : "0");
   const displayMax = priceToggle === "B" ? maxPrice : (parseFloat(minPrice) > 0 ? (1 / parseFloat(minPrice)).toFixed(6) : "0");
 
@@ -397,7 +395,7 @@ function PositionPageInner() {
     else handleDisplayMaxChange(nextStr);
   };
 
-  // Dynamic UI Mappings based on inversion state
+
   const topToken = isInverted ? tokenB : tokenA;
   const topTokenInfo = isInverted ? tokenBInfo : tokenAInfo;
   const topDeposit = isInverted ? depositB : depositA;
@@ -440,7 +438,7 @@ function PositionPageInner() {
       : 0.5;
   const priceLineLeft = `${Math.max(0, Math.min(100, pricePosition * 100))}%`;
 
-  // ── Add Liquidity Handler ──────────────────────────────────
+
   const handleAddLiquidity = async () => {
     if (!publicKey || !connected) {
       setTxError("Please connect your wallet first.");
@@ -491,7 +489,7 @@ function PositionPageInner() {
       if (poolInfo && poolInfo.mintA) {
         isTokenAMintA = tokenAInfo.mint === poolInfo.mintA.address;
       } else {
-        isTokenAMintA = tokenAInfo.mint < tokenBInfo.mint; // string fallback
+        isTokenAMintA = tokenAInfo.mint < tokenBInfo.mint;
       }
 
       const mintAInfo = isTokenAMintA ? tokenAInfo : tokenBInfo;
@@ -514,7 +512,7 @@ function PositionPageInner() {
           type: "Concentrated",
           id: poolId,
           programId: DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID.toString(),
-          price: 1, // Fallback price
+          price: 1,
           mintA: {
             chainId: 103,
             address: mintAInfo.mint,
@@ -628,7 +626,7 @@ function PositionPageInner() {
           .div(new BN(100));
       }
 
-      // Open position using the dynamically calculated anchor
+
       const { execute: openPositionExecute } =
         await raydium.clmm.openPositionFromBase({
           poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
@@ -642,12 +640,12 @@ function PositionPageInner() {
           txVersion: TxVersion.LEGACY,
         });
 
-      // Execute the transaction - SDK handles signing internally via wrappedSignAll
+
       try {
         const { txId } = await openPositionExecute({ sendAndConfirm: true });
         setTxSig(txId || manualTxId);
       } catch (execErr: any) {
-        // SDK may fail serializing after we already sent — that's fine
+        // SDK may fail serializing
         if (manualTxId) {
           setTxSig(manualTxId);
         } else {
@@ -655,7 +653,7 @@ function PositionPageInner() {
         }
       }
 
-      // Update localStorage so the liquidity table shows the deposit
+
       try {
         const stored = localStorage.getItem("aeroCustomPools");
         const customPools = stored ? JSON.parse(stored) : [];
@@ -746,9 +744,9 @@ function PositionPageInner() {
   const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
 
   return (
-    <main className="min-h-screen text-foreground bg-background px-4 py-8">
+    <main className="min-h-screen text-foreground bg-background px-4 pt-24 pb-8">
       <div className="max-w-6xl mx-auto">
-        {/* Back */}
+
         <button
           onClick={() => router.back()}
           className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6"
@@ -756,7 +754,7 @@ function PositionPageInner() {
           <ChevronLeft className="h-5 w-5 mr-1" /> Back
         </button>
 
-        {/* Header bar */}
+
         <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
@@ -803,13 +801,12 @@ function PositionPageInner() {
           </div>
         </div>
 
-        {/* Main content */}
+
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* LEFT — Price Range Chart */}
+
           <div className="flex-1 bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6">
             <h3 className="text-base font-bold mb-5">Set Price Range</h3>
 
-            {/* Chart area */}
             <div
               ref={chartRef}
               className="relative bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 mb-5 h-64 overflow-hidden select-none"
@@ -889,9 +886,9 @@ function PositionPageInner() {
               </div>
             </div>
 
-            {/* Min / Max inputs */}
+
             <div className="flex gap-4 mb-4">
-              {/* Min */}
+
               <div className="flex-1 bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground mb-2">Min Price</p>
                 <div className="flex items-center gap-2">
@@ -919,7 +916,7 @@ function PositionPageInner() {
                 </p>
               </div>
 
-              {/* Max */}
+
               <div className="flex-1 bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground mb-2">Max Price</p>
                 <div className="flex items-center gap-2">
@@ -948,7 +945,7 @@ function PositionPageInner() {
               </div>
             </div>
 
-            {/* Quick range + price toggle */}
+
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex gap-2 flex-wrap">
                 {QUICK_RANGES.map((r) => (
@@ -985,7 +982,7 @@ function PositionPageInner() {
               </button>
             </div>
 
-            {/* Estimated APR */}
+
             <div className="mt-5 pt-5 border-t border-border/50">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -1017,7 +1014,7 @@ function PositionPageInner() {
             </div>
           </div>
 
-          {/* RIGHT — Deposit Amount */}
+
           <div className="w-full lg:w-80 bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">Add Deposit Amount</h3>
@@ -1029,7 +1026,7 @@ function PositionPageInner() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><line x1="4" x2="20" y1="21" y2="21" /><line x1="4" x2="20" y1="14" y2="14" /><line x1="4" x2="20" y1="7" y2="7" /><circle cx="8" cy="21" r="3" /><circle cx="16" cy="14" r="3" /><circle cx="12" cy="7" r="3" /></svg>
                   <span>{slippageTab === "Auto" ? "2.5" : customSlippage}%</span>
                 </button>
-                {/* Slippage Dropdown */}
+
                 {showSlippageSettings && (
                   <div className="absolute top-full right-0 mt-2 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50">
                     <div className="mb-4 flex items-center gap-2">
@@ -1053,7 +1050,7 @@ function PositionPageInner() {
               </div>
             </div>
 
-            {/* Top Token */}
+
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
@@ -1061,19 +1058,19 @@ function PositionPageInner() {
                   <span className="font-bold text-sm">{topToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Show Real Balance */}
+
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     {formatLargeNumber(isInverted ? balanceB : balanceA)}
                   </span>
-                  {/* Fixed 50% Button */}
+
                   <button
                     onClick={() => handleSetPercentage(0.5, true)}
                     className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     50%
                   </button>
-                  {/* Fixed Max Button */}
+
                   <button
                     onClick={() => handleSetPercentage(1, true)}
                     className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
@@ -1100,7 +1097,7 @@ function PositionPageInner() {
               </p>
             </div>
 
-            {/* Middle Swap Button */}
+
             <div className="flex justify-center -my-3 z-10 relative">
               <button
                 onClick={() => setIsInverted(!isInverted)}
@@ -1110,7 +1107,7 @@ function PositionPageInner() {
               </button>
             </div>
 
-            {/* Bottom Token */}
+
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
@@ -1118,19 +1115,19 @@ function PositionPageInner() {
                   <span className="font-bold text-sm">{bottomToken}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Show Real Balance */}
+
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     {isFetchingBalances ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     {formatLargeNumber(isInverted ? balanceA : balanceB)}
                   </span>
-                  {/* Fixed 50% Button */}
+
                   <button
                     onClick={() => handleSetPercentage(0.5, false)}
                     className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
                   >
                     50%
                   </button>
-                  {/* Fixed Max Button */}
+
                   <button
                     onClick={() => handleSetPercentage(1, false)}
                     className="text-xs bg-secondary/50 dark:bg-white/5 hover:bg-secondary dark:hover:bg-secondary dark:bg-white/10 px-2 py-1 rounded-lg text-muted-foreground transition-all"
@@ -1157,7 +1154,7 @@ function PositionPageInner() {
               </p>
             </div>
 
-            {/* Total + Ratio */}
+
             <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Total Deposit</span>
@@ -1187,7 +1184,7 @@ function PositionPageInner() {
               </div>
             </div>
 
-            {/* Error / Success messages */}
+
             {txError && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-xs text-red-400">
                 ⚠ {txError}
@@ -1195,7 +1192,7 @@ function PositionPageInner() {
             )}
             {txSig && (
               <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-xs text-green-400">
-                ✅ Liquidity added!{" "}
+                Liquidity added!{" "}
                 <a
                   href={`https://solscan.io/tx/${txSig}?cluster=devnet`}
                   target="_blank"
@@ -1207,7 +1204,7 @@ function PositionPageInner() {
               </div>
             )}
 
-            {/* Submit */}
+
             <button
               disabled={loading || (!depositA && !depositB) || !poolId}
               onClick={handleAddLiquidity}

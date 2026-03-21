@@ -28,12 +28,12 @@ export function parseMetaplexMetadata(
         const nameLen = data.readUInt32LE(offset);
         offset += 4;
         const name = data.slice(offset, offset + nameLen).toString("utf-8").replace(/\0/g, "").trim();
-        offset += 32; // max name length
+        offset += 32;
 
         const symbolLen = data.readUInt32LE(offset);
         offset += 4;
         const symbol = data.slice(offset, offset + symbolLen).toString("utf-8").replace(/\0/g, "").trim();
-        offset += 10; // max symbol length
+        offset += 10; // 
 
         const uriLen = data.readUInt32LE(offset);
         offset += 4;

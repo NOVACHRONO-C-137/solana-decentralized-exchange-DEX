@@ -174,9 +174,9 @@ async function searchPoolsByMint(mint: string): Promise<PoolData[]> {
 async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolData | null> {
     try {
         const info = await connection.getAccountInfo(new PublicKey(poolId));
-        // lookupPool
+
         if (!info?.data) {
-            // lookupPool
+
             return null;
         }
 
@@ -186,14 +186,14 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
         let poolType = "Concentrated";
         let feeLabel = "0.25%";
 
-        // Helper to check if buffer is all zeros or all 0xFF
+
         const isInvalidBytes = (buf: Buffer) => {
             const allZero = buf.every(b => b === 0);
             const allFF = buf.every(b => b === 0xFF);
             return allZero || allFF;
         };
 
-        // Use length ranges instead of exact matches
+
         if (data.length >= 1544 && data.length < 1600) {
             // CLMM: mintA @ offset 73, mintB @ offset 105
             mintABytes = data.slice(73, 105);
@@ -219,9 +219,9 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
             return null;
         }
 
-        // lookupPool
 
-        // Validate extracted bytes are not all zeros or all 0xFF
+
+
         if (!mintABytes || !mintBBytes || isInvalidBytes(mintABytes) || isInvalidBytes(mintBBytes)) {
             // lookupPool
             return null;
@@ -229,9 +229,9 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
 
         const mintA = new PublicKey(mintABytes).toBase58();
         const mintB = new PublicKey(mintBBytes).toBase58();
-        // lookupPool
 
-        // Try to enrich with metadata from Raydium API
+
+
         let symbolA = mintA.slice(0, 6);
         let symbolB = mintB.slice(0, 6);
         let logoA: string | undefined;
@@ -244,7 +244,7 @@ async function lookupPoolOnChain(poolId: string, connection: any): Promise<PoolD
             if (mintRes.ok) {
                 const mintJson = await mintRes.json();
                 const mints: any[] = mintJson?.data || [];
-                // lookupPool
+
                 for (const m of mints) {
                     if (!m) continue;
                     if (m.address === mintA) { symbolA = m.symbol || symbolA; logoA = m.logoURI; decimalsA = m.decimals ?? 6; }
@@ -288,13 +288,13 @@ export default function LiquidityPoolsTable() {
     const [sortField, setSortField] = useState<"liquidity" | "swaps" | "fees" | "apr" | null>(null);
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-    // Search state
+
     const [mintSearchResults, setMintSearchResults] = useState<PoolData[]>([]);
     const [poolSearchResult, setPoolSearchResult] = useState<PoolData | null>(null);
     const [searchLoading, setSearchLoading] = useState(false);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // ── Load all pools ─────────────────────────────────────────────────────
+
     useEffect(() => {
         const loadPools = async () => {
             setLoading(true);
@@ -306,7 +306,7 @@ export default function LiquidityPoolsTable() {
                 if (stored && publicKey) {
                     const parsed = JSON.parse(stored);
                     if (Array.isArray(parsed)) {
-                        // STRICT WALLET CHECK: Only load pools created by the connected wallet
+
                         const customPools = parsed.filter((p: any) => p.creator === publicKey.toBase58());
                         for (const p of customPools) {
                             if (p.id && p.id.length > 20) {
@@ -478,7 +478,7 @@ export default function LiquidityPoolsTable() {
                     }
                 } catch {
                     // search
-                    // API failed or 404 - use on-chain data as fallback
+                    // API failed or 404 - on-chain data as fallback
                 }
                 // Use on-chain result if API failed
                 setPoolSearchResult(onChainResult);
@@ -486,14 +486,13 @@ export default function LiquidityPoolsTable() {
                 return;
             }
 
-            // Step 3: RPC returned null - treat it as a mint address and search for pools containing it
-            // search
+
             const mintResults = await searchPoolsByMint(q);
-            // search
+
             setMintSearchResults(mintResults);
             setSearchLoading(false);
         }, 500);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
     }, [search, pools, connection]);
 
     const copyToClipboard = (text: string) => {
@@ -509,9 +508,9 @@ export default function LiquidityPoolsTable() {
 
     const isMintSearch = isValidPubkey(search.trim());
 
-    // When search is active use search results, otherwise use normal filtered list
+
     const filteredPools = isMintSearch
-        ? mintSearchResults  // only populated if it's a mint (not a pool address)
+        ? mintSearchResults
         : pools.filter(p => {
             const sym = `${p.symbolA || ""}${p.symbolB || ""}${p.name || ""}`.toLowerCase();
             const matchSearch = !search.trim() || sym.includes(search.toLowerCase()) || (p.id || "").toLowerCase().includes(search.toLowerCase());
@@ -564,7 +563,7 @@ export default function LiquidityPoolsTable() {
         </span>
     );
 
-    // Reusable pool row renderer
+
     const PoolRow = ({ pool, idx, isSearchResult = false }: { pool: PoolData; idx: number; isSearchResult?: boolean }) => {
         const { symA, symB } = getSymbols(pool);
         return (
@@ -683,7 +682,7 @@ export default function LiquidityPoolsTable() {
     return (
         <TooltipProvider>
             <div className="w-full px-2">
-                {/* Stats Bar */}
+
                 <div className="grid grid-cols-3 gap-4 mb-4">
                     {[
                         { label: "Total TVL", value: `$${totalTVL >= 1e6 ? (totalTVL / 1e6).toFixed(2) + "M" : totalTVL >= 1e3 ? (totalTVL / 1e3).toFixed(1) + "K" : totalTVL.toFixed(2)}`, color: "text-[var(--neon-teal)]" },
@@ -758,7 +757,7 @@ export default function LiquidityPoolsTable() {
                                         </div>
                                     </td></tr>
                                 ) : searchLoading ? (
-                                    // Skeleton rows while searching - holds table layout
+
                                     <>
                                         {[0, 1, 2].map(i => (
                                             <tr key={i} className="animate-pulse">
@@ -783,7 +782,7 @@ export default function LiquidityPoolsTable() {
                                         ))}
                                     </>
                                 ) : poolSearchResult ? (
-                                    // Pool address found — show just that row
+
                                     <PoolRow pool={poolSearchResult} idx={0} isSearchResult />
                                 ) : sortedPools.length > 0 ? (
                                     sortedPools.map((pool, idx) => <PoolRow key={`${pool.id}-${idx}`} pool={pool} idx={idx} />)

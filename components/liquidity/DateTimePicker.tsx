@@ -132,7 +132,7 @@ export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePi
 
     const renderCalendarContent = () => (
         <div className={`p-5 bg-card rounded-2xl ${!inline ? 'shadow-2xl border border-border/50 absolute bottom-full left-0 mb-2 z-50 w-80' : 'w-full'}`}>
-            {/* Header */}
+
             <div className="flex justify-between items-center mb-5 px-1">
                 <button
                     onClick={handlePrevMonth}
@@ -152,7 +152,7 @@ export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePi
                 </button>
             </div>
 
-            {/* Weekdays */}
+
             <div className="grid grid-cols-7 gap-1 mb-3">
                 {weekDays.map(day => (
                     <div key={day} className="w-8 flex justify-center text-[10px] font-bold text-muted-foreground">
@@ -161,12 +161,11 @@ export function DateTimePicker({ value, onChange, inline, hideTime }: DateTimePi
                 ))}
             </div>
 
-            {/* Days */}
             <div className="grid grid-cols-7 gap-1 gap-y-2 mb-4">
                 {renderCalendar()}
             </div>
 
-            {/* Time & Confirm */}
+
             {!hideTime && (
                 <div className="flex items-center justify-between mt-2 pt-2">
                     <div className="flex items-center gap-4 text-foreground font-medium pl-1" ref={timeSelectorRef}>

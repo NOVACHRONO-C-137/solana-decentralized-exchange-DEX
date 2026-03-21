@@ -74,7 +74,7 @@ export function PoolsCard({
 
     return (
         <div className={`${glassCard} p-5 min-h-[600px]`}>
-            {/* Card Header */}
+
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Positions</h3>
@@ -83,7 +83,7 @@ export function PoolsCard({
             </div>
 
             <div className="flex flex-col gap-3 mb-5">
-                {/* Filters */}
+
                 <div className="grid grid-cols-2 sm:flex sm:flex-row gap-1 bg-secondary/40 dark:bg-white/5 rounded-xl p-1">
                     {tabs.map((tab) => (
                         <button
@@ -98,7 +98,7 @@ export function PoolsCard({
                         </button>
                     ))}
                 </div>
-                {/* Search */}
+
                 <div className="flex items-center gap-2">
                     <input
                         type="text"

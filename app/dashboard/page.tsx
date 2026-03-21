@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
                         const lpMint = new PublicKey(lpMintBytes).toBase58();
 
-                        // Check wallet LP token balance
+
                         const accounts = await connection.getParsedTokenAccountsByOwner(
                             publicKey,
                             { mint: new PublicKey(lpMint) }
@@ -359,27 +359,27 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 pt-28 pb-8 max-w-[1600px]">
             <div className="flex flex-col gap-6">
 
-                {/* Main grid — left + right columns */}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                    {/* ── LEFT COLUMN ─────────────────────────── */}
+
                     <div className="space-y-5 md:sticky md:top-28 self-start">
 
-                        {/* Card 1 — Wallet Overview */}
+
                         <WalletCard publicKey={publicKey} solBalance={solBalance} prices={prices} balancesLoading={balancesLoading} />
 
-                        {/* Card 2 — Portfolio Value */}
+
                         <PortfolioCard totalUSD={totalUSD} segments={segments} pricesLoading={pricesLoading} balancesLoading={balancesLoading} />
 
-                        {/* Card 3 — Token Holdings */}
+
                         <TokenHoldingsCard tokenList={tokenList} balancesLoading={balancesLoading} onRefresh={refetch} />
 
                     </div>
 
-                    {/* RIGHT COLUMN */}
+
                     <div className="md:col-span-2 space-y-5 min-h-[900px]">
 
-                        {/* Card 4 — My Pools */}
+
                         <PoolsCard
                             pools={pools}
                             poolsLoading={poolsLoading}
@@ -389,18 +389,18 @@ export default function DashboardPage() {
                             onRefresh={loadPools}
                         />
 
-                        {/* Market Trends Card */}
+
                         <MarketTrendsCard />
 
                     </div>
                 </div>
 
-                {/* Bottom full-width row */}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Network Stats card */}
+
                     <NetworkStatsCard solPrice={prices["So11111111111111111111111111111111111111112"] || 0} />
 
-                    {/* Recent Transactions card */}
+
                     <RecentTransactionsCard publicKey={publicKey} />
                 </div>
 

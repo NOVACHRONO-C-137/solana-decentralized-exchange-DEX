@@ -80,7 +80,7 @@ export default function StandardPoolPage() {
             const b = new Decimal(val);
             const p = new Decimal(initialPrice);
             if (b.gt(0) && p.gt(0)) {
-                // Base * Price = Quote
+
                 setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
             }
         } catch (e) { /* ignore incomplete math */ }
@@ -93,7 +93,7 @@ export default function StandardPoolPage() {
             const q = new Decimal(val);
             const b = new Decimal(baseAmount);
             if (q.gt(0) && b.gt(0)) {
-                // Quote / Base = Price (Using 12 decimals to support micro-cap tokens)
+
                 setInitialPrice(q.div(b).toDecimalPlaces(12).toString());
             }
         } catch (e) { }
@@ -106,7 +106,7 @@ export default function StandardPoolPage() {
             const p = new Decimal(val);
             const b = new Decimal(baseAmount);
             if (p.gt(0) && b.gt(0)) {
-                // Base * Price = Quote
+
                 setQuoteAmount(b.mul(p).toDecimalPlaces(quoteToken?.decimals || 6).toString());
             }
         } catch (e) { }
@@ -271,7 +271,7 @@ export default function StandardPoolPage() {
         <main className="container mx-auto px-4 pt-24 pb-12 flex flex-col items-center min-h-screen text-foreground">
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
 
-                {/* LEFT SIDEBAR */}
+
                 <div className="w-full md:w-1/3 flex flex-col gap-4">
                     <button
                         onClick={() => router.back()}
@@ -293,17 +293,17 @@ export default function StandardPoolPage() {
                     </div>
                 </div>
 
-                {/* RIGHT SIDE */}
+
                 <div className="w-full md:w-2/3">
                     <h2 className="text-xl font-bold mb-6">Initialize CPMM pool</h2>
 
                     <div className="bg-[rgba(220,240,232,0.45)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[6px] border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] shadow-[0_2px_16px_0_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_0_rgba(0,0,0,0.12)] rounded-2xl p-6 flex flex-col gap-5">
 
-                        {/* Initial Liquidity */}
+
                         <div>
                             <p className="text-sm font-bold mb-3">Initial liquidity</p>
 
-                            {/* Base Token */}
+
                             <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 mb-1">
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="text-xs text-muted-foreground">Base token</span>
@@ -320,7 +320,7 @@ export default function StandardPoolPage() {
                                     >
                                         {baseToken && (
                                             <div className="w-6 h-6 rounded-full overflow-hidden border">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+
                                                 <img src={baseToken.logoURI} alt={baseToken.symbol} className="w-full h-full object-cover bg-background" />
                                             </div>
                                         )}
@@ -339,14 +339,13 @@ export default function StandardPoolPage() {
                                 </div>
                             </div>
 
-                            {/* Plus divider */}
                             <div className="flex justify-center my-1 z-10 relative">
                                 <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground font-bold text-lg">
                                     +
                                 </div>
                             </div>
 
-                            {/* Quote Token */}
+
                             <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl p-4 mt-[-12px]">
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="text-xs text-muted-foreground">Quote token</span>
@@ -363,7 +362,7 @@ export default function StandardPoolPage() {
                                     >
                                         {quoteToken && (
                                             <div className="w-6 h-6 rounded-full overflow-hidden border">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+
                                                 <img src={quoteToken.logoURI} alt={quoteToken.symbol} className="w-full h-full object-cover bg-background" />
                                             </div>
                                         )}
@@ -383,7 +382,6 @@ export default function StandardPoolPage() {
                             </div>
                         </div>
 
-                        {/* Initial Price */}
                         <div>
                             <p className="text-sm font-bold mb-2">Initial price</p>
                             <div className="bg-secondary/30 dark:bg-secondary/30 dark:bg-black/20 border border-border rounded-xl px-4 py-3 flex justify-between items-center">
@@ -405,7 +403,7 @@ export default function StandardPoolPage() {
                             )}
                         </div>
 
-                        {/* Fee Tier */}
+
                         <div>
                             <p className="text-sm font-bold mb-2">Fee Tier</p>
                             <div className="relative">
@@ -434,7 +432,6 @@ export default function StandardPoolPage() {
                             </div>
                         </div>
 
-                        {/* Start Time */}
                         <div>
                             <p className="text-sm font-bold mb-2">Start time:</p>
                             <div className="flex bg-secondary/40 dark:bg-secondary/40 dark:bg-black/30 border border-border rounded-xl overflow-hidden">
@@ -459,13 +456,12 @@ export default function StandardPoolPage() {
                             )}
                         </div>
 
-                        {/* Warning note */}
                         <p className="text-xs text-yellow-400/80">
                             Note: A creation fee of ~0.2 SOL is required for new pools.{" "}
                         </p>
 
                         <div className="flex flex-col gap-2">
-                            {/* Error */}
+
                             {txError && (
                                 <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
                                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -473,7 +469,7 @@ export default function StandardPoolPage() {
                                 </div>
                             )}
 
-                            {/* Success */}
+
                             {txSig && (
                                 <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">
                                     <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -487,7 +483,7 @@ export default function StandardPoolPage() {
                                 </div>
                             )}
 
-                            {/* Submit */}
+
                             <button
                                 onClick={handleCreatePool}
                                 disabled={!canInitialize}

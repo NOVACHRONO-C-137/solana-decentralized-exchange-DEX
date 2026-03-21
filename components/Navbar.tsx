@@ -88,7 +88,7 @@ export function Navbar() {
                         })}
                     </nav>
 
-                    {/* Right — Actions */}
+
                     <div className="flex items-center gap-2.5 shrink-0">
                         {mounted && (
                             <button
@@ -96,7 +96,7 @@ export function Navbar() {
                                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary/60 dark:hover:bg-white/10 transition-all"
                                 aria-label="Toggle theme"
                             >
-                                {/* Sun/flower — shown in dark mode */}
+
                                 <span className="hidden dark:inline-flex">
                                     <svg height="26px" width="26px" viewBox="0 0 511.999 511.999" xmlns="http://www.w3.org/2000/svg">
                                         <g fill="#14F195" opacity="0.4">
@@ -122,7 +122,7 @@ export function Navbar() {
                                     </svg>
                                 </span>
 
-                                {/* Moon — shown in light mode */}
+
                                 <span className="inline-flex dark:hidden">
                                     <svg viewBox="0 0 1024 1024" width="26px" height="26px" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M445.3888 611.09248m-308.47488 0a308.47488 308.47488 0 1 0 616.94976 0 308.47488 308.47488 0 1 0-616.94976 0Z" fill="#0D9B5F" opacity="0.15" />
@@ -162,7 +162,7 @@ export function Navbar() {
                             </button>
                         )}
 
-                        {/* Mobile Menu Toggle */}
+
                         <button
                             onClick={() => setMobileOpen(!mobileOpen)}
                             className="flex md:hidden h-10 w-10 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.08] bg-white/50 dark:bg-black/20 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
@@ -173,7 +173,7 @@ export function Navbar() {
                     </div>
                 </header>
 
-                {/* Mobile Navigation Dropdown */}
+
                 {mobileOpen && (
                     <div className="pointer-events-auto md:hidden mx-auto mt-2 max-w-5xl rounded-2xl border border-black/[0.06] dark:border-[rgba(255,255,255,0.08)] bg-[rgba(220,240,232,0.72)] dark:bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] shadow-[0_4px_30px_rgba(0,0,0,0.1)] overflow-hidden transition-colors">
                         <nav className="flex flex-col px-4 py-3 gap-1">

@@ -23,7 +23,7 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     </p>
 
                     <div className="flex flex-col gap-2.5">
-                        {/* Concentrated Liquidity Radio */}
+
                         <div
                             onClick={(e) => { e.stopPropagation(); setPoolType("concentrated"); }}
                             className={`p-2.5 sm:p-3.5 rounded-lg border cursor-pointer relative transition-all ${poolType === "concentrated" ? "border-[var(--neon-teal)] bg-[var(--neon-teal)]/10 shadow-[0_0_12px_var(--neon-teal-glow,rgba(20,241,149,0.15))]" : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/5 hover:border-[var(--neon-teal)]/40 dark:hover:border-white/30"
@@ -48,7 +48,7 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                             </div>
                         </div>
 
-                        {/* Standard AMM Radio */}
+
                         <div
                             onClick={(e) => { e.stopPropagation(); setPoolType("standard"); }}
                             className={`p-2.5 sm:p-3.5 rounded-lg border cursor-pointer transition-all ${poolType === "standard" ? "border-indigo-400 bg-indigo-400/10 shadow-[0_0_12px_rgba(129,140,248,0.15)]" : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/5 hover:border-indigo-400/40 dark:hover:border-white/30"
@@ -70,7 +70,6 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                             </div>
                         </div>
 
-                        {/* Legacy AMM Radio */}
                         <div
                             onClick={(e) => { e.stopPropagation(); setPoolType("legacy"); }}
                             className={`p-2.5 sm:p-3.5 rounded-lg border cursor-pointer transition-all ${poolType === "legacy" ? "border-[#0D9B5F] bg-[#0D9B5F]/10 dark:border-white/60 dark:bg-white/5 shadow-[0_0_12px_rgba(13,155,95,0.15)]" : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/5 hover:border-[#0D9B5F]/40 dark:hover:border-white/30"
@@ -93,7 +92,6 @@ export function CreatePoolModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                         </div>
                     </div>
 
-                    {/* ACTION BUTTONS */}
                     <div className="flex flex-col gap-2 mt-4 pt-2">
                         <button
                             onClick={() => {

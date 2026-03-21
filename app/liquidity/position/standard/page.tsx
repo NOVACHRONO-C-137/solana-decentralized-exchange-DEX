@@ -302,7 +302,7 @@ function PositionPageInner() {
   const totalDeposit = (parseFloat(depositA) || 0) * (poolPrice || 1) + (parseFloat(depositB) || 0);
 
   return (
-    <main className="min-h-screen text-foreground bg-background px-4 py-8">
+    <main className="min-h-screen text-foreground bg-background px-4 pt-24 pb-8">
       <div className="max-w-2xl mx-auto">
         <button onClick={() => router.back()} className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ChevronLeft className="h-5 w-5 mr-1" /> Back

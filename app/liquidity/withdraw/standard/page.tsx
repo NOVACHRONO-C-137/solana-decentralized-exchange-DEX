@@ -22,7 +22,7 @@ function WithdrawStandardContent() {
     const { connection } = useConnection();
     const { balances: tokenBalances } = useTokenBalances();
 
-    // ── URL params ────────────────────────────────────────
+
     const poolId = params.get("poolId") || "";
     const mintA = params.get("mintA") || "";
     const mintB = params.get("mintB") || "";
@@ -32,7 +32,7 @@ function WithdrawStandardContent() {
     const logoB = params.get("logoB") || undefined;
     const fee = params.get("fee") || "0.25%";
 
-    // ── State ─────────────────────────────────────────────
+
     const [poolInfo, setPoolInfo] = useState<any>(null);
     const [rpcData, setRpcData] = useState<any>(null);
     const [lpBalance, setLpBalance] = useState<number>(0);
@@ -45,7 +45,7 @@ function WithdrawStandardContent() {
     const [txSig, setTxSig] = useState<string | null>(null);
     const [slippage] = useState<number>(1);
 
-    // ── Load pool info from RPC ───────────────────────────
+
     const loadPool = useCallback(async () => {
         if (!poolId || !publicKey || !connected) return;
         setLoading(true);
@@ -94,7 +94,7 @@ function WithdrawStandardContent() {
 
     useEffect(() => { loadPool(); }, [loadPool]);
 
-    // ── Derived: estimated receive amounts ────────────────
+
     const lpToWithdraw = lpBalance * (withdrawPct / 100);
     const lpToWithdrawRaw = new BN(
         new Decimal(lpToWithdraw).mul(Math.pow(10, lpDecimals)).toFixed(0, Decimal.ROUND_DOWN)
@@ -110,7 +110,7 @@ function WithdrawStandardContent() {
             / Math.pow(10, poolInfo?.mintB?.decimals || 6);
     }
 
-    // ── Withdraw ──────────────────────────────────────────
+
     const handleWithdraw = async () => {
         if (!connected || !publicKey || !poolInfo) return;
         if (lpToWithdraw <= 0) {
@@ -182,7 +182,7 @@ function WithdrawStandardContent() {
         }
     };
 
-    // ── UI ────────────────────────────────────────────────
+
     if (!connected || !publicKey) {
         return (
             <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
@@ -193,13 +193,13 @@ function WithdrawStandardContent() {
 
     return (
         <main className="container mx-auto px-4 py-12 max-w-lg text-foreground">
-            {/* Back */}
+
             <button onClick={() => router.back()}
                 className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6">
                 <ChevronLeft className="h-5 w-5 mr-1" /> Back
             </button>
 
-            {/* Header */}
+
             <div className="flex items-center gap-3 mb-6">
                 <div className="flex -space-x-2">
                     <TokenIcon symbol={symbolA} logo={logoA} size={36} />
@@ -214,7 +214,7 @@ function WithdrawStandardContent() {
                 </div>
             </div>
 
-            {/* Main Card */}
+
             <div className={`${glassCard} p-6 flex flex-col gap-5`}>
 
                 {loading ? (
@@ -224,7 +224,7 @@ function WithdrawStandardContent() {
                     </div>
                 ) : (
                     <>
-                        {/* LP Balance */}
+
                         <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3">
                             <p className="text-xs text-muted-foreground mb-1">Your LP Token Balance</p>
                             <p className="text-2xl font-bold text-foreground">
@@ -238,14 +238,14 @@ function WithdrawStandardContent() {
                             )}
                         </div>
 
-                        {/* Withdraw % slider */}
+
                         <div>
                             <div className="flex justify-between items-center mb-3">
                                 <p className="text-sm font-bold">Withdraw Amount</p>
                                 <span className="text-lg font-bold text-[var(--neon-teal)]">{withdrawPct}%</span>
                             </div>
 
-                            {/* Percentage buttons */}
+
                             <div className="flex gap-2 mb-4">
                                 {[25, 50, 75, 100].map(pct => (
                                     <button key={pct} onClick={() => setWithdrawPct(pct)}
@@ -258,14 +258,14 @@ function WithdrawStandardContent() {
                                 ))}
                             </div>
 
-                            {/* Slider */}
+
                             <input
                                 type="range" min={1} max={100} value={withdrawPct}
                                 onChange={e => setWithdrawPct(Number(e.target.value))}
                                 className="w-full accent-[var(--neon-teal)] cursor-pointer"
                             />
 
-                            {/* +/- fine tune */}
+
                             <div className="flex items-center justify-between mt-3">
                                 <button onClick={() => setWithdrawPct(p => Math.max(1, p - 1))}
                                     className="w-9 h-9 rounded-xl bg-secondary/50 dark:bg-white/5 border border-border flex items-center justify-center hover:bg-secondary transition-all">
@@ -281,7 +281,7 @@ function WithdrawStandardContent() {
                             </div>
                         </div>
 
-                        {/* Estimated receive */}
+
                         <div className="bg-white/50 dark:bg-black/20 border border-black/[0.08] dark:border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-2">
                             <p className="text-xs text-muted-foreground font-semibold mb-1">Estimated Receive</p>
                             <div className="flex justify-between items-center">
@@ -304,19 +304,19 @@ function WithdrawStandardContent() {
                             </div>
                         </div>
 
-                        {/* Slippage info */}
+
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                             <span>Slippage tolerance</span>
                             <span className="font-medium text-foreground">{slippage}%</span>
                         </div>
 
-                        {/* Pool ID */}
+
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                             <span>Pool ID</span>
                             <span className="font-mono">{poolId ? `${poolId.slice(0, 6)}...${poolId.slice(-4)}` : "—"}</span>
                         </div>
 
-                        {/* Error */}
+
                         {txError && (
                             <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
                                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -324,7 +324,7 @@ function WithdrawStandardContent() {
                             </div>
                         )}
 
-                        {/* Success */}
+
                         {txSig && (
                             <div className="flex items-center gap-2 rounded-xl border border-[var(--neon-teal)]/20 bg-[var(--neon-teal)]/5 px-4 py-3 text-sm text-[var(--neon-teal)]">
                                 <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -339,7 +339,7 @@ function WithdrawStandardContent() {
                             </div>
                         )}
 
-                        {/* Submit */}
+
                         <button
                             onClick={handleWithdraw}
                             disabled={txLoading || lpBalance <= 0 || lpToWithdraw <= 0}
