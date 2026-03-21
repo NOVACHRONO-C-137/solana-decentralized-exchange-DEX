@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NOVADEX - Solana Decentralized Exchange
 
-## Getting Started
+A high-performance Web3 application designed to demonstrate the full lifecycle of token swapping and liquidity management on the Solana Blockchain. 
 
-First, run the development server:
+This project operates exclusively on the **Solana Devnet** and leverages the **Raydium SDK v2** to interact directly with Raydium's on-chain smart contracts. It serves as a portfolio piece showcasing advanced MERN and Web3 frontend integration skills.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 Technology Stack & Programs Used
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This DEX does not use a custom backend for transactions; it interacts directly with the Solana blockchain using the following technologies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* **Frontend:** Next.js 14 (App Router), React 18, Tailwind CSS, Lucide Icons.
+* **Web3 Integration:** `@solana/web3.js`, `@solana/wallet-adapter-react`.
+* **DEX Engine:** `@raydium-io/raydium-sdk-v2`.
+* **Solana Programs Interacted With:**
+  * **Raydium CLMM Program:** For Concentrated Liquidity pools (custom price ranges).
+  * **Raydium CPMM Program:** For standard Constant Product Market Maker pools.
+  * **Raydium AMM V4 Program:** For legacy liquidity pools.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## How to Use
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Make sure you have a Solana wallet (like Phantom or Solflare) installed in your browser extensions and have it switched to **Developer Mode -> Devnet**. You will need some free Devnet SOL from the [Solana Faucet](https://faucet.solana.com/) to pay for gas fees.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Step 1: Connect Your Wallet
+Click the "Connect Wallet" button in the navigation bar. Ensure your wallet network is explicitly set to **Solana Devnet**.
 
-## Deploy on Vercel
+### Step 2: Swap Tokens
+Navigate to the Swap interface. 
+1. Select the token you want to trade and the token you want to receive.
+2. The app will automatically fetch the best on-chain pool routing.
+3. Click "Swap" and approve the signature in your wallet.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Step 3: Provide Liquidity (Earn Fees)
+Navigate to the **Pools** section to become a Liquidity Provider (LP).
+1. Choose between **Standard (CPMM)** or **Concentrated (CLMM)** liquidity.
+2. If using CLMM, set your custom Minimum and Maximum price tick ranges.
+3. Deposit your token pairs to mint LP tokens or open an NFT position.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Step 4: Manage & Withdraw Liquidity
+Go to the **Portfolio / Withdraw** page to view your active positions.
+1. View your earned fees and current liquidity units.
+2. Select a position to either withdraw a percentage of your liquidity or completely close the position to reclaim your rent SOL.
+
+---
+
+## Local Development
+
+If you want to run this project locally on your machine:
+
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install --legacy-peer-deps
